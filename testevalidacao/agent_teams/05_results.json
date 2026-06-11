@@ -1,0 +1,210 @@
+{
+  "total": 29,
+  "passed": 28,
+  "failed": 1,
+  "results": [
+    {
+      "id": "A1",
+      "section": "A",
+      "description": "POST /api/ortomapas/upload sem SQL error (P12)",
+      "status": "PASS",
+      "detail": "status=201, ortomapa_id=?"
+    },
+    {
+      "id": "A2",
+      "section": "A",
+      "description": "POST /api/anotacoes com campos corretos (P09)",
+      "status": "PASS",
+      "detail": "id=9, tipo=poligono"
+    },
+    {
+      "id": "A3",
+      "section": "A",
+      "description": "Endpoint /api/ortomapas/upload existe (P04)",
+      "status": "PASS",
+      "detail": "status=422 (not 404 = endpoint registered)"
+    },
+    {
+      "id": "B4",
+      "section": "B",
+      "description": "GET /api/analises?projeto_id=3 filtra por projeto (P07)",
+      "status": "PASS",
+      "detail": "status=200, total=0"
+    },
+    {
+      "id": "B5",
+      "section": "B",
+      "description": "GET /api/anotacoes?projeto_id=3 filtra por projeto (P10)",
+      "status": "PASS",
+      "detail": "status=200, total=6"
+    },
+    {
+      "id": "B6",
+      "section": "B",
+      "description": "GET /api/voos funciona (P03)",
+      "status": "PASS",
+      "detail": "status=200, total=0"
+    },
+    {
+      "id": "B7",
+      "section": "B",
+      "description": "POST /api/voos cria voo no projeto 3 (P03)",
+      "status": "FAIL",
+      "detail": "BUG: INSERT colunas nao existem no schema DB (drone,camera,altitude_voo,status). status=500, body={\"detail\":\"table voos has no column named drone\"}"
+    },
+    {
+      "id": "C8",
+      "section": "C",
+      "description": "GET /api/projetos?status=planejado filtra corretamente (P01)",
+      "status": "PASS",
+      "detail": "total=4, all_status=planejado"
+    },
+    {
+      "id": "C9",
+      "section": "C",
+      "description": "GET /api/projetos/search?q=Serra busca textual (P02)",
+      "status": "PASS",
+      "detail": "total=5"
+    },
+    {
+      "id": "D10",
+      "section": "D",
+      "description": "Vegetation com prefixo data/ funciona (PATH fix)",
+      "status": "PASS",
+      "detail": "keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "D11",
+      "section": "D",
+      "description": "Vegetation sem prefixo data/ funciona (PATH fix)",
+      "status": "PASS",
+      "detail": "keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "D12",
+      "section": "D",
+      "description": "Statistics com data/dsm/ path funciona (PATH fix)",
+      "status": "PASS",
+      "detail": "stats_keys=['status', 'statistics']"
+    },
+    {
+      "id": "E13",
+      "section": "E",
+      "description": "UC-001: Criar projeto com campos basicos",
+      "status": "PASS",
+      "detail": "id=11, nome=Revalidacao Agent3 Project (campos nao salvos no INSERT: ['responsavel', 'objetivo'])"
+    },
+    {
+      "id": "E14_VARI",
+      "section": "E",
+      "description": "UC-005: Indice vegetacao VARI",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "E14_TGI",
+      "section": "E",
+      "description": "UC-005: Indice vegetacao TGI",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "E14_ExG",
+      "section": "E",
+      "description": "UC-005: Indice vegetacao ExG",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "E14_GLI",
+      "section": "E",
+      "description": "UC-005: Indice vegetacao GLI",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "E15_slope",
+      "section": "E",
+      "description": "UC-006: Slope analysis",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "E15_aspect",
+      "section": "E",
+      "description": "UC-006: Aspect analysis",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "E15_hillshade",
+      "section": "E",
+      "description": "UC-006: Hillshade analysis",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path']"
+    },
+    {
+      "id": "E15_contours",
+      "section": "E",
+      "description": "UC-006: Contours analysis",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path']"
+    },
+    {
+      "id": "E16",
+      "section": "E",
+      "description": "UC-007: Change detection entre 2 ortomapas",
+      "status": "PASS",
+      "detail": "response_keys=['status', 'output_path', 'statistics']"
+    },
+    {
+      "id": "E17",
+      "section": "E",
+      "description": "UC-010: Calculo de volume",
+      "status": "PASS",
+      "detail": "response={\"status\": \"success\", \"volume_above_m3\": 0.0, \"volume_below_m3\": 7438616153.45, \"net_volume_m3\": -7438616153.45, \"reference_elevation_m\": 1300.0, \"pixel_area_m2\": 17.6328, \"output_path\": \"/mnt/data1/progpython/ortomapas/data/analises/reval_volume.tif\"}"
+    },
+    {
+      "id": "E18",
+      "section": "E",
+      "description": "UC-011: Criar 2 anotacoes + listar + verificar contagem",
+      "status": "PASS",
+      "detail": "before=6, after=8, a1_id=10, a2_id=11"
+    },
+    {
+      "id": "F19",
+      "section": "F",
+      "description": "Frontend carrega, titulo contem 'Ortomapas'",
+      "status": "PASS",
+      "detail": "title='Sistema de Ortomapas'"
+    },
+    {
+      "id": "F20",
+      "section": "F",
+      "description": "Leaflet map container existe",
+      "status": "PASS",
+      "detail": "Found .leaflet-container"
+    },
+    {
+      "id": "F21",
+      "section": "F",
+      "description": "Zoom controls funcionam (click zoom in)",
+      "status": "PASS",
+      "detail": "Clicked zoom-in successfully"
+    },
+    {
+      "id": "F22",
+      "section": "F",
+      "description": "Sem erros JS no console",
+      "status": "PASS",
+      "detail": "total_console_errors=0 (filtered: 0)"
+    },
+    {
+      "id": "F23",
+      "section": "F",
+      "description": "Screenshot full-page capturado",
+      "status": "PASS",
+      "detail": "path=/mnt/data1/progpython/ortomapas/testevalidacao/agent_teams/screenshots/REVAL_full_ui.png, size=1688413 bytes"
+    }
+  ]
+}

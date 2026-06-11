@@ -1,0 +1,102 @@
+# ============================================
+#  CREDENCIAIS E SECRETS — NUNCA COMMITAR
+# ============================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+credentials.json
+
+# ============================================
+#  PYTHON
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
+.ipynb_checkpoints/
+
+# ============================================
+#  NODE / FRONTEND
+# ============================================
+node_modules/
+.npm/
+.yarn/
+dist/
+.vite/
+.cache/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================
+#  DADOS GRANDES / GERADOS
+# ============================================
+# GeoTIFFs e dados de ortomapa (muito grandes para git)
+data/ortomapas/
+data/dsm/
+data/dtm/
+data/analises/
+data/thumbnails/
+data/uploads/
+data/exports/
+data/downloads/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.sqlite
+
+# Runtime — outputs de testes e screenshots
+runtime/
+*.tif
+*.tiff
+*.las
+*.laz
+*.obj
+
+# Manter estrutura de diretorios via .gitkeep
+!data/.gitkeep
+!data/*/.gitkeep
+
+# ============================================
+#  EDITORES E SISTEMA
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============================================
+#  OUTPUT TEMPORARIO DE TESTES
+# ============================================
+/tmp/
+*.tmp
+test_output/
+test_results/
+playwright-report/
+test-results/
+
+# ============================================
+#  OUTROS
+# ============================================
+*.tar.gz
+*.zip
+*.7z

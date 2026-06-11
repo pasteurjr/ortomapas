@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # WebODM - Processamento de ortomosaicos
+  # Acesso: http://localhost:8000
+  # Para iniciar apenas o WebODM: docker compose up webodm -d
+  webapp:
+    image: opendronemap/webodm_webapp:latest
+    container_name: ortomapas-webodm
+    ports:
+      - "8000:8000"
+    volumes:
+      - webodm_data:/webodm/app/media
+    depends_on:
+      - db-webodm
+      - broker
+      - worker
+    environment:
+      - WO_HOST=0.0.0.0
+      - WO_PORT=8000
+      - WO_DEBUG=NO
+    restart: unless-stopped
+
+  db-webodm:
+    image: opendronemap/webodm_db:latest
+    container_name: ortomapas-webodm-db
+    volumes:
+      - webodm_dbdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  broker:
+    image: redis:7-alpine
+    container_name: ortomapas-redis
+    restart: unless-stopped
+
+  worker:
+    image: opendronemap/webodm_webapp:latest
+    container_name: ortomapas-webodm-worker
+    depends_on:
+      - db-webodm
+      - broker
+    volumes:
+      - webodm_data:/webodm/app/media
+    entrypoint: /webodm/worker.sh start
+    restart: unless-stopped
+
+  nodeodm:
+    image: opendronemap/nodeodm:latest
+    container_name: ortomapas-nodeodm
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # GeoServer - Publicacao de ortomapas como WMS/WMTS
+  # Acesso: http://localhost:8080/geoserver
+  # Login padrao: admin / geoserver
+  geoserver:
+    image: kartoza/geoserver:2.25.2
+    container_name: ortomapas-geoserver
+    ports:
+      - "8080:8080"
+    volumes:
+      - geoserver_data:/opt/geoserver/data_dir
+      - ./data:/opt/geoserver/data_dir/coverages
+    environment:
+      - GEOSERVER_ADMIN_PASSWORD=geoserver
+      - GEOSERVER_ADMIN_USER=admin
+      - STABLE_EXTENSIONS=wps-plugin,css-plugin
+      - COMMUNITY_EXTENSIONS=
+    restart: unless-stopped
+
+volumes:
+  webodm_data:
+  webodm_dbdata:
+  geoserver_data:
