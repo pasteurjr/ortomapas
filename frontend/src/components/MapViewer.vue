@@ -104,7 +104,7 @@
         :key="layer.id"
         class="layer-control-item"
       >
-        <span class="layer-name">{{ layer.name }}</span>
+        <div class="layer-control-header"><span class="layer-name">{{ layer.name }}</span><button type="button" title="Remover camada" @click="mapStore.removeLayer(layer.id)"><i class="pi pi-times"></i></button></div>
         <input
           type="range"
           min="0"
@@ -253,6 +253,18 @@ watch(
   }
 )
 
+// Enquadra automaticamente a camada espacial mais recente retornada pelo Copiloto.
+watch(
+  () => mapStore.activeLayers.map((layer) => layer.id).join('|'),
+  () => {
+    const map = leafletMap.value?.leafletObject
+    const latest = [...mapStore.activeLayers].reverse().find((layer) => layer.type === 'analysis' && layer.geojson)
+    if (!map || !latest) return
+    const bounds = L.geoJSON(latest.geojson).getBounds()
+    if (bounds.isValid()) setTimeout(() => map.fitBounds(bounds, { padding: [28, 28], maxZoom: 18 }), 0)
+  }
+)
+
 // Expose measure points for MeasureTools
 defineExpose({ measurePoints })
 
@@ -341,6 +353,11 @@ onMounted(() => {
   gap: 2px;
   margin-bottom: 6px;
 }
+
+.layer-control-header { display: flex; align-items: center; gap: 5px; }
+.layer-control-header .layer-name { flex: 1; }
+.layer-control-header button { width: 20px; height: 20px; border: 0; background: transparent; color: var(--text-dim); cursor: pointer; padding: 0; }
+.layer-control-header button:hover { color: #ef8f8f; }
 
 .layer-control-item:last-child {
   margin-bottom: 0;
