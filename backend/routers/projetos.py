@@ -6,12 +6,21 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 
 from backend.database.connection import get_connection
+from backend.routers.auth import current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _can_manage_project(cursor, projeto_id: int, user: dict) -> bool:
+    if user["perfil"] == "admin":
+        return True
+    cursor.execute("SELECT papel FROM projeto_usuarios WHERE projeto_id = %s AND usuario_id = %s", (projeto_id, user["id"]))
+    row = cursor.fetchone()
+    return bool(row and row["papel"] in {"proprietario", "editor"})
 
 
 @router.get("/projetos/search")
@@ -233,3 +242,36 @@ async def list_ortomapas_by_projeto(projeto_id: int):
     except Exception as e:
         logger.error(f"Error listing ortomapas for projeto {projeto_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/projetos/{projeto_id}/usuarios")
+async def list_project_users(projeto_id: int, user: dict = Depends(current_user)):
+    """List members of a project (UC-032)."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT id FROM projetos WHERE id = %s", (projeto_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Projeto nao encontrado")
+        if not _can_manage_project(cur, projeto_id, user) and user["perfil"] != "leitor":
+            raise HTTPException(status_code=403, detail="Sem permissao para consultar membros")
+        cur.execute("SELECT u.id, u.email, u.nome, u.perfil, pu.papel, pu.criado_em FROM projeto_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id WHERE pu.projeto_id = %s ORDER BY u.nome", (projeto_id,))
+        return {"total": cur.rowcount, "usuarios": [dict(r) for r in cur.fetchall()]}
+
+
+@router.post("/projetos/{projeto_id}/usuarios", status_code=201)
+async def add_project_user(projeto_id: int, data: dict, user: dict = Depends(current_user)):
+    """Grant a user a role in a project (UC-032)."""
+    usuario_id = data.get("usuario_id")
+    papel = data.get("papel", "visualizador")
+    if not usuario_id or papel not in {"proprietario", "editor", "visualizador"}:
+        raise HTTPException(status_code=400, detail="usuario_id e papel valido sao obrigatorios")
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        if not _can_manage_project(cur, projeto_id, user):
+            raise HTTPException(status_code=403, detail="Somente administrador, proprietario ou editor pode compartilhar")
+        cur.execute("SELECT id FROM usuarios WHERE id = %s AND ativo = TRUE", (usuario_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+        cur.execute("INSERT INTO projeto_usuarios (projeto_id, usuario_id, papel) VALUES (%s, %s, %s) ON CONFLICT (projeto_id, usuario_id) DO UPDATE SET papel = EXCLUDED.papel", (projeto_id, usuario_id, papel))
+        conn.commit()
+    return {"projeto_id": projeto_id, "usuario_id": usuario_id, "papel": papel}
