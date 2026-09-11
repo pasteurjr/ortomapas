@@ -14,7 +14,12 @@ router = APIRouter()
 async def ask_copilot(data: dict, user: dict = Depends(current_user)):
     prompt = (data.get('prompt') or '').strip()
     if not prompt: raise HTTPException(status_code=400, detail='Prompt obrigatorio')
-    context = data.get('context') or {}; messages = [{'role':'system','content':'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. Nunca invente dados; solicite ferramentas quando precisar de dados do projeto.'}, {'role':'user','content': f'Contexto autorizado: {context}\nPergunta: {prompt}'}]
+    context = data.get('context') or {}; project_id = context.get('projeto_id')
+    if project_id:
+        require_project_role(project_id, user, {'proprietario','editor','visualizador'})
+        with get_connection() as conn:
+            cur=conn.cursor(dictionary=True); cur.execute("SELECT id,nome,status FROM projetos WHERE id=%s",(project_id,)); project=cur.fetchone(); cur.execute("SELECT p.id,p.tipo,p.formato,p.crs FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); context={**context,'projeto':dict(project) if project else None,'produtos_autorizados':[dict(r) for r in cur.fetchall()]}
+    messages = [{'role':'system','content':'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. Nunca invente dados; solicite ferramentas quando precisar de dados do projeto.'}, {'role':'user','content': f'Contexto autorizado: {context}\nPergunta: {prompt}'}]
     try:
         client = LMStudioClient(); result, telemetry = client.complete(messages, TOOL_CATALOG); tool_results = []
         for call in result.tool_calls:
