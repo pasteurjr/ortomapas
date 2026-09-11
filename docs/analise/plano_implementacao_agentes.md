@@ -137,4 +137,4 @@ A primeira implementação será a Fase 0 e a Fase 1: adaptador LM Studio, schem
 
 ## 6. Ferramentas analíticas implementadas
 
-O catálogo inicial executável contém `listar_produtos`, `estatisticas_raster`, `estatisticas_laz`, `comparar_dsm_dtm`, `calcular_declividade`, `calcular_aspecto` e `gerar_hillshade`. Todas são somente leitura, exigem autorização por projeto e retornam métricas estruturadas; geração de arquivos será adicionada após aprovação humana.
+O catálogo inicial executável contém `listar_produtos`, `estatisticas_raster`, `estatisticas_laz`, `comparar_dsm_dtm`, `calcular_declividade`, `calcular_aspecto`, `gerar_hillshade` e `calcular_volume`. Todas exigem autorização por projeto e retornam métricas estruturadas; geração de arquivos será adicionada após aprovação humana.
