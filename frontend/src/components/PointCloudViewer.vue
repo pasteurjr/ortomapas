@@ -4,6 +4,8 @@
       <div><strong>{{ product?.tipo === 'nuvem_pontos' ? 'Nuvem de pontos 3D' : 'Visualizador 3D' }}</strong><small>{{ product?.formato }} · {{ formatNumber(meta.total) }} pontos</small></div>
       <div class="viewer-actions">
         <button class="icon-button" title="Enquadrar nuvem" @click="fitView"><i class="pi pi-expand"></i></button>
+        <button class="icon-button" title="Exportar imagem PNG" @click="exportPng"><i class="pi pi-camera"></i></button>
+        <button class="icon-button" title="Exportar pontos CSV" @click="exportCsv"><i class="pi pi-download"></i></button>
         <button class="icon-button" title="Tela cheia" @click="fullscreen"><i class="pi pi-window-maximize"></i></button>
         <button class="icon-button" title="Fechar" @click="$emit('close')"><i class="pi pi-times"></i></button>
       </div>
@@ -48,6 +50,8 @@ const measuring = ref(false); const inspecting = ref(false); const selectedPoint
 const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); const heightMin = ref(0); const heightMax = ref(0); let cloudData; let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
 const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.value.maxZ.toFixed(1)} m`)
 const formatNumber = (n) => Number(n || 0).toLocaleString('pt-BR')
+function exportPng () { if (!renderer) return; const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.png`; link.href = renderer.domElement.toDataURL('image/png'); link.click() }
+function exportCsv () { if (!cloudData) return; const { x, y, z, intensity } = cloudData; const rows = ['x,y,z,intensidade']; z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) rows.push(`${x[i]},${y[i]},${value},${intensity.length ? intensity[i] : ''}`) }); const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' }); const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.csv`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href) }
 
 function initScene () {
   scene = new THREE.Scene(); scene.background = new THREE.Color('#101820')
