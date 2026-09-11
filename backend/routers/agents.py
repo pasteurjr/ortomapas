@@ -46,6 +46,13 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); return {'status':'ok','dados':[dict(r) for r in cur.fetchall()]}
+    if name == 'medir_geometria':
+        try:
+            geom=shape(args['geometry']); return {'status':'ok','dados':{'area':geom.area,'perimetro':geom.length,'tipo':geom.geom_type}}
+        except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
+    if name == 'distancia_geometrias':
+        try: return {'status':'ok','dados':{'distancia':shape(args['a']).distance(shape(args['b']))}}
+        except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
     if name == 'buffer_geometria':
         try: return {'status':'ok','dados':{'geometry':mapping(shape(args['geometry']).buffer(float(args['distancia']))),'distancia':float(args['distancia'])}}
         except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
