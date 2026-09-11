@@ -92,11 +92,24 @@ O usuário verá um único **Ortomapas Copilot**. Internamente haverá módulos 
 
 Para interseção com propriedades, estradas, rios e limites administrativos, o sistema deverá aceitar:
 
-1. dados fornecidos pelo usuário em GeoPackage, GeoJSON, Shapefile ou GeoTIFF;
+1. dados fornecidos pelo usuário em KML/KMZ (Google Earth), GeoPackage, GeoJSON, Shapefile, GeoTIFF ou TIFF georreferenciado;
 2. camadas PostGIS importadas pelo administrador;
 3. serviços WFS/OGC de órgãos públicos;
 4. camadas publicadas pelo QGIS Server;
-5. futuramente, bases oficiais como CAR, SIGEF, IBGE, hidrografia e limites municipais, sempre com fonte, data, licença e CRS registrados.
+5. formatos ArcGIS, incluindo Feature Class/File Geodatabase (`.gdb`), GeoJSON e Shapefile;
+6. futuramente, bases oficiais como CAR, SIGEF, IBGE, hidrografia e limites municipais, sempre com fonte, data, licença e CRS registrados.
+
+### Formatos de referência
+
+- **KML:** formato XML do Google Earth para pontos, linhas, polígonos, pastas, estilos e descrições.
+- **KMZ:** arquivo ZIP contendo um ou mais KML e recursos associados, como ícones e imagens.
+- **GeoPackage:** formato recomendado para intercâmbio vetorial e raster em arquivo único.
+- **GeoJSON:** formato web para feições vetoriais.
+- **Shapefile:** conjunto `.shp`, `.shx`, `.dbf` e `.prj`; todos os arquivos devem ser enviados juntos.
+- **FileGDB:** geodatabase da Esri; importação dependerá do driver GDAL disponível.
+- **GeoTIFF:** raster georreferenciado para ortomosaicos, DSM, DTM e análises derivadas.
+
+KML/KMZ serão convertidos para GeoJSON ou PostGIS, preservando nome, descrição, estilo quando possível, geometria e CRS. O agente deverá reconhecer quando um KML contém somente limites de interesse e oferecê-lo como área de recorte, interseção, buffer ou zona de estatística.
 
 Não será permitido baixar bases públicas automaticamente sem registrar origem, versão, licença e responsável pela importação.
 
