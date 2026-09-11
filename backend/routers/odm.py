@@ -228,7 +228,9 @@ async def sample_surface(product_id: int, max_size: int = Query(128, ge=32, le=2
         with rasterio.open(path) as ds:
             height = min(max_size, ds.height); width = min(max_size, ds.width)
             grid = ds.read(1, out_shape=(height, width), resampling=rasterio.enums.Resampling.bilinear, masked=True)
-            values = np.asarray(grid.filled(np.nan), dtype=float); values[~np.isfinite(values)] = 0
+            values = np.asarray(grid.filled(np.nan), dtype=float); valid = values[np.isfinite(values)]
+            if valid.size: values[~np.isfinite(values)] = float(np.min(valid))
+            else: values.fill(0)
             bounds = ds.bounds
             return {"width": width, "height": height, "bounds": [bounds.left, bounds.bottom, bounds.right, bounds.top], "crs": str(ds.crs) if ds.crs else None, "min": float(np.min(values)), "max": float(np.max(values)), "elevations": values.tolist()}
     except Exception as exc:
