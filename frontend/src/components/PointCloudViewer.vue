@@ -23,8 +23,10 @@
         <label class="check"><input v-model="showGrid" type="checkbox" @change="renderScene" /> Grade</label>
         <label class="check"><input v-model="showAxes" type="checkbox" @change="renderScene" /> Eixos</label>
         <button class="measure-button" :class="{ active: measuring }" @click="toggleMeasure"><i class="pi pi-arrows-h"></i> {{ measuring ? 'Clique em dois pontos' : 'Medir distância' }}</button>
+        <button class="measure-button" :class="{ active: inspecting }" @click="inspecting = !inspecting"><i class="pi pi-info-circle"></i> {{ inspecting ? 'Clique para inspecionar' : 'Inspecionar ponto' }}</button>
         <button v-if="measureDistance !== null" class="clear-button" @click="clearMeasure"><i class="pi pi-eraser"></i> Limpar medição</button>
         <div v-if="measureDistance !== null" class="measure-result"><span>Distância</span><b>{{ measureDistance.toFixed(2) }} m</b></div>
+        <div v-if="selectedPoint" class="point-result"><span>X</span><b>{{ selectedPoint.x.toFixed(2) }} m</b><span>Y</span><b>{{ selectedPoint.y.toFixed(2) }} m</b><span>Z</span><b>{{ selectedPoint.z.toFixed(2) }} m</b><span>Intensidade</span><b>{{ selectedPoint.intensity }}</b></div>
         <div class="stats"><span>Amostra</span><b>{{ formatNumber(meta.sampled) }}</b><span>Elevação</span><b>{{ elevationRange }}</b></div>
       </aside>
     </div>
@@ -42,7 +44,7 @@ const props = defineProps({ product: { type: Object, required: true } })
 defineEmits(['close'])
 const canvasHost = ref(null); const shell = ref(null); const loading = ref(false); const error = ref('')
 const pointSize = ref(2); const colorMode = ref('elevation'); const showGrid = ref(true); const showAxes = ref(true)
-const measuring = ref(false); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
+const measuring = ref(false); const inspecting = ref(false); const selectedPoint = ref(null); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
 const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); const heightMin = ref(0); const heightMax = ref(0); let cloudData; let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
 const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.value.maxZ.toFixed(1)} m`)
 const formatNumber = (n) => Number(n || 0).toLocaleString('pt-BR')
@@ -67,9 +69,10 @@ function fullscreen () { shell.value?.requestFullscreen?.() }
 function toggleMeasure () { measuring.value = !measuring.value; if (!measuring.value) clearMeasure() }
 function clearMeasure () { measurePoints = []; measureDistance.value = null; if (measureLine) { measureLine.geometry.dispose(); measureLine.material.dispose(); scene.remove(measureLine); measureLine = null }; measureMarkers.forEach((m) => { m.geometry.dispose(); m.material.dispose(); scene.remove(m) }); measureMarkers = [] }
 function pickPoint (event) {
-  if (!measuring.value || !points) return
+  if ((!measuring.value && !inspecting.value) || !points) return
   const rect = renderer.domElement.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.params.Points.threshold = Math.max(pointSize.value / 80, .04); raycaster.setFromCamera(pointer, camera)
   const hit = raycaster.intersectObject(points)[0]; if (!hit) return
+  if (inspecting.value && !measuring.value) { const index = hit.index ?? 0; selectedPoint.value = { x: hit.point.x / cloudData.scale + cloudData.cx, y: hit.point.z / cloudData.scale + cloudData.cy, z: hit.point.y / cloudData.scale + cloudData.cz, intensity: Math.round(points.userData.intensity[index] || 0) }; return }
   measurePoints.push(hit.point.clone()); const marker = new THREE.Mesh(new THREE.SphereGeometry(.08, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffcf56' })); marker.position.copy(hit.point); scene.add(marker); measureMarkers.push(marker)
   if (measurePoints.length === 2) { const geometry = new THREE.BufferGeometry().setFromPoints(measurePoints); measureLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#ffcf56' })); scene.add(measureLine); measureDistance.value = measurePoints[0].distanceTo(measurePoints[1]); measuring.value = false }
 }
@@ -96,4 +99,5 @@ onMounted(() => { initScene(); loadCloud() }); watch(() => props.product?.id, lo
 <style scoped>
 .viewer-shell{position:fixed;inset:4vh 4vw;background:#101820;color:#e8f0f2;z-index:2000;display:flex;flex-direction:column;border:1px solid #40515c;box-shadow:0 20px 80px #000b;font-size:.82rem}.viewer-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#17242c;border-bottom:1px solid #40515c}.viewer-header strong{display:block;font-size:1rem}.viewer-header small{color:#9db0ba}.viewer-actions{display:flex;gap:6px}.icon-button{background:transparent;border:1px solid #536773;color:#dce7eb;width:34px;height:32px;cursor:pointer}.icon-button:hover{background:#2b414d}.viewer-body{position:relative;flex:1;min-height:320px}.canvas-host{position:absolute;inset:0}.canvas-host :deep(canvas){display:block;width:100%;height:100%}.tools-panel{position:absolute;top:14px;right:14px;width:190px;padding:12px;background:#17242ce8;border:1px solid #52616b;display:grid;gap:8px}.tools-panel label{color:#c9d6dc;font-size:.75rem}.tools-panel output{float:right;color:#7fd1b9}.tools-panel input[type=range]{width:100%;accent-color:#56b4d3}.tools-panel select{background:#101820;color:#e8f0f2;border:1px solid #52616b;padding:5px}.check{display:flex;gap:7px;align-items:center}.stats{display:grid;grid-template-columns:1fr auto;gap:4px;border-top:1px solid #40515c;padding-top:8px;color:#9db0ba}.stats b{color:#e8f0f2}.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#101820aa;color:#dce7eb;gap:8px}.overlay.error{color:#ffb4a9}.viewer-shell footer{padding:7px 16px;color:#91a4ad;background:#17242c;border-top:1px solid #40515c;font-size:.72rem}
 .measure-button,.clear-button{border:1px solid #52616b;background:#101820;color:#dce7eb;padding:6px;text-align:left;cursor:pointer}.measure-button.active{border-color:#ffcf56;color:#ffcf56}.clear-button{color:#ffb4a9}.measure-result{display:flex;justify-content:space-between;border-top:1px solid #40515c;padding-top:8px;color:#ffcf56}
+.point-result{display:grid;grid-template-columns:1fr auto;gap:3px;border-top:1px solid #40515c;padding-top:8px;color:#9db0ba}.point-result b{color:#e8f0f2;font-weight:500}
 </style>
