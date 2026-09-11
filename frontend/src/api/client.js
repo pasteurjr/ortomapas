@@ -115,6 +115,9 @@ export function getOdmQuality(processingId) {
 export function askCopilot(prompt, context = {}) {
   return api.post('/agents/ask', { prompt, context }, { timeout: 180000 })
 }
+export function getCopilotLayers(projetoId) { return api.get('/agents/layers', { params: { projeto_id: projetoId } }) }
+export function saveCopilotLayer(data) { return api.post('/agents/layers', data) }
+export function deleteCopilotLayer(id) { return api.delete(`/agents/layers/${id}`) }
 export function createCopilotThread(data) { return api.post('/copilot/threads', data) }
 export function getCopilotThread(id) { return api.get(`/copilot/threads/${id}`) }
 export function addCopilotMessage(id, data) { return api.post(`/copilot/threads/${id}/messages`, data) }

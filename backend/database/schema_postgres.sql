@@ -62,6 +62,12 @@ CREATE TABLE IF NOT EXISTS analises (
  resultado_json JSONB, modelo_ia VARCHAR(255), versao_modelo VARCHAR(50), metricas JSONB, agente_ia VARCHAR(255), status VARCHAR(30) DEFAULT 'pendente',
  tempo_processamento_seg DOUBLE PRECISION, data_analise TIMESTAMPTZ, observacoes TEXT, criado_em TIMESTAMPTZ NOT NULL DEFAULT now(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS camadas_copiloto (
+ id BIGSERIAL PRIMARY KEY, projeto_id BIGINT NOT NULL REFERENCES projetos(id) ON DELETE CASCADE,
+ usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL, nome VARCHAR(255) NOT NULL,
+ ferramenta VARCHAR(100) NOT NULL, geojson JSONB NOT NULL, parametros JSONB DEFAULT '{}'::jsonb,
+ criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS anotacoes (
  id BIGSERIAL PRIMARY KEY, ortomapa_id BIGINT NOT NULL REFERENCES ortomapas(id) ON DELETE CASCADE, analise_id BIGINT REFERENCES analises(id) ON DELETE SET NULL,
  tipo VARCHAR(30) NOT NULL, categoria VARCHAR(255), rotulo VARCHAR(255), geometria_wkt TEXT, centro_lat DOUBLE PRECISION, centro_lon DOUBLE PRECISION,

@@ -5,12 +5,40 @@ from backend.agents.schemas import TOOL_CATALOG
 from backend.database.connection import get_connection
 from backend.config import DATA_DIR
 from pathlib import Path
+import json
 import rasterio, laspy
 import numpy as np
 from shapely.geometry import shape, mapping
 from backend.agents.llm_client import LMStudioClient
 
 router = APIRouter()
+
+@router.get('/agents/layers')
+async def list_agent_layers(projeto_id: int, user: dict = Depends(current_user)):
+    require_project_role(projeto_id, user, {'proprietario','editor','visualizador'})
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT id, projeto_id, usuario_id, nome, ferramenta, geojson, parametros, criado_em FROM camadas_copiloto WHERE projeto_id=%s ORDER BY criado_em DESC', (projeto_id,))
+        return {'camadas': [dict(row) for row in cur.fetchall()]}
+
+@router.post('/agents/layers', status_code=201)
+async def save_agent_layer(data: dict, user: dict = Depends(current_user)):
+    projeto_id = data.get('projeto_id'); geojson = data.get('geojson')
+    if not projeto_id or not geojson: raise HTTPException(status_code=400, detail='projeto_id e geojson sao obrigatorios')
+    require_project_role(projeto_id, user, {'proprietario','editor'})
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute('INSERT INTO camadas_copiloto (projeto_id, usuario_id, nome, ferramenta, geojson, parametros) VALUES (%s,%s,%s,%s,%s::jsonb,%s::jsonb) RETURNING id, criado_em', (projeto_id, user['id'], data.get('nome','Resultado espacial'), data.get('ferramenta','copiloto'), json.dumps(geojson), json.dumps(data.get('parametros') or {})))
+        row = cur.fetchone(); conn.commit()
+    return {'id': row['id'], 'criado_em': row['criado_em']}
+
+@router.delete('/agents/layers/{layer_id}')
+async def delete_agent_layer(layer_id: int, user: dict = Depends(current_user)):
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True); cur.execute('SELECT projeto_id FROM camadas_copiloto WHERE id=%s', (layer_id,)); row = cur.fetchone()
+        if not row: raise HTTPException(status_code=404, detail='Camada nao encontrada')
+        require_project_role(row['projeto_id'], user, {'proprietario','editor'}); cur.execute('DELETE FROM camadas_copiloto WHERE id=%s', (layer_id,)); conn.commit()
+    return {'status':'ok'}
 
 @router.post('/agents/ask')
 async def ask_copilot(data: dict, user: dict = Depends(current_user)):
