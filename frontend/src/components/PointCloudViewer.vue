@@ -50,9 +50,11 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { getPointCloud } from '../api/client'
+import { useMapStore } from '../stores/mapStore'
 
 const props = defineProps({ product: { type: Object, required: true } })
 const emit = defineEmits(['close'])
+const mapStore = useMapStore()
 const canvasHost = ref(null); const shell = ref(null); const loading = ref(false); const error = ref('')
 const pointSize = ref(2); const opacity = ref(1); const colorMode = ref('elevation'); const showGrid = ref(true); const showAxes = ref(true)
 const measuring = ref(false); const inspecting = ref(false); const selectedPoint = ref(null); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
@@ -108,12 +110,12 @@ function rebuildPoints () {
 async function loadCloud () {
   loading.value = true; error.value = ''
   try {
-    const { data } = await getPointCloud(props.product.id, sampleLimit.value); const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
+    const { data } = await getPointCloud(props.product.id, sampleLimit.value, mapStore.clipBbox || {}); const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
     const maxExtent = Math.max(Math.max(...x) - Math.min(...x), Math.max(...y) - Math.min(...y), Math.max(...z) - Math.min(...z), 1); const scale = 10 / maxExtent
     cloudData = { x, y, z, intensity, cx, cy, cz, scale }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; const bins = Array(24).fill(0); z.forEach((value) => { const index = Math.min(23, Math.floor((value - meta.value.minZ) / Math.max(meta.value.maxZ - meta.value.minZ, 1e-9) * 24)); bins[index]++ }); const peak = Math.max(...bins, 1); histogram.value = bins.map((value) => value / peak); rebuildPoints(); fitView()
   } catch (e) { error.value = e.response?.data?.detail || 'Nao foi possivel carregar a nuvem de pontos.' } finally { loading.value = false }
 }
-onMounted(() => { restoreSettings(); initScene(); loadCloud(); window.addEventListener('keydown', handleKey) }); watch([pointSize, opacity, colorMode, showGrid, showAxes, sampleLimit], saveSettings); watch(() => props.product?.id, loadCloud); onUnmounted(() => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize); window.removeEventListener('keydown', handleKey); renderer?.domElement.removeEventListener('pointerdown', pickPoint); clearMeasure(); renderer?.dispose(); points?.geometry.dispose(); points?.material.dispose() })
+onMounted(() => { restoreSettings(); initScene(); loadCloud(); window.addEventListener('keydown', handleKey) }); watch([pointSize, opacity, colorMode, showGrid, showAxes, sampleLimit], saveSettings); watch(() => props.product?.id, loadCloud); watch(() => mapStore.clipBbox, loadCloud, { deep: true }); onUnmounted(() => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize); window.removeEventListener('keydown', handleKey); renderer?.domElement.removeEventListener('pointerdown', pickPoint); clearMeasure(); renderer?.dispose(); points?.geometry.dispose(); points?.material.dispose() })
 </script>
 
 <style scoped>
