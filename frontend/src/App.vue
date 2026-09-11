@@ -80,6 +80,7 @@
         <div v-if="!rightCollapsed" class="sidebar-content">
           <ToolsPanel />
           <DrawTools />
+          <CopilotChat />
         </div>
       </aside>
     </div>
@@ -127,6 +128,7 @@ import ToolsPanel from './components/ToolsPanel.vue'
 import AnalysisResults from './components/AnalysisResults.vue'
 import VoosList from './components/VoosList.vue'
 import DrawTools from './components/DrawTools.vue'
+import CopilotChat from './components/CopilotChat.vue'
 import MeasureTools from './components/MeasureTools.vue'
 import CompareView from './components/CompareView.vue'
 import AgentStatus from './components/AgentStatus.vue'

@@ -112,6 +112,10 @@ export function getOdmQuality(processingId) {
   return api.get(`/odm/processamentos/${processingId}/qualidade`)
 }
 
+export function askCopilot(prompt, context = {}) {
+  return api.post('/agents/ask', { prompt, context }, { timeout: 180000 })
+}
+
 // Ortomapas
 export function getOrtomapas(projetoId) {
   return api.get('/ortomapas', { params: { projeto_id: projetoId } })
