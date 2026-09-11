@@ -108,6 +108,10 @@ export function downloadOdmProduct(productId) {
   return api.get(`/odm/produtos/${productId}/download`, { responseType: 'blob', timeout: 120000 })
 }
 
+export function getOdmQuality(processingId) {
+  return api.get(`/odm/processamentos/${processingId}/qualidade`)
+}
+
 // Ortomapas
 export function getOrtomapas(projetoId) {
   return api.get('/ortomapas', { params: { projeto_id: projetoId } })

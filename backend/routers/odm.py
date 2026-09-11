@@ -300,6 +300,17 @@ async def elevation_difference(processing_id: int, max_size: int = Query(128, ge
         logger.exception("Elevation comparison failed"); raise HTTPException(status_code=500, detail=f"Falha ao comparar DSM e DTM: {exc}")
 
 
+@router.get("/odm/processamentos/{processing_id}/qualidade")
+async def processing_quality(processing_id: int, user: dict = Depends(current_user)):
+    """Deterministic quality summary used by the future AI advisor."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True); cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,)); job = cur.fetchone(); cur.execute("SELECT tipo, tamanho_arquivo_mb FROM produtos_processamento WHERE processamento_id = %s", (processing_id,)); products = cur.fetchall()
+    if not job: raise HTTPException(status_code=404, detail="Processamento nao encontrado")
+    require_project_role(job['projeto_id'], user, {'proprietario', 'editor', 'visualizador'})
+    kinds = {p['tipo'] for p in products}; checks = [{'item': 'ortomosaico', 'ok': 'ortomosaico' in kinds}, {'item': 'modelo de elevacao', 'ok': bool({'dsm', 'dtm'} & kinds)}, {'item': 'nuvem de pontos', 'ok': 'nuvem_pontos' in kinds}]; score = round(sum(c['ok'] for c in checks) / len(checks) * 100)
+    return {'processamento_id': processing_id, 'score': score, 'nivel': 'bom' if score >= 80 else 'atencao', 'verificacoes': checks, 'produtos': products}
+
+
 @router.get("/odm/tasks/{task_id}/download/{asset}")
 async def download_odm_asset(task_id: str, asset: str):
     """Expose a validated download URL for a NodeODM asset."""
