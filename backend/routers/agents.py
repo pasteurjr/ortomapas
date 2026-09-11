@@ -1,13 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException
 from backend.agents.llm_client import LMStudioClient
-from backend.routers.auth import current_user
+from backend.routers.auth import current_user, require_project_role
 from backend.agents.schemas import TOOL_CATALOG
+from backend.database.connection import get_connection
+from backend.config import DATA_DIR
+from pathlib import Path
+import rasterio, laspy
 
 router = APIRouter()
 
 @router.get('/agents/tools')
 async def agent_tools(user: dict = Depends(current_user)):
     return {'tools': [tool.model_dump() for tool in TOOL_CATALOG], 'count': len(TOOL_CATALOG)}
+
+@router.post('/agents/tools/execute')
+async def execute_tool(data: dict, user: dict = Depends(current_user)):
+    name = data.get('name'); args = data.get('arguments') or {}; project_id = args.get('projeto_id')
+    if name not in {tool.name for tool in TOOL_CATALOG}: raise HTTPException(status_code=400, detail='Ferramenta nao permitida')
+    if name == 'listar_produtos':
+        require_project_role(project_id, user, {'proprietario','editor','visualizador'})
+        with get_connection() as conn:
+            cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); return {'status':'ok','dados':[dict(r) for r in cur.fetchall()]}
+    product_id = args.get('produto_id')
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE p.id=%s",(product_id,)); product=cur.fetchone()
+    if not product: raise HTTPException(status_code=404, detail='Produto nao encontrado')
+    require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'}); path=Path(DATA_DIR)/product['caminho']
+    if name == 'estatisticas_laz':
+        with laspy.open(path) as reader: h=reader.header; return {'status':'ok','dados':{'produto_id':product_id,'pontos':h.point_count,'crs':str(h.parse_crs()) if h.parse_crs() else None,'min':list(h.mins),'max':list(h.maxs)}}
+    with rasterio.open(path) as ds:
+        arr=ds.read(masked=True); return {'status':'ok','dados':{'produto_id':product_id,'largura':ds.width,'altura':ds.height,'bandas':ds.count,'crs':str(ds.crs) if ds.crs else None,'resolucao':[abs(ds.transform.a),abs(ds.transform.e)],'min':float(arr.min()),'max':float(arr.max()),'media':float(arr.mean()),'nodata':float(arr.mask.mean()) if hasattr(arr.mask,'mean') else 0}}
 
 @router.get('/agents/status')
 async def agent_status(user: dict = Depends(current_user)):
