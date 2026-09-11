@@ -35,6 +35,7 @@
         title="Retangulo"
         v-tooltip.bottom="'Retangulo'"
       />
+      <Button icon="pi pi-filter" :severity="mapStore.drawMode === 'clip' ? 'success' : 'secondary'" size="small" @click="setMode('clip')" title="Recorte 3D" v-tooltip.bottom="'Recorte 3D'" />
       <Button
         icon="pi pi-times"
         severity="danger"

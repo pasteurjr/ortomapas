@@ -14,6 +14,7 @@ export const useMapStore = defineStore('map', {
     compareLeft: null,
     compareRight: null,
     pourPointCallback: null,
+    clipBbox: null,
   }),
 
   getters: {
@@ -84,6 +85,8 @@ export const useMapStore = defineStore('map', {
     setPourPointCallback(callback) {
       this.pourPointCallback = callback
     },
+
+    setClipBbox(bbox) { this.clipBbox = bbox },
 
     handleMapClick(lat, lng) {
       if (this.pourPointCallback) {

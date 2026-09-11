@@ -120,6 +120,9 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import L from 'leaflet'
+import 'leaflet-draw'
+import 'leaflet-draw/dist/leaflet.draw.css'
 import { useMapStore } from '../stores/mapStore'
 import { useProjectStore } from '../stores/projectStore'
 import {
@@ -260,6 +263,13 @@ onMounted(() => {
       leafletMap.value.leafletObject.invalidateSize()
     }
   }, 200)
+  setTimeout(() => {
+    const map = leafletMap.value?.leafletObject
+    if (!map) return
+    const drawn = new L.FeatureGroup(); map.addLayer(drawn)
+    map.on(L.Draw.Event.CREATED, (event) => { drawn.clearLayers(); drawn.addLayer(event.layer); const b = event.layer.getBounds(); mapStore.setClipBbox({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth() }); mapStore.setDrawMode(null) })
+    watch(() => mapStore.drawMode, (mode) => { if (mode === 'clip') new L.Draw.Rectangle(map, { shapeOptions: { color: '#f59e0b' } }).enable() })
+  }, 250)
 })
 </script>
 
