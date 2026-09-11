@@ -18,6 +18,7 @@
       <div v-if="loading" class="overlay"><i class="pi pi-spin pi-spinner"></i> Carregando amostra...</div>
       <div v-if="error" class="overlay error">{{ error }}</div>
       <div v-if="colorMode === 'elevation'" class="legend"><span>{{ meta.maxZ.toFixed(1) }} m</span><i></i><span>{{ meta.minZ.toFixed(1) }} m</span></div>
+      <div v-if="histogram.length" class="histogram"><span class="histogram-title">Distribuição de elevação</span><div class="bars"><i v-for="(bin, i) in histogram" :key="i" :style="{ height: `${bin * 100}%` }" /></div></div>
       <aside class="tools-panel">
         <label>Tamanho dos pontos <output>{{ pointSize.toFixed(1) }}</output></label>
         <input v-model.number="pointSize" type="range" min="0.5" max="8" step="0.5" @input="updateMaterial" />
@@ -55,6 +56,7 @@ const pointSize = ref(2); const opacity = ref(1); const colorMode = ref('elevati
 const measuring = ref(false); const inspecting = ref(false); const selectedPoint = ref(null); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
 const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); const heightMin = ref(0); const heightMax = ref(0); let cloudData; let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
 const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.value.maxZ.toFixed(1)} m`)
+const histogram = ref([])
 const formatNumber = (n) => Number(n || 0).toLocaleString('pt-BR')
 function exportPng () { if (!renderer) return; const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.png`; link.href = renderer.domElement.toDataURL('image/png'); link.click() }
 function exportCsv () { if (!cloudData) return; const { x, y, z, intensity } = cloudData; const rows = ['x,y,z,intensidade']; z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) rows.push(`${x[i]},${y[i]},${value},${intensity.length ? intensity[i] : ''}`) }); const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' }); const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.csv`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href) }
@@ -101,7 +103,7 @@ async function loadCloud () {
   try {
     const { data } = await getPointCloud(props.product.id, 120000); const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
     const maxExtent = Math.max(Math.max(...x) - Math.min(...x), Math.max(...y) - Math.min(...y), Math.max(...z) - Math.min(...z), 1); const scale = 10 / maxExtent
-    cloudData = { x, y, z, intensity, cx, cy, cz, scale }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; rebuildPoints(); fitView()
+    cloudData = { x, y, z, intensity, cx, cy, cz, scale }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; const bins = Array(24).fill(0); z.forEach((value) => { const index = Math.min(23, Math.floor((value - meta.value.minZ) / Math.max(meta.value.maxZ - meta.value.minZ, 1e-9) * 24)); bins[index]++ }); const peak = Math.max(...bins, 1); histogram.value = bins.map((value) => value / peak); rebuildPoints(); fitView()
   } catch (e) { error.value = e.response?.data?.detail || 'Nao foi possivel carregar a nuvem de pontos.' } finally { loading.value = false }
 }
 onMounted(() => { initScene(); loadCloud() }); watch(() => props.product?.id, loadCloud); onUnmounted(() => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize); renderer?.domElement.removeEventListener('pointerdown', pickPoint); clearMeasure(); renderer?.dispose(); points?.geometry.dispose(); points?.material.dispose() })
@@ -112,4 +114,5 @@ onMounted(() => { initScene(); loadCloud() }); watch(() => props.product?.id, lo
 .measure-button,.clear-button{border:1px solid #52616b;background:#101820;color:#dce7eb;padding:6px;text-align:left;cursor:pointer}.measure-button.active{border-color:#ffcf56;color:#ffcf56}.clear-button{color:#ffb4a9}.measure-result{display:flex;justify-content:space-between;border-top:1px solid #40515c;padding-top:8px;color:#ffcf56}
 .point-result{display:grid;grid-template-columns:1fr auto;gap:3px;border-top:1px solid #40515c;padding-top:8px;color:#9db0ba}.point-result b{color:#e8f0f2;font-weight:500}
 .legend{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:7px;color:#dce7eb;font-size:.7rem;background:#17242ce8;border:1px solid #52616b;padding:7px}.legend i{display:block;width:110px;height:10px;background:linear-gradient(90deg,#f33d65,#f2c94c,#29d3a2,#397cf6)}
+.histogram{position:absolute;left:16px;bottom:54px;width:180px;padding:8px;background:#17242ce8;border:1px solid #52616b}.histogram-title{display:block;color:#c9d6dc;font-size:.68rem;margin-bottom:5px}.bars{height:42px;display:flex;align-items:end;gap:2px}.bars i{flex:1;min-height:2px;background:#56b4d3}
 </style>
