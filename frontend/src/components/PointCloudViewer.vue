@@ -21,6 +21,8 @@
       <aside class="tools-panel">
         <label>Tamanho dos pontos <output>{{ pointSize.toFixed(1) }}</output></label>
         <input v-model.number="pointSize" type="range" min="0.5" max="8" step="0.5" @input="updateMaterial" />
+        <label>Opacidade <output>{{ Math.round(opacity * 100) }}%</output></label>
+        <input v-model.number="opacity" type="range" min="0.2" max="1" step="0.05" @input="updateMaterial" />
         <label>Coloração</label>
         <select v-model="colorMode" @change="updateColors"><option value="elevation">Elevação</option><option value="intensity">Intensidade</option></select>
         <label>Recorte de elevação <output>{{ heightMin.toFixed(1) }} – {{ heightMax.toFixed(1) }} m</output></label>
@@ -49,7 +51,7 @@ import { getPointCloud } from '../api/client'
 const props = defineProps({ product: { type: Object, required: true } })
 defineEmits(['close'])
 const canvasHost = ref(null); const shell = ref(null); const loading = ref(false); const error = ref('')
-const pointSize = ref(2); const colorMode = ref('elevation'); const showGrid = ref(true); const showAxes = ref(true)
+const pointSize = ref(2); const opacity = ref(1); const colorMode = ref('elevation'); const showGrid = ref(true); const showAxes = ref(true)
 const measuring = ref(false); const inspecting = ref(false); const selectedPoint = ref(null); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
 const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); const heightMin = ref(0); const heightMax = ref(0); let cloudData; let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
 const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.value.maxZ.toFixed(1)} m`)
@@ -71,7 +73,7 @@ function initScene () {
 function resize () { if (!renderer || !canvasHost.value) return; const w = canvasHost.value.clientWidth; const h = canvasHost.value.clientHeight; camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix(); renderer.setSize(w, h, false) }
 function animate () { controls?.update(); renderer?.render(scene, camera); frame = requestAnimationFrame(animate) }
 function renderScene () { if (grid) grid.visible = showGrid.value; if (axes) axes.visible = showAxes.value }
-function updateMaterial () { if (points) points.material.size = pointSize.value }
+function updateMaterial () { if (points) { points.material.size = pointSize.value / 100; points.material.opacity = opacity.value; points.material.transparent = opacity.value < 1; points.material.needsUpdate = true } }
 function updateColors () { if (!points) return; const mode = colorMode.value; const values = points.userData[mode] || points.userData.elevation; const colors = new Float32Array(values.length * 3); const min = Math.min(...values); const max = Math.max(...values); values.forEach((v, i) => { const t = (v - min) / Math.max(max - min, 1e-9); const c = new THREE.Color(); c.setHSL((mode === 'intensity' ? 0.65 - t * 0.65 : 0.68 - t * 0.68), 0.85, 0.54); colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b }); points.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); points.geometry.attributes.color.needsUpdate = true }
 function fitView () { if (!points) return; const sphere = new THREE.Box3().setFromObject(points).getBoundingSphere(new THREE.Sphere()); const distance = sphere.radius / Math.sin(camera.fov * Math.PI / 360); camera.position.copy(sphere.center).add(new THREE.Vector3(distance * .8, -distance * .8, distance * .55)); controls.target.copy(sphere.center); camera.near = Math.max(sphere.radius / 1000, .01); camera.far = sphere.radius * 20; camera.updateProjectionMatrix(); controls.update() }
 function fullscreen () { shell.value?.requestFullscreen?.() }
@@ -91,7 +93,7 @@ function rebuildPoints () {
   z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) keep.push(i) })
   const pos = new Float32Array(keep.length * 3); const elevations = []; const intensities = []
   keep.forEach((source, i) => { pos[i * 3] = (x[source] - cx) * scale; pos[i * 3 + 1] = (z[source] - cz) * scale; pos[i * 3 + 2] = (y[source] - cy) * scale; elevations.push(z[source]); intensities.push(intensity.length ? intensity[source] : z[source]) })
-  if (points) { points.geometry.dispose(); points.geometry = new THREE.BufferGeometry() } else { points = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ size: pointSize.value / 100, vertexColors: true, sizeAttenuation: true })); scene.add(points) }
+  if (points) { points.geometry.dispose(); points.geometry = new THREE.BufferGeometry() } else { points = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ size: pointSize.value / 100, opacity: opacity.value, transparent: opacity.value < 1, vertexColors: true, sizeAttenuation: true })); scene.add(points) }
   points.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3)); points.userData.elevation = elevations; points.userData.intensity = intensities; updateColors()
 }
 async function loadCloud () {
