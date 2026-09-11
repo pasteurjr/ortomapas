@@ -26,6 +26,8 @@
         <input v-model.number="opacity" type="range" min="0.2" max="1" step="0.05" @input="updateMaterial" />
         <label>Coloração</label>
         <select v-model="colorMode" @change="updateColors"><option value="elevation">Elevação</option><option value="intensity">Intensidade</option></select>
+        <label>Detalhe da amostra</label>
+        <select v-model.number="sampleLimit" @change="loadCloud"><option :value="25000">25 mil pontos</option><option :value="60000">60 mil pontos</option><option :value="120000">120 mil pontos</option></select>
         <label>Recorte de elevação <output>{{ heightMin.toFixed(1) }} – {{ heightMax.toFixed(1) }} m</output></label>
         <input v-model.number="heightMin" type="range" :min="meta.minZ" :max="meta.maxZ" step="0.1" @input="rebuildPoints" />
         <input v-model.number="heightMax" type="range" :min="meta.minZ" :max="meta.maxZ" step="0.1" @input="rebuildPoints" />
@@ -54,6 +56,7 @@ defineEmits(['close'])
 const canvasHost = ref(null); const shell = ref(null); const loading = ref(false); const error = ref('')
 const pointSize = ref(2); const opacity = ref(1); const colorMode = ref('elevation'); const showGrid = ref(true); const showAxes = ref(true)
 const measuring = ref(false); const inspecting = ref(false); const selectedPoint = ref(null); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
+const sampleLimit = ref(120000)
 const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); const heightMin = ref(0); const heightMax = ref(0); let cloudData; let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
 const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.value.maxZ.toFixed(1)} m`)
 const histogram = ref([])
@@ -101,7 +104,7 @@ function rebuildPoints () {
 async function loadCloud () {
   loading.value = true; error.value = ''
   try {
-    const { data } = await getPointCloud(props.product.id, 120000); const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
+    const { data } = await getPointCloud(props.product.id, sampleLimit.value); const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
     const maxExtent = Math.max(Math.max(...x) - Math.min(...x), Math.max(...y) - Math.min(...y), Math.max(...z) - Math.min(...z), 1); const scale = 10 / maxExtent
     cloudData = { x, y, z, intensity, cx, cy, cz, scale }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; const bins = Array(24).fill(0); z.forEach((value) => { const index = Math.min(23, Math.floor((value - meta.value.minZ) / Math.max(meta.value.maxZ - meta.value.minZ, 1e-9) * 24)); bins[index]++ }); const peak = Math.max(...bins, 1); histogram.value = bins.map((value) => value / peak); rebuildPoints(); fitView()
   } catch (e) { error.value = e.response?.data?.detail || 'Nao foi possivel carregar a nuvem de pontos.' } finally { loading.value = false }
