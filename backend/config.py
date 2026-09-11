@@ -33,6 +33,7 @@ DB_CONFIG = {
 # NodeODM is the processing API; WebODM remains available as the UI.
 NODEODM_URL = os.getenv("NODEODM_URL", "http://localhost:8021").rstrip("/")
 WEBODM_URL = os.getenv("WEBODM_URL", "http://localhost:8020").rstrip("/")
+AUTH_SECRET = os.getenv("AUTH_SECRET", "change-me-in-production")
 GEOSERVER_URL = os.getenv("GEOSERVER_URL", "http://localhost:8080/geoserver")
 
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
