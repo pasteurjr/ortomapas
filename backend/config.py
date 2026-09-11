@@ -35,6 +35,8 @@ NODEODM_URL = os.getenv("NODEODM_URL", "http://localhost:8021").rstrip("/")
 WEBODM_URL = os.getenv("WEBODM_URL", "http://localhost:8020").rstrip("/")
 AUTH_SECRET = os.getenv("AUTH_SECRET", "change-me-in-production")
 GEOSERVER_URL = os.getenv("GEOSERVER_URL", "http://localhost:8080/geoserver")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:1234/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-32b-coder")
 
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8888"))
