@@ -16,7 +16,13 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
     if not prompt: raise HTTPException(status_code=400, detail='Prompt obrigatorio')
     context = data.get('context') or {}; messages = [{'role':'system','content':'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. Nunca invente dados; solicite ferramentas quando precisar de dados do projeto.'}, {'role':'user','content': f'Contexto autorizado: {context}\nPergunta: {prompt}'}]
     try:
-        result, telemetry = LMStudioClient().complete(messages, TOOL_CATALOG)
+        client = LMStudioClient(); result, telemetry = client.complete(messages, TOOL_CATALOG); tool_results = []
+        for call in result.tool_calls:
+            try: tool_results.append({'tool': call.name, 'result': await execute_tool({'name': call.name, 'arguments': call.arguments}, user)})
+            except HTTPException as exc: tool_results.append({'tool': call.name, 'error': exc.detail})
+        if tool_results:
+            messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultados das ferramentas: {tool_results}. Responda ao usuario com base nesses dados.'}]); final, final_telemetry = client.complete(messages, [])
+            return {'status':'ok','resposta':final.model_dump(),'ferramentas_executadas':tool_results,'telemetria':{**telemetry,'final':final_telemetry}}
         return {'status':'ok','resposta':result.model_dump(),'telemetria':telemetry}
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f'Falha no LM Studio: {exc}')
