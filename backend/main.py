@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import DATA_DIR, API_HOST, API_PORT
-from backend.routers import projetos, voos, ortomapas, analises, anotacoes, tools
+from backend.routers import projetos, voos, ortomapas, analises, anotacoes, tools, odm
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +43,7 @@ app.include_router(ortomapas.router, prefix="/api", tags=["Ortomapas"])
 app.include_router(analises.router, prefix="/api", tags=["Analises"])
 app.include_router(anotacoes.router, prefix="/api", tags=["Anotacoes"])
 app.include_router(tools.router, prefix="/api", tags=["Tools"])
+app.include_router(odm.router, prefix="/api", tags=["ODM"])
 
 
 @app.on_event("startup")

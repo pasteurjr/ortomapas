@@ -30,7 +30,9 @@ DB_CONFIG = {
     "database": os.getenv("DB_NAME", "ortomapas"),
 }
 
-WEBODM_URL = os.getenv("WEBODM_URL", "http://localhost:8000")
+# NodeODM is the processing API; WebODM remains available as the UI.
+NODEODM_URL = os.getenv("NODEODM_URL", "http://localhost:8021").rstrip("/")
+WEBODM_URL = os.getenv("WEBODM_URL", "http://localhost:8020").rstrip("/")
 GEOSERVER_URL = os.getenv("GEOSERVER_URL", "http://localhost:8080/geoserver")
 
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
