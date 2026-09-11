@@ -6,8 +6,20 @@ from backend.database.connection import get_connection
 from backend.config import DATA_DIR
 from pathlib import Path
 import rasterio, laspy
+from backend.agents.llm_client import LMStudioClient
 
 router = APIRouter()
+
+@router.post('/agents/ask')
+async def ask_copilot(data: dict, user: dict = Depends(current_user)):
+    prompt = (data.get('prompt') or '').strip()
+    if not prompt: raise HTTPException(status_code=400, detail='Prompt obrigatorio')
+    context = data.get('context') or {}; messages = [{'role':'system','content':'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. Nunca invente dados; solicite ferramentas quando precisar de dados do projeto.'}, {'role':'user','content': f'Contexto autorizado: {context}\nPergunta: {prompt}'}]
+    try:
+        result, telemetry = LMStudioClient().complete(messages, TOOL_CATALOG)
+        return {'status':'ok','resposta':result.model_dump(),'telemetria':telemetry}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f'Falha no LM Studio: {exc}')
 
 @router.get('/agents/tools')
 async def agent_tools(user: dict = Depends(current_user)):
