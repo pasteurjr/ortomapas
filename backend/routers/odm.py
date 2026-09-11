@@ -320,8 +320,12 @@ async def processing_quality(processing_id: int, user: dict = Depends(current_us
                 with rasterio.open(Path(DATA_DIR) / item['caminho']) as ds: metrics[f'{kind}_pixels'] = ds.width * ds.height; metrics[f'{kind}_resolucao'] = abs(ds.transform.a)
             except Exception: pass
     if metrics.get('pontos_laz', 0) < 100000: checks[2]['ok'] = False
-    score = round(sum(c['ok'] for c in checks) / len(checks) * 100)
-    return {'processamento_id': processing_id, 'score': score, 'nivel': 'bom' if score >= 80 else 'atencao', 'verificacoes': checks, 'metricas': metrics, 'produtos': products}
+    score = round(sum(c['ok'] for c in checks) / len(checks) * 100); recommendations = []
+    if 'ortomosaico' not in kinds: recommendations.append('Reprocessar solicitando ortomosaico.')
+    if not ({'dsm', 'dtm'} & kinds): recommendations.append('Gerar DSM ou DTM para análise altimétrica.')
+    if metrics.get('pontos_laz', 0) < 100000: recommendations.append('Revisar sobreposição e qualidade das imagens: nuvem de pontos abaixo do esperado.')
+    if not recommendations: recommendations.append('Produtos principais presentes; revisar o relatório ODM para validação final.')
+    return {'processamento_id': processing_id, 'score': score, 'nivel': 'bom' if score >= 80 else 'atencao', 'verificacoes': checks, 'metricas': metrics, 'recomendacoes': recommendations, 'produtos': products}
 
 
 @router.get("/odm/tasks/{task_id}/download/{asset}")

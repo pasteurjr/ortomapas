@@ -13,7 +13,7 @@
         <Button v-if="task.status === 'concluido'" icon="pi pi-check-circle" size="small" severity="help" title="Avaliar qualidade" @click="evaluate(task)" />
         <Button v-if="task.status === 'concluido'" label="Importar produtos" icon="pi pi-download" size="small" severity="success" :loading="importing === task.id" @click="importProducts(task)" />
       </div>
-      <div v-if="quality[task.id]" class="quality-row"><strong>Qualidade: {{ quality[task.id].score }}%</strong><span>{{ quality[task.id].nivel }}</span></div>
+      <div v-if="quality[task.id]" class="quality-row"><strong>Qualidade: {{ quality[task.id].score }}%</strong><span>{{ quality[task.id].nivel }}</span><small>{{ quality[task.id].recomendacoes?.[0] }}</small></div>
     </div>
     <PointCloudViewer v-if="selectedProduct" :product="selectedProduct" @close="selectedProduct = null" />
     <DsmSurfaceViewer v-if="selectedSurface" :product="selectedSurface" @close="selectedSurface = null" />
