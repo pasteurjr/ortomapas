@@ -8,6 +8,7 @@ import re
 import uuid
 import zipfile
 import shutil
+import time
 import rasterio
 import laspy
 import numpy as np
@@ -26,6 +27,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 ODM_UPLOADS_DIR = Path(DATA_DIR) / "odm_uploads"
 ODM_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+_POINT_CACHE = {}
+_POINT_CACHE_TTL = 300
 
 
 def _safe_name(name: str) -> str:
@@ -200,6 +203,8 @@ async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge
         cur = conn.cursor(dictionary=True); cur.execute("SELECT p.*, COALESCE(o.projeto_id, j.projeto_id) AS projeto_id FROM produtos_processamento p LEFT JOIN ortomapas o ON o.id = p.ortomapa_id JOIN processamentos_odm j ON j.id = p.processamento_id WHERE p.id = %s AND p.tipo = 'nuvem_pontos'", (product_id,)); product = cur.fetchone()
     if not product: raise HTTPException(status_code=404, detail="Nuvem de pontos nao encontrada")
     require_project_role(product["projeto_id"], user, {"proprietario", "editor", "visualizador"})
+    cache_key = (product_id, max_points, xmin, xmax, ymin, ymax); cached = _POINT_CACHE.get(cache_key)
+    if cached and time.time() - cached[0] < _POINT_CACHE_TTL: return cached[1]
     path = Path(DATA_DIR) / product["caminho"]
     if not path.exists(): raise HTTPException(status_code=404, detail="Arquivo LAZ nao encontrado")
     try:
@@ -215,7 +220,9 @@ async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge
         names = set(cloud.point_format.dimension_names)
         intensity = np.asarray(cloud.intensity)[idx].astype(int).tolist() if "intensity" in names else []
         if not xs: raise HTTPException(status_code=422, detail="Recorte sem pontos")
-        return {"total": total, "candidates": len(candidates), "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
+        result = {"total": total, "candidates": len(candidates), "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
+        _POINT_CACHE[cache_key] = (time.time(), result)
+        return result
     except Exception as exc:
         logger.exception("Point cloud sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler LAZ: {exc}")
 
