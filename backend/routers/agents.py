@@ -7,6 +7,7 @@ from backend.config import DATA_DIR
 from pathlib import Path
 import rasterio, laspy
 import numpy as np
+from shapely.geometry import shape, mapping
 from backend.agents.llm_client import LMStudioClient
 
 router = APIRouter()
@@ -45,6 +46,12 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); return {'status':'ok','dados':[dict(r) for r in cur.fetchall()]}
+    if name == 'buffer_geometria':
+        try: return {'status':'ok','dados':{'geometry':mapping(shape(args['geometry']).buffer(float(args['distancia']))),'distancia':float(args['distancia'])}}
+        except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
+    if name == 'intersectar_geometrias':
+        try: return {'status':'ok','dados':{'geometry':mapping(shape(args['a']).intersection(shape(args['b'])))}}
+        except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
     if name == 'perfil_altimetrico':
         product_id=args.get('produto_id')
         with get_connection() as conn:
