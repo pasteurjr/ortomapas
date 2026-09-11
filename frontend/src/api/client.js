@@ -76,6 +76,10 @@ export function deleteVoo(id) {
   return api.delete(`/voos/${id}`)
 }
 
+export function createOdmTask(formData) {
+  return api.post('/odm/tasks', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000 })
+}
+
 // Ortomapas
 export function getOrtomapas(projetoId) {
   return api.get('/ortomapas', { params: { projeto_id: projetoId } })

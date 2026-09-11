@@ -6,6 +6,14 @@
         <Badge :value="voos.length" severity="info" />
       </h3>
       <Button
+        icon="pi pi-upload"
+        severity="info"
+        text
+        size="small"
+        title="Enviar fotos para ODM"
+        @click="choosePhotos(voo)"
+      />
+      <Button
         icon="pi pi-plus"
         label="Novo"
         size="small"
@@ -14,6 +22,8 @@
         :disabled="!projectStore.activeProject"
       />
     </div>
+
+    <input ref="photoInput" type="file" accept=".jpg,.jpeg,.tif,.tiff" multiple hidden @change="uploadPhotos" />
 
     <div v-if="loading" class="loading-state">
       <ProgressSpinner style="width: 20px; height: 20px" strokeWidth="4" />
@@ -101,7 +111,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import { getVoos, createVoo, deleteVoo } from '../api/client'
+import { getVoos, createVoo, deleteVoo, createOdmTask } from '../api/client'
 import Button from 'primevue/button'
 import Badge from 'primevue/badge'
 import Dialog from 'primevue/dialog'
@@ -113,6 +123,8 @@ const projectStore = useProjectStore()
 const voos = ref([])
 const loading = ref(false)
 const showNewVoo = ref(false)
+const photoInput = ref(null)
+const selectedVoo = ref(null)
 const newVoo = ref({
   data_voo: '',
   drone: '',
@@ -160,6 +172,29 @@ async function removeVoo(voo) {
     await fetchVoos()
   } catch (e) {
     console.error('Erro ao deletar voo:', e)
+  }
+}
+
+function choosePhotos(voo) {
+  selectedVoo.value = voo
+  photoInput.value?.click()
+}
+
+async function uploadPhotos(event) {
+  const files = Array.from(event.target.files || [])
+  if (!files.length || !selectedVoo.value || !projectStore.activeProject) return
+  const form = new FormData()
+  files.forEach((file) => form.append('images', file))
+  form.append('projeto_id', projectStore.activeProject.id)
+  form.append('voo_id', selectedVoo.value.id)
+  form.append('name', `${projectStore.activeProject.nome} - Voo ${selectedVoo.value.id}`)
+  try {
+    await createOdmTask(form)
+    window.alert('Fotos enviadas. O processamento ODM foi iniciado.')
+  } catch (e) {
+    window.alert(e.response?.data?.detail || 'Falha ao iniciar processamento ODM')
+  } finally {
+    event.target.value = ''
   }
 }
 
