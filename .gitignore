@@ -99,4 +99,7 @@ test-results/
 # ============================================
 *.tar.gz
 *.zip
+
+# Datasets and generated products downloaded for local ODM smoke tests
+data/odm_test/
 *.7z
