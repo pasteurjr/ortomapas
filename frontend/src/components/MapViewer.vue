@@ -104,7 +104,7 @@
         :key="layer.id"
         class="layer-control-item"
       >
-        <div class="layer-control-header"><span class="layer-name">{{ layer.name }}</span><button type="button" title="Remover camada" @click="mapStore.removeLayer(layer.id)"><i class="pi pi-times"></i></button></div>
+        <div class="layer-control-header"><span class="layer-name">{{ layer.name }}</span><button v-if="layer.type === 'analysis'" type="button" title="Baixar GeoJSON" @click="exportLayer(layer, 'geojson')"><i class="pi pi-download"></i></button><button v-if="layer.type === 'analysis'" type="button" title="Baixar KML" @click="exportLayer(layer, 'kml')"><i class="pi pi-map-marker"></i></button><button type="button" title="Remover camada" @click="mapStore.removeLayer(layer.id)"><i class="pi pi-times"></i></button></div>
         <input
           type="range"
           min="0"
@@ -236,6 +236,28 @@ function onMapClick(event) {
 
 function onZoomUpdate(zoom) {
   mapStore.zoom = zoom
+}
+
+function escapeXml(value) { return String(value).replace(/[<>&'\"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[char])) }
+function geometryToKml(geometry) {
+  const coords = (points) => points.map(([x, y]) => `${x},${y},0`).join(' ')
+  const make = (geom) => {
+    if (!geom) return ''
+    if (geom.type === 'Point') return `<Point><coordinates>${coords([geom.coordinates])}</coordinates></Point>`
+    if (geom.type === 'LineString') return `<LineString><coordinates>${coords(geom.coordinates)}</coordinates></LineString>`
+    if (geom.type === 'Polygon') return `<Polygon><outerBoundaryIs><LinearRing><coordinates>${coords(geom.coordinates[0])}</coordinates></LinearRing></outerBoundaryIs></Polygon>`
+    if (geom.type === 'MultiPolygon') return geom.coordinates.map((polygon) => make({ type: 'Polygon', coordinates: polygon })).join('')
+    if (geom.type === 'MultiLineString') return geom.coordinates.map((line) => make({ type: 'LineString', coordinates: line })).join('')
+    if (geom.type === 'MultiPoint') return geom.coordinates.map((point) => make({ type: 'Point', coordinates: point })).join('')
+    return ''
+  }
+  return make(geometry)
+}
+function exportLayer(layer, format) {
+  const geojson = layer.geojson?.type === 'Feature' ? layer.geojson : { type: 'Feature', properties: {}, geometry: layer.geojson }
+  let content = JSON.stringify(geojson, null, 2); let mime = 'application/geo+json'; let extension = 'geojson'
+  if (format === 'kml') { content = `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${escapeXml(layer.name)}</name><Placemark><name>${escapeXml(layer.name)}</name>${geometryToKml(geojson.geometry)}</Placemark></Document></kml>`; mime = 'application/vnd.google-earth.kml+xml'; extension = 'kml' }
+  const url = URL.createObjectURL(new Blob([content], { type: mime })); const link = document.createElement('a'); link.href = url; link.download = `${(layer.name || 'analise').replace(/[^a-z0-9_-]+/gi, '_')}.${extension}`; link.click(); URL.revokeObjectURL(url)
 }
 
 // Watch for project change to zoom to bbox
