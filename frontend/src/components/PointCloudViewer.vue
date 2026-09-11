@@ -41,7 +41,7 @@
         <div class="stats"><span>Amostra</span><b>{{ formatNumber(meta.sampled) }}</b><span>Elevação</span><b>{{ elevationRange }}</b></div>
       </aside>
     </div>
-    <footer>Arraste para orbitar · Shift + arraste para deslocar · roda para zoom</footer>
+    <footer>Arraste para orbitar · Shift + arraste para deslocar · roda para zoom · F enquadra · M mede · I inspeciona · C limpa</footer>
   </div>
 </template>
 
@@ -82,6 +82,7 @@ function updateMaterial () { if (points) { points.material.size = pointSize.valu
 function updateColors () { if (!points) return; const mode = colorMode.value; const values = points.userData[mode] || points.userData.elevation; const colors = new Float32Array(values.length * 3); const min = Math.min(...values); const max = Math.max(...values); values.forEach((v, i) => { const t = (v - min) / Math.max(max - min, 1e-9); const c = new THREE.Color(); c.setHSL((mode === 'intensity' ? 0.65 - t * 0.65 : 0.68 - t * 0.68), 0.85, 0.54); colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b }); points.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); points.geometry.attributes.color.needsUpdate = true }
 function fitView () { if (!points) return; const sphere = new THREE.Box3().setFromObject(points).getBoundingSphere(new THREE.Sphere()); const distance = sphere.radius / Math.sin(camera.fov * Math.PI / 360); camera.position.copy(sphere.center).add(new THREE.Vector3(distance * .8, -distance * .8, distance * .55)); controls.target.copy(sphere.center); camera.near = Math.max(sphere.radius / 1000, .01); camera.far = sphere.radius * 20; camera.updateProjectionMatrix(); controls.update() }
 function fullscreen () { shell.value?.requestFullscreen?.() }
+function handleKey (event) { if (event.target?.tagName === 'INPUT' || event.target?.tagName === 'SELECT') return; const key = event.key.toLowerCase(); if (key === 'f') fitView(); if (key === 'm') toggleMeasure(); if (key === 'i') inspecting.value = !inspecting.value; if (key === 'c') clearMeasure() }
 function toggleMeasure () { measuring.value = !measuring.value; if (!measuring.value) clearMeasure() }
 function clearMeasure () { measurePoints = []; measureDistance.value = null; if (measureLine) { measureLine.geometry.dispose(); measureLine.material.dispose(); scene.remove(measureLine); measureLine = null }; measureMarkers.forEach((m) => { m.geometry.dispose(); m.material.dispose(); scene.remove(m) }); measureMarkers = [] }
 function pickPoint (event) {
@@ -109,7 +110,7 @@ async function loadCloud () {
     cloudData = { x, y, z, intensity, cx, cy, cz, scale }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; const bins = Array(24).fill(0); z.forEach((value) => { const index = Math.min(23, Math.floor((value - meta.value.minZ) / Math.max(meta.value.maxZ - meta.value.minZ, 1e-9) * 24)); bins[index]++ }); const peak = Math.max(...bins, 1); histogram.value = bins.map((value) => value / peak); rebuildPoints(); fitView()
   } catch (e) { error.value = e.response?.data?.detail || 'Nao foi possivel carregar a nuvem de pontos.' } finally { loading.value = false }
 }
-onMounted(() => { initScene(); loadCloud() }); watch(() => props.product?.id, loadCloud); onUnmounted(() => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize); renderer?.domElement.removeEventListener('pointerdown', pickPoint); clearMeasure(); renderer?.dispose(); points?.geometry.dispose(); points?.material.dispose() })
+onMounted(() => { initScene(); loadCloud(); window.addEventListener('keydown', handleKey) }); watch(() => props.product?.id, loadCloud); onUnmounted(() => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize); window.removeEventListener('keydown', handleKey); renderer?.domElement.removeEventListener('pointerdown', pickPoint); clearMeasure(); renderer?.dispose(); points?.geometry.dispose(); points?.material.dispose() })
 </script>
 
 <style scoped>
