@@ -6,9 +6,10 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 
 from backend.database.connection import get_connection
+from backend.routers.auth import current_user, require_project_role
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,6 +18,7 @@ router = APIRouter()
 @router.get("/voos")
 async def list_voos(
     projeto_id: Optional[int] = Query(None, description="Filter by projeto_id"),
+    user: dict = Depends(current_user),
 ):
     """List all voos with optional filter by projeto_id."""
     try:
@@ -27,6 +29,7 @@ async def list_voos(
             params = []
 
             if projeto_id is not None:
+                require_project_role(projeto_id, user, {"proprietario", "editor", "visualizador"})
                 query += " AND projeto_id = %s"
                 params.append(projeto_id)
 
@@ -41,7 +44,7 @@ async def list_voos(
 
 
 @router.get("/voos/{voo_id}")
-async def get_voo(voo_id: int):
+async def get_voo(voo_id: int, user: dict = Depends(current_user)):
     """Get a single voo by ID."""
     try:
         with get_connection() as conn:
@@ -51,6 +54,7 @@ async def get_voo(voo_id: int):
             voo = cursor.fetchone()
             if not voo:
                 raise HTTPException(status_code=404, detail="Voo nao encontrado")
+            require_project_role(voo["projeto_id"], user, {"proprietario", "editor", "visualizador"})
             return voo
     except HTTPException:
         raise
@@ -60,7 +64,7 @@ async def get_voo(voo_id: int):
 
 
 @router.post("/voos", status_code=201)
-async def create_voo(data: dict):
+async def create_voo(data: dict, user: dict = Depends(current_user)):
     """Create a new voo."""
     try:
         with get_connection() as conn:
@@ -71,6 +75,7 @@ async def create_voo(data: dict):
                 raise HTTPException(
                     status_code=400, detail="Campo 'projeto_id' e obrigatorio"
                 )
+            require_project_role(projeto_id, user, {"proprietario", "editor"})
 
             # Verify projeto exists
             cursor.execute("SELECT id FROM projetos WHERE id = %s", (projeto_id,))
@@ -127,15 +132,17 @@ async def create_voo(data: dict):
 
 
 @router.put("/voos/{voo_id}")
-async def update_voo(voo_id: int, data: dict):
+async def update_voo(voo_id: int, data: dict, user: dict = Depends(current_user)):
     """Update an existing voo."""
     try:
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
 
             cursor.execute("SELECT * FROM voos WHERE id = %s", (voo_id,))
-            if not cursor.fetchone():
+            existing = cursor.fetchone()
+            if not existing:
                 raise HTTPException(status_code=404, detail="Voo nao encontrado")
+            require_project_role(existing["projeto_id"], user, {"proprietario", "editor"})
 
             updatable = [
                 "data_voo", "drone", "camera", "altitude_voo",
@@ -172,15 +179,17 @@ async def update_voo(voo_id: int, data: dict):
 
 
 @router.delete("/voos/{voo_id}")
-async def delete_voo(voo_id: int):
+async def delete_voo(voo_id: int, user: dict = Depends(current_user)):
     """Delete a voo."""
     try:
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
 
             cursor.execute("SELECT * FROM voos WHERE id = %s", (voo_id,))
-            if not cursor.fetchone():
+            existing = cursor.fetchone()
+            if not existing:
                 raise HTTPException(status_code=404, detail="Voo nao encontrado")
+            require_project_role(existing["projeto_id"], user, {"proprietario"})
 
             cursor.execute("DELETE FROM voos WHERE id = %s", (voo_id,))
             conn.commit()

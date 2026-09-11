@@ -35,6 +35,18 @@ def current_user(authorization: Optional[str] = Header(None)) -> dict:
     return dict(user)
 
 
+def require_project_role(projeto_id: int, user: dict, roles: set[str]) -> None:
+    """Raise 403 unless the user has one of the requested project roles."""
+    if user["perfil"] == "admin":
+        return
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT papel FROM projeto_usuarios WHERE projeto_id = %s AND usuario_id = %s", (projeto_id, user["id"]))
+        membership = cur.fetchone()
+    if not membership or membership["papel"] not in roles:
+        raise HTTPException(status_code=403, detail="Usuario sem permissao neste projeto")
+
+
 @router.post("/auth/register", status_code=201)
 async def register(data: dict):
     email = str(data.get("email", "")).strip().lower()

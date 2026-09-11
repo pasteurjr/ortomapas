@@ -24,7 +24,7 @@ def _can_manage_project(cursor, projeto_id: int, user: dict) -> bool:
 
 
 @router.get("/projetos/search")
-async def search_projetos(q: str = Query(..., min_length=1, description="Search term")):
+async def search_projetos(q: str = Query(..., min_length=1, description="Search term"), user: dict = Depends(current_user)):
     """Fulltext search across projetos (nome, descricao, area_estudo)."""
     try:
         with get_connection() as conn:
@@ -33,12 +33,13 @@ async def search_projetos(q: str = Query(..., min_length=1, description="Search 
             cursor.execute(
                 """
                 SELECT * FROM projetos
-                WHERE nome LIKE %s
+                WHERE (%s = 'admin' OR id IN (SELECT projeto_id FROM projeto_usuarios WHERE usuario_id = %s))
+                  AND (nome LIKE %s
                    OR descricao LIKE %s
-                   OR area_estudo LIKE %s
+                   OR area_estudo LIKE %s)
                 ORDER BY criado_em DESC
                 """,
-                (search_term, search_term, search_term),
+                (user["perfil"], user["id"], search_term, search_term, search_term),
             )
             rows = cursor.fetchall()
             return {"total": len(rows), "projetos": rows}
@@ -51,14 +52,15 @@ async def search_projetos(q: str = Query(..., min_length=1, description="Search 
 async def list_projetos(
     status: Optional[str] = Query(None, description="Filter by status"),
     area_estudo: Optional[str] = Query(None, description="Filter by area de estudo"),
+    user: dict = Depends(current_user),
 ):
     """List all projetos with optional filters."""
     try:
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
 
-            query = "SELECT * FROM projetos WHERE 1=1"
-            params = []
+            query = "SELECT * FROM projetos WHERE (%s = 'admin' OR id IN (SELECT projeto_id FROM projeto_usuarios WHERE usuario_id = %s))"
+            params = [user["perfil"], user["id"]]
 
             if status:
                 query += " AND status = %s"
@@ -78,7 +80,7 @@ async def list_projetos(
 
 
 @router.get("/projetos/{projeto_id}")
-async def get_projeto(projeto_id: int):
+async def get_projeto(projeto_id: int, user: dict = Depends(current_user)):
     """Get a single projeto by ID with related counts."""
     try:
         with get_connection() as conn:
@@ -88,6 +90,10 @@ async def get_projeto(projeto_id: int):
             projeto = cursor.fetchone()
             if not projeto:
                 raise HTTPException(status_code=404, detail="Projeto nao encontrado")
+            if user["perfil"] != "admin":
+                cursor.execute("SELECT 1 FROM projeto_usuarios WHERE projeto_id = %s AND usuario_id = %s", (projeto_id, user["id"]))
+                if not cursor.fetchone():
+                    raise HTTPException(status_code=403, detail="Usuario sem acesso ao projeto")
 
             # Related counts
             cursor.execute(
@@ -120,7 +126,7 @@ async def get_projeto(projeto_id: int):
 
 
 @router.post("/projetos", status_code=201)
-async def create_projeto(data: dict):
+async def create_projeto(data: dict, user: dict = Depends(current_user)):
     """Create a new projeto."""
     try:
         with get_connection() as conn:
@@ -146,6 +152,9 @@ async def create_projeto(data: dict):
             conn.commit()
             new_id = cursor.lastrowid
 
+            cursor.execute("INSERT INTO projeto_usuarios (projeto_id, usuario_id, papel) VALUES (%s, %s, 'proprietario') ON CONFLICT (projeto_id, usuario_id) DO NOTHING", (new_id, user["id"]))
+            conn.commit()
+
             cursor.execute("SELECT * FROM projetos WHERE id = %s", (new_id,))
             projeto = cursor.fetchone()
             return projeto
@@ -157,7 +166,7 @@ async def create_projeto(data: dict):
 
 
 @router.put("/projetos/{projeto_id}")
-async def update_projeto(projeto_id: int, data: dict):
+async def update_projeto(projeto_id: int, data: dict, user: dict = Depends(current_user)):
     """Update an existing projeto."""
     try:
         with get_connection() as conn:
@@ -166,6 +175,8 @@ async def update_projeto(projeto_id: int, data: dict):
             cursor.execute("SELECT * FROM projetos WHERE id = %s", (projeto_id,))
             if not cursor.fetchone():
                 raise HTTPException(status_code=404, detail="Projeto nao encontrado")
+            if not _can_manage_project(cursor, projeto_id, user):
+                raise HTTPException(status_code=403, detail="Sem permissao para editar projeto")
 
             fields = []
             params = []
@@ -196,7 +207,7 @@ async def update_projeto(projeto_id: int, data: dict):
 
 
 @router.delete("/projetos/{projeto_id}")
-async def delete_projeto(projeto_id: int):
+async def delete_projeto(projeto_id: int, user: dict = Depends(current_user)):
     """Delete a projeto."""
     try:
         with get_connection() as conn:
@@ -205,6 +216,8 @@ async def delete_projeto(projeto_id: int):
             cursor.execute("SELECT * FROM projetos WHERE id = %s", (projeto_id,))
             if not cursor.fetchone():
                 raise HTTPException(status_code=404, detail="Projeto nao encontrado")
+            if user["perfil"] != "admin" and not _can_manage_project(cursor, projeto_id, user):
+                raise HTTPException(status_code=403, detail="Somente administrador ou proprietario pode excluir")
 
             cursor.execute("DELETE FROM projetos WHERE id = %s", (projeto_id,))
             conn.commit()
@@ -217,7 +230,7 @@ async def delete_projeto(projeto_id: int):
 
 
 @router.get("/projetos/{projeto_id}/ortomapas")
-async def list_ortomapas_by_projeto(projeto_id: int):
+async def list_ortomapas_by_projeto(projeto_id: int, user: dict = Depends(current_user)):
     """List all ortomapas for a specific projeto."""
     try:
         with get_connection() as conn:
@@ -226,6 +239,10 @@ async def list_ortomapas_by_projeto(projeto_id: int):
             cursor.execute("SELECT * FROM projetos WHERE id = %s", (projeto_id,))
             if not cursor.fetchone():
                 raise HTTPException(status_code=404, detail="Projeto nao encontrado")
+            if user["perfil"] != "admin":
+                cursor.execute("SELECT 1 FROM projeto_usuarios WHERE projeto_id = %s AND usuario_id = %s", (projeto_id, user["id"]))
+                if not cursor.fetchone():
+                    raise HTTPException(status_code=403, detail="Usuario sem acesso ao projeto")
 
             cursor.execute(
                 """
