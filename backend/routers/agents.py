@@ -6,6 +6,7 @@ from backend.database.connection import get_connection
 from backend.config import DATA_DIR
 from pathlib import Path
 import rasterio, laspy
+import numpy as np
 from backend.agents.llm_client import LMStudioClient
 
 router = APIRouter()
@@ -44,6 +45,15 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); return {'status':'ok','dados':[dict(r) for r in cur.fetchall()]}
+    if name == 'comparar_dsm_dtm':
+        processing_id=args.get('processamento_id')
+        with get_connection() as conn:
+            cur=conn.cursor(dictionary=True); cur.execute("SELECT * FROM processamentos_odm WHERE id=%s",(processing_id,)); job=cur.fetchone(); cur.execute("SELECT * FROM produtos_processamento WHERE processamento_id=%s AND tipo IN ('dsm','dtm')",(processing_id,)); products={r['tipo']:r for r in cur.fetchall()}
+        if not job or len(products)<2: raise HTTPException(status_code=404, detail='DSM e DTM nao encontrados')
+        require_project_role(job['projeto_id'], user, {'proprietario','editor','visualizador'})
+        with rasterio.open(Path(DATA_DIR)/products['dsm']['caminho']) as dsm, rasterio.open(Path(DATA_DIR)/products['dtm']['caminho']) as dtm:
+            a=dsm.read(1,out_shape=(64,64),resampling=rasterio.enums.Resampling.bilinear); b=dtm.read(1,out_shape=(64,64),resampling=rasterio.enums.Resampling.bilinear); diff=np.asarray(a-b,dtype=float)
+        return {'status':'ok','dados':{'processamento_id':processing_id,'min':float(diff.min()),'max':float(diff.max()),'media':float(diff.mean()),'grade':[64,64]}}
     product_id = args.get('produto_id')
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE p.id=%s",(product_id,)); product=cur.fetchone()
