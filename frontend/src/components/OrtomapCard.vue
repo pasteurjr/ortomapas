@@ -2,8 +2,8 @@
   <div class="ortomapa-card" @click="$emit('select', ortomapa)">
     <div class="card-thumbnail">
       <img
-        v-if="ortomapa.thumbnail"
-        :src="`/api/ortomapas/${ortomapa.id}/thumbnail`"
+        v-if="ortomapa.caminho_thumbnail || ortomapa.thumbnail"
+        :src="ortomapa.caminho_thumbnail ? `/data/${ortomapa.caminho_thumbnail}` : `/api/ortomapas/${ortomapa.id}/thumbnail`"
         alt="thumbnail"
       />
       <div v-else class="no-thumb">
@@ -14,7 +14,7 @@
       <div class="card-title">{{ ortomapa.nome }}</div>
       <div class="card-meta">
         <Badge :value="ortomapa.tipo || 'RGB'" :severity="tipoBadge(ortomapa.tipo)" />
-        <span v-if="ortomapa.resolucao" class="resolution">{{ ortomapa.resolucao }}cm/px</span>
+        <span v-if="ortomapa.resolucao_cm" class="resolution">{{ Number(ortomapa.resolucao_cm).toFixed(2) }}cm/px</span>
       </div>
       <div class="card-date" v-if="ortomapa.data_voo">
         <i class="pi pi-calendar"></i> {{ formatDate(ortomapa.data_voo) }}

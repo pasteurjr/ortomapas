@@ -47,7 +47,7 @@ export const useProjectStore = defineStore('project', {
       this.loading = true
       try {
         const res = await getProjects()
-        this.projects = res.data
+        this.projects = res.data.projetos || res.data
       } catch (e) {
         this.error = e.message
       } finally {
@@ -76,7 +76,7 @@ export const useProjectStore = defineStore('project', {
       if (!this.activeProject) return
       try {
         const res = await getOrtomapas(this.activeProject.id)
-        this.ortomapas = res.data
+        this.ortomapas = res.data.ortomapas || res.data
       } catch (e) {
         this.error = e.message
       }
@@ -86,7 +86,7 @@ export const useProjectStore = defineStore('project', {
       if (!this.activeProject) return
       try {
         const res = await getAnalises(this.activeProject.id)
-        this.analises = res.data
+        this.analises = res.data.analises || res.data
       } catch (e) {
         this.error = e.message
       }
@@ -96,7 +96,7 @@ export const useProjectStore = defineStore('project', {
       if (!this.activeProject) return
       try {
         const res = await getAnotacoes(this.activeProject.id)
-        this.anotacoes = res.data
+        this.anotacoes = res.data.anotacoes || res.data
       } catch (e) {
         this.error = e.message
       }
