@@ -267,7 +267,7 @@ onMounted(() => {
     const map = leafletMap.value?.leafletObject
     if (!map) return
     const drawn = new L.FeatureGroup(); map.addLayer(drawn)
-    map.on(L.Draw.Event.CREATED, (event) => { drawn.clearLayers(); drawn.addLayer(event.layer); const b = event.layer.getBounds(); mapStore.setClipBbox({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth() }); mapStore.setDrawMode(null) })
+    map.on(L.Draw.Event.CREATED, (event) => { drawn.clearLayers(); drawn.addLayer(event.layer); const geo = event.layer.toGeoJSON().geometry; mapStore.setSelectedGeometry(geo); const b = event.layer.getBounds(); mapStore.setClipBbox({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth() }); mapStore.setDrawMode(null) })
     watch(() => mapStore.drawMode, (mode) => { if (mode === 'clip') new L.Draw.Rectangle(map, { shapeOptions: { color: '#f59e0b' } }).enable() })
   }, 250)
 })
