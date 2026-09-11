@@ -17,6 +17,9 @@
         <input v-model.number="pointSize" type="range" min="0.5" max="8" step="0.5" @input="updateMaterial" />
         <label>Coloração</label>
         <select v-model="colorMode" @change="updateColors"><option value="elevation">Elevação</option><option value="intensity">Intensidade</option></select>
+        <label>Recorte de elevação <output>{{ heightMin.toFixed(1) }} – {{ heightMax.toFixed(1) }} m</output></label>
+        <input v-model.number="heightMin" type="range" :min="meta.minZ" :max="meta.maxZ" step="0.1" @input="rebuildPoints" />
+        <input v-model.number="heightMax" type="range" :min="meta.minZ" :max="meta.maxZ" step="0.1" @input="rebuildPoints" />
         <label class="check"><input v-model="showGrid" type="checkbox" @change="renderScene" /> Grade</label>
         <label class="check"><input v-model="showAxes" type="checkbox" @change="renderScene" /> Eixos</label>
         <button class="measure-button" :class="{ active: measuring }" @click="toggleMeasure"><i class="pi pi-arrows-h"></i> {{ measuring ? 'Clique em dois pontos' : 'Medir distância' }}</button>
@@ -40,7 +43,7 @@ defineEmits(['close'])
 const canvasHost = ref(null); const shell = ref(null); const loading = ref(false); const error = ref('')
 const pointSize = ref(2); const colorMode = ref('elevation'); const showGrid = ref(true); const showAxes = ref(true)
 const measuring = ref(false); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
-const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
+const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); const heightMin = ref(0); const heightMax = ref(0); let cloudData; let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
 const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.value.maxZ.toFixed(1)} m`)
 const formatNumber = (n) => Number(n || 0).toLocaleString('pt-BR')
 
@@ -70,12 +73,21 @@ function pickPoint (event) {
   measurePoints.push(hit.point.clone()); const marker = new THREE.Mesh(new THREE.SphereGeometry(.08, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffcf56' })); marker.position.copy(hit.point); scene.add(marker); measureMarkers.push(marker)
   if (measurePoints.length === 2) { const geometry = new THREE.BufferGeometry().setFromPoints(measurePoints); measureLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#ffcf56' })); scene.add(measureLine); measureDistance.value = measurePoints[0].distanceTo(measurePoints[1]); measuring.value = false }
 }
+function rebuildPoints () {
+  if (!cloudData || !scene) return
+  const { x, y, z, intensity, cx, cy, cz, scale } = cloudData; const keep = []
+  z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) keep.push(i) })
+  const pos = new Float32Array(keep.length * 3); const elevations = []; const intensities = []
+  keep.forEach((source, i) => { pos[i * 3] = (x[source] - cx) * scale; pos[i * 3 + 1] = (z[source] - cz) * scale; pos[i * 3 + 2] = (y[source] - cy) * scale; elevations.push(z[source]); intensities.push(intensity.length ? intensity[source] : z[source]) })
+  if (points) { points.geometry.dispose(); points.geometry = new THREE.BufferGeometry() } else { points = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ size: pointSize.value / 100, vertexColors: true, sizeAttenuation: true })); scene.add(points) }
+  points.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3)); points.userData.elevation = elevations; points.userData.intensity = intensities; updateColors()
+}
 async function loadCloud () {
   loading.value = true; error.value = ''
   try {
     const { data } = await getPointCloud(props.product.id, 120000); const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
-    const maxExtent = Math.max(Math.max(...x) - Math.min(...x), Math.max(...y) - Math.min(...y), Math.max(...z) - Math.min(...z), 1); const scale = 10 / maxExtent; const pos = new Float32Array(x.length * 3); x.forEach((v, i) => { pos[i * 3] = (v - cx) * scale; pos[i * 3 + 1] = (z[i] - cz) * scale; pos[i * 3 + 2] = (v = y[i] - cy) * scale })
-    points?.geometry.dispose(); points?.material.dispose(); const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3)); points = new THREE.Points(geometry, new THREE.PointsMaterial({ size: pointSize.value / 100, vertexColors: true, sizeAttenuation: true })); points.userData.elevation = z; points.userData.intensity = intensity.length ? intensity : z; scene.add(points); meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; updateColors(); fitView()
+    const maxExtent = Math.max(Math.max(...x) - Math.min(...x), Math.max(...y) - Math.min(...y), Math.max(...z) - Math.min(...z), 1); const scale = 10 / maxExtent
+    cloudData = { x, y, z, intensity, cx, cy, cz, scale }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; rebuildPoints(); fitView()
   } catch (e) { error.value = e.response?.data?.detail || 'Nao foi possivel carregar a nuvem de pontos.' } finally { loading.value = false }
 }
 onMounted(() => { initScene(); loadCloud() }); watch(() => props.product?.id, loadCloud); onUnmounted(() => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize); renderer?.domElement.removeEventListener('pointerdown', pickPoint); clearMeasure(); renderer?.dispose(); points?.geometry.dispose(); points?.material.dispose() })
