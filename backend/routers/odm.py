@@ -194,7 +194,7 @@ async def import_odm_products(processing_id: int, user: dict = Depends(current_u
 
 
 @router.get("/odm/produtos/{product_id}/points")
-async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge=1000, le=300000), user: dict = Depends(current_user)):
+async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge=1000, le=300000), xmin: Optional[float] = Query(None), xmax: Optional[float] = Query(None), ymin: Optional[float] = Query(None), ymax: Optional[float] = Query(None), user: dict = Depends(current_user)):
     """Return a bounded LAZ sample for WebGL visualization."""
     with get_connection() as conn:
         cur = conn.cursor(dictionary=True); cur.execute("SELECT p.*, COALESCE(o.projeto_id, j.projeto_id) AS projeto_id FROM produtos_processamento p LEFT JOIN ortomapas o ON o.id = p.ortomapa_id JOIN processamentos_odm j ON j.id = p.processamento_id WHERE p.id = %s AND p.tipo = 'nuvem_pontos'", (product_id,)); product = cur.fetchone()
@@ -203,13 +203,19 @@ async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge
     path = Path(DATA_DIR) / product["caminho"]
     if not path.exists(): raise HTTPException(status_code=404, detail="Arquivo LAZ nao encontrado")
     try:
-        cloud = laspy.read(path); total = len(cloud.x); step = max(1, total // max_points); idx = slice(None, None, step)
+        cloud = laspy.read(path); total = len(cloud.x); mask = np.ones(total, dtype=bool)
+        if xmin is not None: mask &= np.asarray(cloud.x) >= xmin
+        if xmax is not None: mask &= np.asarray(cloud.x) <= xmax
+        if ymin is not None: mask &= np.asarray(cloud.y) >= ymin
+        if ymax is not None: mask &= np.asarray(cloud.y) <= ymax
+        candidates = np.flatnonzero(mask); step = max(1, len(candidates) // max_points); idx = candidates[::step]
         xs = np.asarray(cloud.x)[idx].astype(float).tolist()
         ys = np.asarray(cloud.y)[idx].astype(float).tolist()
         zs = np.asarray(cloud.z)[idx].astype(float).tolist()
         names = set(cloud.point_format.dimension_names)
         intensity = np.asarray(cloud.intensity)[idx].astype(int).tolist() if "intensity" in names else []
-        return {"total": total, "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
+        if not xs: raise HTTPException(status_code=422, detail="Recorte sem pontos")
+        return {"total": total, "candidates": len(candidates), "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
     except Exception as exc:
         logger.exception("Point cloud sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler LAZ: {exc}")
 
