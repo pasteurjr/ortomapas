@@ -92,8 +92,8 @@ export function getOdmProducts(projetoId) {
   return api.get('/odm/produtos', { params: { projeto_id: projetoId } })
 }
 
-export function getPointCloud(productId, maxPoints = 100000) {
-  return api.get(`/odm/produtos/${productId}/points`, { params: { max_points: maxPoints }, timeout: 120000 })
+export function getPointCloud(productId, maxPoints = 100000, bbox = {}) {
+  return api.get(`/odm/produtos/${productId}/points`, { params: { max_points: maxPoints, ...bbox }, timeout: 120000 })
 }
 
 export function getSurfaceGrid(productId, maxSize = 128) {
