@@ -52,7 +52,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { getPointCloud } from '../api/client'
 
 const props = defineProps({ product: { type: Object, required: true } })
-defineEmits(['close'])
+const emit = defineEmits(['close'])
 const canvasHost = ref(null); const shell = ref(null); const loading = ref(false); const error = ref('')
 const pointSize = ref(2); const opacity = ref(1); const colorMode = ref('elevation'); const showGrid = ref(true); const showAxes = ref(true)
 const measuring = ref(false); const inspecting = ref(false); const selectedPoint = ref(null); const measureDistance = ref(null); let measurePoints = []; let measureLine; let measureMarkers = []
@@ -82,7 +82,7 @@ function updateMaterial () { if (points) { points.material.size = pointSize.valu
 function updateColors () { if (!points) return; const mode = colorMode.value; const values = points.userData[mode] || points.userData.elevation; const colors = new Float32Array(values.length * 3); const min = Math.min(...values); const max = Math.max(...values); values.forEach((v, i) => { const t = (v - min) / Math.max(max - min, 1e-9); const c = new THREE.Color(); c.setHSL((mode === 'intensity' ? 0.65 - t * 0.65 : 0.68 - t * 0.68), 0.85, 0.54); colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b }); points.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); points.geometry.attributes.color.needsUpdate = true }
 function fitView () { if (!points) return; const sphere = new THREE.Box3().setFromObject(points).getBoundingSphere(new THREE.Sphere()); const distance = sphere.radius / Math.sin(camera.fov * Math.PI / 360); camera.position.copy(sphere.center).add(new THREE.Vector3(distance * .8, -distance * .8, distance * .55)); controls.target.copy(sphere.center); camera.near = Math.max(sphere.radius / 1000, .01); camera.far = sphere.radius * 20; camera.updateProjectionMatrix(); controls.update() }
 function fullscreen () { shell.value?.requestFullscreen?.() }
-function handleKey (event) { if (event.target?.tagName === 'INPUT' || event.target?.tagName === 'SELECT') return; const key = event.key.toLowerCase(); if (key === 'f') fitView(); if (key === 'm') toggleMeasure(); if (key === 'i') inspecting.value = !inspecting.value; if (key === 'c') clearMeasure() }
+function handleKey (event) { if (event.key === 'Escape') { emit('close'); return }; if (event.target?.tagName === 'INPUT' || event.target?.tagName === 'SELECT') return; const key = event.key.toLowerCase(); if (key === 'f') fitView(); if (key === 'm') toggleMeasure(); if (key === 'i') inspecting.value = !inspecting.value; if (key === 'c') clearMeasure() }
 function toggleMeasure () { measuring.value = !measuring.value; if (!measuring.value) clearMeasure() }
 function clearMeasure () { measurePoints = []; measureDistance.value = null; if (measureLine) { measureLine.geometry.dispose(); measureLine.material.dispose(); scene.remove(measureLine); measureLine = null }; measureMarkers.forEach((m) => { m.geometry.dispose(); m.material.dispose(); scene.remove(m) }); measureMarkers = [] }
 function pickPoint (event) {
