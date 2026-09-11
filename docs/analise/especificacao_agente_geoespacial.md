@@ -132,3 +132,114 @@ Cada camada cadastral terá: `nome`, `fonte`, `data_referencia`, `crs`, `escala`
 6. Memória por projeto e aprovação humana.
 7. Relatório consolidado e avaliação de qualidade com IA.
 
+## 9. Contexto, memória e RAG
+
+### Memória de curto prazo
+
+Cada conversa terá um `thread_id` e estado persistido por checkpoint no PostgreSQL. O estado contém projeto ativo, voo, produtos selecionados, área de interesse, ferramentas executadas, resultados intermediários e aprovações pendentes.
+
+### Memória de longo prazo
+
+Será armazenada por projeto:
+
+- preferências do usuário;
+- histórico de perguntas e respostas resumidas;
+- análises executadas;
+- decisões e observações confirmadas pelo usuário;
+- parâmetros recorrentes;
+- fontes de dados utilizadas;
+- limitações conhecidas dos produtos.
+
+O armazenamento primário será relacional. `pgvector` será usado para recuperar contexto semântico de documentos, relatórios e observações, mantendo sempre referência ao registro original.
+
+### RAG
+
+RAG será usado para conhecimento textual e metadados:
+
+- documentação do projeto;
+- relatórios ODM;
+- especificações técnicas;
+- manuais de índices e métodos;
+- descrições de classes;
+- legislação ou normas fornecidas pelo usuário;
+- histórico de análises.
+
+RAG não substituirá o processamento raster ou vetorial. Pixels, geometrias e pontos serão consultados pelas ferramentas analíticas, não transformados integralmente em texto.
+
+## 10. Agentes detalhados
+
+### AG-01 — Orquestrador/Copiloto
+
+**Background:** especialista em geoprocessamento que coordena ferramentas e explica resultados para usuários não especialistas.  
+**Objetivo:** transformar o prompt em plano executável e resposta verificável.  
+**Ferramentas:** todas, respeitando permissões.  
+**Sequência:** identificar intenção; resolver projeto/área/produtos; consultar memória/RAG; montar plano; solicitar aprovação para escrita; executar subagentes; validar schemas; responder com evidências e limitações.
+
+### AG-02 — Analista Raster
+
+**Background:** especialista em processamento de imagens multibanda e modelos raster.  
+**Objetivo:** produzir índices e mapas derivados.  
+**Ferramentas:** `estatisticas_raster`, `recortar_raster`, `calcular_indice`, `calcular_declividade`, `calcular_aspecto`, `gerar_hillshade`, `estatistica_zonal`.  
+**Sequência:** validar bandas/CRS; calcular estatísticas; executar operação; verificar NoData e extensão; salvar produto; retornar URI, métricas e limitações.
+
+### AG-03 — Analista de Terreno
+
+**Background:** especialista em topografia e modelos de elevação.  
+**Objetivo:** interpretar DSM, DTM, perfis e volumes.  
+**Ferramentas:** `comparar_dsm_dtm`, `calcular_volume`, `perfil_altimetrico`, `detectar_anomalias_altimetria`, `curvas_de_nivel`.  
+**Sequência:** selecionar superfícies compatíveis; reprojetar se necessário; calcular diferença/volume; validar unidades e NoData; gerar camada; explicar incerteza.
+
+### AG-04 — Analista de Nuvem
+
+**Background:** especialista em LAS/LAZ e qualidade de levantamentos.  
+**Objetivo:** analisar densidade, elevação, filtros e anomalias.  
+**Ferramentas:** `estatisticas_laz`, `filtrar_nuvem`, `detectar_outliers`, `classificar_pontos`.  
+**Sequência:** verificar cabeçalho e CRS; amostrar; aplicar bbox/faixa; calcular densidade; detectar anomalias; retornar estatísticas e arquivo derivado.
+
+### AG-05 — Analista Espacial
+
+**Background:** especialista em PostGIS, relações topológicas e dados cadastrais.  
+**Objetivo:** cruzar produtos do voo com propriedades, estradas, rios e limites.  
+**Ferramentas:** `intersectar_camadas`, `buffer`, `calcular_distancia`, `consulta_postgis`, `consultar_wfs`.  
+**Sequência:** identificar camada fonte; verificar CRS, escala e data; confirmar licença; executar operação; calcular áreas; registrar fonte e qualidade.
+
+### AG-06 — Analista Temporal
+
+**Background:** especialista em detecção de mudanças.  
+**Objetivo:** comparar voos e identificar alterações espaciais.  
+**Ferramentas:** diferenças raster, estatística zonal, interseção PostGIS e ferramentas de anotação.  
+**Sequência:** alinhar datas/CRS; normalizar resolução; calcular diferença; aplicar limiar informado; remover ruído; gerar polígonos; solicitar confirmação para salvar achados.
+
+### AG-07 — Relator Técnico
+
+**Background:** redator técnico com foco em rastreabilidade.  
+**Objetivo:** consolidar evidências em relatório.  
+**Ferramentas:** consultas de produtos, métricas, capturas, `baixar_relatorio_odm`, `gerar_relatorio_consolidado`.  
+**Sequência:** reunir resultados; citar produtos/fontes; incluir mapas e gráficos; listar limitações; gerar PDF; salvar versão e hash.
+
+## 11. Contrato de tarefa
+
+Cada tarefa em `tarefas_agentes` deverá conter:
+
+- `tipo_tarefa`;
+- `agente`;
+- `thread_id`;
+- `projeto_id` e produto de origem;
+- prompt original;
+- plano JSON;
+- ferramentas permitidas;
+- status e tentativas;
+- resultado JSON;
+- erro e logs;
+- aprovação humana, quando aplicável.
+
+Toda ferramenta retornará `{status, dados, artefatos, evidencias, avisos}`. O agente só poderá concluir após validar esse contrato.
+
+## 12. Regras de aprovação
+
+Não exigem aprovação: leitura, estatísticas, filtros temporários e visualização.  
+Exigem aprovação: criar ou substituir arquivos, publicar camada, salvar anotação, importar base cadastral, iniciar processamento ODM, alterar banco ou excluir produto.
+
+## 13. Critérios de qualidade da resposta
+
+Toda resposta do copiloto deverá informar: pergunta interpretada, produtos utilizados, ferramentas executadas, parâmetros principais, resultado numérico, camada/arquivo gerado, incertezas e próxima ação sugerida. Se não houver dados suficientes, o agente deverá pedir esclarecimento em vez de inventar resultado.
