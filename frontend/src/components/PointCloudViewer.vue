@@ -6,6 +6,9 @@
         <button class="icon-button" title="Enquadrar nuvem" @click="fitView"><i class="pi pi-expand"></i></button>
         <button class="icon-button" title="Exportar imagem PNG" @click="exportPng"><i class="pi pi-camera"></i></button>
         <button class="icon-button" title="Exportar pontos CSV" @click="exportCsv"><i class="pi pi-download"></i></button>
+        <button class="icon-button" title="Vista superior" @click="setView('top')"><i class="pi pi-arrow-down"></i></button>
+        <button class="icon-button" title="Vista frontal" @click="setView('front')"><i class="pi pi-minus"></i></button>
+        <button class="icon-button" title="Vista lateral" @click="setView('side')"><i class="pi pi-arrow-right"></i></button>
         <button class="icon-button" title="Tela cheia" @click="fullscreen"><i class="pi pi-window-maximize"></i></button>
         <button class="icon-button" title="Fechar" @click="$emit('close')"><i class="pi pi-times"></i></button>
       </div>
@@ -14,6 +17,7 @@
       <div ref="canvasHost" class="canvas-host"></div>
       <div v-if="loading" class="overlay"><i class="pi pi-spin pi-spinner"></i> Carregando amostra...</div>
       <div v-if="error" class="overlay error">{{ error }}</div>
+      <div v-if="colorMode === 'elevation'" class="legend"><span>{{ meta.maxZ.toFixed(1) }} m</span><i></i><span>{{ meta.minZ.toFixed(1) }} m</span></div>
       <aside class="tools-panel">
         <label>Tamanho dos pontos <output>{{ pointSize.toFixed(1) }}</output></label>
         <input v-model.number="pointSize" type="range" min="0.5" max="8" step="0.5" @input="updateMaterial" />
@@ -52,6 +56,7 @@ const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.
 const formatNumber = (n) => Number(n || 0).toLocaleString('pt-BR')
 function exportPng () { if (!renderer) return; const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.png`; link.href = renderer.domElement.toDataURL('image/png'); link.click() }
 function exportCsv () { if (!cloudData) return; const { x, y, z, intensity } = cloudData; const rows = ['x,y,z,intensidade']; z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) rows.push(`${x[i]},${y[i]},${value},${intensity.length ? intensity[i] : ''}`) }); const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' }); const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.csv`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href) }
+function setView (view) { if (!points || !camera) return; const sphere = new THREE.Box3().setFromObject(points).getBoundingSphere(new THREE.Sphere()); const d = Math.max(sphere.radius * 2.2, 1); const positions = { top: [0, d, 0.01], front: [0, 0.01, d], side: [d, 0.01, 0] }; camera.position.set(...positions[view]).add(sphere.center); controls.target.copy(sphere.center); controls.update() }
 
 function initScene () {
   scene = new THREE.Scene(); scene.background = new THREE.Color('#101820')
@@ -104,4 +109,5 @@ onMounted(() => { initScene(); loadCloud() }); watch(() => props.product?.id, lo
 .viewer-shell{position:fixed;inset:4vh 4vw;background:#101820;color:#e8f0f2;z-index:2000;display:flex;flex-direction:column;border:1px solid #40515c;box-shadow:0 20px 80px #000b;font-size:.82rem}.viewer-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#17242c;border-bottom:1px solid #40515c}.viewer-header strong{display:block;font-size:1rem}.viewer-header small{color:#9db0ba}.viewer-actions{display:flex;gap:6px}.icon-button{background:transparent;border:1px solid #536773;color:#dce7eb;width:34px;height:32px;cursor:pointer}.icon-button:hover{background:#2b414d}.viewer-body{position:relative;flex:1;min-height:320px}.canvas-host{position:absolute;inset:0}.canvas-host :deep(canvas){display:block;width:100%;height:100%}.tools-panel{position:absolute;top:14px;right:14px;width:190px;padding:12px;background:#17242ce8;border:1px solid #52616b;display:grid;gap:8px}.tools-panel label{color:#c9d6dc;font-size:.75rem}.tools-panel output{float:right;color:#7fd1b9}.tools-panel input[type=range]{width:100%;accent-color:#56b4d3}.tools-panel select{background:#101820;color:#e8f0f2;border:1px solid #52616b;padding:5px}.check{display:flex;gap:7px;align-items:center}.stats{display:grid;grid-template-columns:1fr auto;gap:4px;border-top:1px solid #40515c;padding-top:8px;color:#9db0ba}.stats b{color:#e8f0f2}.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#101820aa;color:#dce7eb;gap:8px}.overlay.error{color:#ffb4a9}.viewer-shell footer{padding:7px 16px;color:#91a4ad;background:#17242c;border-top:1px solid #40515c;font-size:.72rem}
 .measure-button,.clear-button{border:1px solid #52616b;background:#101820;color:#dce7eb;padding:6px;text-align:left;cursor:pointer}.measure-button.active{border-color:#ffcf56;color:#ffcf56}.clear-button{color:#ffb4a9}.measure-result{display:flex;justify-content:space-between;border-top:1px solid #40515c;padding-top:8px;color:#ffcf56}
 .point-result{display:grid;grid-template-columns:1fr auto;gap:3px;border-top:1px solid #40515c;padding-top:8px;color:#9db0ba}.point-result b{color:#e8f0f2;font-weight:500}
+.legend{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:7px;color:#dce7eb;font-size:.7rem;background:#17242ce8;border:1px solid #52616b;padding:7px}.legend i{display:block;width:110px;height:10px;background:linear-gradient(90deg,#f33d65,#f2c94c,#29d3a2,#397cf6)}
 </style>
