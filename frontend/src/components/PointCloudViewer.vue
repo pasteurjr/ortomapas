@@ -28,6 +28,7 @@
         <select v-model="colorMode" @change="updateColors"><option value="elevation">Elevação</option><option value="intensity">Intensidade</option></select>
         <label>Detalhe da amostra</label>
         <select v-model.number="sampleLimit" @change="loadCloud"><option :value="25000">25 mil pontos</option><option :value="60000">60 mil pontos</option><option :value="120000">120 mil pontos</option></select>
+        <button class="measure-button" :disabled="loading" @click="progressiveLoad"><i class="pi pi-forward"></i> Carregar progressivamente</button>
         <label>Recorte de elevação <output>{{ heightMin.toFixed(1) }} – {{ heightMax.toFixed(1) }} m</output></label>
         <input v-model.number="heightMin" type="range" :min="meta.minZ" :max="meta.maxZ" step="0.1" @input="rebuildPoints" />
         <input v-model.number="heightMax" type="range" :min="meta.minZ" :max="meta.maxZ" step="0.1" @input="rebuildPoints" />
@@ -69,6 +70,7 @@ function restoreSettings () { try { const value = JSON.parse(localStorage.getIte
 function exportPng () { if (!renderer) return; const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.png`; link.href = renderer.domElement.toDataURL('image/png'); link.click() }
 function exportCsv () { if (!cloudData) return; const { x, y, z, intensity } = cloudData; const rows = ['x,y,z,intensidade']; z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) rows.push(`${x[i]},${y[i]},${value},${intensity.length ? intensity[i] : ''}`) }); const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' }); const link = document.createElement('a'); link.download = `ortomapas-nuvem-${props.product.id}.csv`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href) }
 function setView (view) { if (!points || !camera) return; const sphere = new THREE.Box3().setFromObject(points).getBoundingSphere(new THREE.Sphere()); const d = Math.max(sphere.radius * 2.2, 1); const positions = { top: [0, d, 0.01], front: [0, 0.01, d], side: [d, 0.01, 0] }; camera.position.set(...positions[view]).add(sphere.center); controls.target.copy(sphere.center); controls.update() }
+async function progressiveLoad () { sampleLimit.value = 25000; await loadCloud(); sampleLimit.value = 120000; await loadCloud() }
 
 function initScene () {
   scene = new THREE.Scene(); scene.background = new THREE.Color('#101820')
