@@ -9,6 +9,8 @@ import uuid
 import zipfile
 import shutil
 import rasterio
+import laspy
+import numpy as np
 from pyproj import Transformer
 from pathlib import Path
 from typing import List, Optional
@@ -189,6 +191,40 @@ async def import_odm_products(processing_id: int, user: dict = Depends(current_u
     except Exception as exc:
         logger.exception("ODM product import failed")
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/odm/produtos/{product_id}/points")
+async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge=1000, le=300000), user: dict = Depends(current_user)):
+    """Return a bounded LAZ sample for WebGL visualization."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True); cur.execute("SELECT p.*, COALESCE(o.projeto_id, j.projeto_id) AS projeto_id FROM produtos_processamento p LEFT JOIN ortomapas o ON o.id = p.ortomapa_id JOIN processamentos_odm j ON j.id = p.processamento_id WHERE p.id = %s AND p.tipo = 'nuvem_pontos'", (product_id,)); product = cur.fetchone()
+    if not product: raise HTTPException(status_code=404, detail="Nuvem de pontos nao encontrada")
+    require_project_role(product["projeto_id"], user, {"proprietario", "editor", "visualizador"})
+    path = Path(DATA_DIR) / product["caminho"]
+    if not path.exists(): raise HTTPException(status_code=404, detail="Arquivo LAZ nao encontrado")
+    try:
+        cloud = laspy.read(path); total = len(cloud.x); step = max(1, total // max_points); idx = slice(None, None, step)
+        xs = np.asarray(cloud.x)[idx].astype(float).tolist()
+        ys = np.asarray(cloud.y)[idx].astype(float).tolist()
+        zs = np.asarray(cloud.z)[idx].astype(float).tolist()
+        names = set(cloud.point_format.dimension_names)
+        intensity = np.asarray(cloud.intensity)[idx].astype(int).tolist() if "intensity" in names else []
+        return {"total": total, "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
+    except Exception as exc:
+        logger.exception("Point cloud sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler LAZ: {exc}")
+
+
+@router.get("/odm/produtos")
+async def list_odm_products(projeto_id: int = Query(...), user: dict = Depends(current_user)):
+    """List imported ODM products, including non-raster assets such as LAZ."""
+    require_project_role(projeto_id, user, {"proprietario", "editor", "visualizador"})
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""SELECT p.*, j.projeto_id, j.odm_task_id
+                       FROM produtos_processamento p
+                       JOIN processamentos_odm j ON j.id = p.processamento_id
+                       WHERE j.projeto_id = %s ORDER BY p.criado_em DESC, p.id DESC""", (projeto_id,))
+        return {"produtos": [dict(row) for row in cur.fetchall()]}
 
 
 @router.get("/odm/tasks/{task_id}/download/{asset}")

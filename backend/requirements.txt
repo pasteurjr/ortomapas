@@ -5,6 +5,8 @@ uvicorn[standard]>=0.30.0
 python-multipart>=0.0.9
 aiofiles>=24.0.0
 requests>=2.31.0
+laspy>=2.5.0
+lazrs>=0.6.0
 
 # Database
 mysql-connector-python>=9.0.0
