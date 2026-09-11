@@ -134,3 +134,7 @@ Cada resposta deverá conter pergunta interpretada, produtos usados, ferramentas
 ## 5. Primeira entrega de desenvolvimento
 
 A primeira implementação será a Fase 0 e a Fase 1: adaptador LM Studio, schemas de ferramentas, teste de tool calling e registro de auditoria. O desenvolvimento seguirá imediatamente para as ferramentas analíticas reais. RAG ficará deliberadamente fora do caminho crítico até as análises estarem estáveis.
+
+## 6. Ferramentas analíticas implementadas
+
+O catálogo inicial executável contém `listar_produtos`, `estatisticas_raster`, `estatisticas_laz`, `comparar_dsm_dtm`, `calcular_declividade`, `calcular_aspecto` e `gerar_hillshade`. Todas são somente leitura, exigem autorização por projeto e retornam métricas estruturadas; geração de arquivos será adicionada após aprovação humana.

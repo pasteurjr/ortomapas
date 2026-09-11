@@ -45,6 +45,18 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); return {'status':'ok','dados':[dict(r) for r in cur.fetchall()]}
+    if name in {'calcular_declividade','calcular_aspecto','gerar_hillshade'}:
+        product_id=args.get('produto_id')
+        with get_connection() as conn:
+            cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE p.id=%s AND p.tipo IN ('dsm','dtm')",(product_id,)); product=cur.fetchone()
+        if not product: raise HTTPException(status_code=404, detail='DSM/DTM nao encontrado')
+        require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'})
+        with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds: arr=ds.read(1, out_shape=(min(512,ds.height),min(512,ds.width)), resampling=rasterio.enums.Resampling.bilinear).astype(float); px=abs(ds.transform.a); py=abs(ds.transform.e)
+        gy,gx=np.gradient(arr,py,px)
+        if name == 'calcular_declividade': values=np.degrees(np.arctan(np.hypot(gx,gy)))
+        elif name == 'calcular_aspecto': values=(np.degrees(np.arctan2(-gx,gy))+360)%360
+        else: values=(np.maximum(0, np.cos(np.radians(45))*np.cos(np.arctan(np.hypot(gx,gy))) + np.sin(np.radians(45))*np.sin(np.arctan(np.hypot(gx,gy)))*np.cos(np.radians(315)-np.arctan2(gy,gx))))*255
+        return {'status':'ok','dados':{'produto_id':product_id,'operacao':name,'min':float(values.min()),'max':float(values.max()),'media':float(values.mean()),'grade':list(values.shape)}}
     if name == 'comparar_dsm_dtm':
         processing_id=args.get('processamento_id')
         with get_connection() as conn:
