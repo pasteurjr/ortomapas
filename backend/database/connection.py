@@ -11,7 +11,16 @@ from contextlib import contextmanager
 from typing import Any, Optional
 
 import mysql.connector
+import psycopg2
+from psycopg2 import pool as pg_pool
+from psycopg2.extras import RealDictCursor
 from mysql.connector import pooling, Error as MySQLError
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+except ImportError:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +38,14 @@ DB_CONFIG = {
     "autocommit": True,
     "use_pure": True,
 }
+DB_ENGINE = os.getenv("DB_ENGINE", "postgres").lower()
+PG_CONFIG = {
+    "host": os.getenv("PGHOST", os.getenv("DB_HOST", "localhost")),
+    "port": int(os.getenv("PGPORT", os.getenv("DB_PORT", "5433"))),
+    "user": os.getenv("PGUSER", os.getenv("DB_USER", "geo")),
+    "password": os.getenv("PGPASSWORD") or os.getenv("GEOAGENTICA_DB_PASSWORD") or os.getenv("DB_PASSWORD", ""),
+    "dbname": os.getenv("PGDATABASE", os.getenv("DB_NAME", "ortomapas")),
+}
 
 POOL_NAME = "ortomapas_pool"
 POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
@@ -37,16 +54,41 @@ POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
 # Connection pool (lazy initialised)
 # ---------------------------------------------------------------------------
 _pool: Optional[pooling.MySQLConnectionPool] = None
+_pg_pool: Optional[pg_pool.ThreadedConnectionPool] = None
 
 
 _use_sqlite = False
 _sqlite_conn = None
 
 
+class _PGConnWrapper:
+    """Adapt psycopg2 to the cursor(dictionary=True) API used by routers."""
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self, dictionary=False):
+        return self._conn.cursor(cursor_factory=RealDictCursor if dictionary else None)
+
+    def commit(self):
+        return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
+
+    def is_connected(self):
+        return self._conn.closed == 0
+
+
 def _get_pool():
     """Return the shared connection pool, creating it on first call.
     Falls back to SQLite if MySQL is unreachable."""
     global _pool, _use_sqlite
+    if DB_ENGINE == "postgres":
+        global _pg_pool
+        if _pg_pool is None:
+            logger.info("Creating PostgreSQL pool -> %s:%s/%s", PG_CONFIG["host"], PG_CONFIG["port"], PG_CONFIG["dbname"])
+            _pg_pool = pg_pool.ThreadedConnectionPool(1, POOL_SIZE, **PG_CONFIG)
+        return _pg_pool
     if _use_sqlite:
         return None
     if _pool is None:
@@ -75,8 +117,11 @@ def _get_pool():
 
 def reset_pool() -> None:
     """Tear down the current pool so the next call creates a fresh one."""
-    global _pool
+    global _pool, _pg_pool
     _pool = None
+    if _pg_pool is not None:
+        _pg_pool.closeall()
+        _pg_pool = None
     logger.info("Connection pool reset.")
 
 
@@ -220,6 +265,16 @@ def get_connection():
     """
     global _use_sqlite, _sqlite_conn
     pool = _get_pool()
+    if DB_ENGINE == "postgres":
+        conn = pool.getconn()
+        try:
+            yield _PGConnWrapper(conn)
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            pool.putconn(conn)
+        return
     if _use_sqlite:
         yield _SQLiteConnWrapper(_sqlite_conn)
         return
