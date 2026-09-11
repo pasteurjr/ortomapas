@@ -10,12 +10,14 @@ from typing import Optional
 
 import numpy as np
 import rasterio
+from rasterio.enums import Resampling
+from rasterio.vrt import WarpedVRT
 from rasterio.windows import from_bounds
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from PIL import Image
 
-from backend.config import ORTOMAPAS_DIR, THUMBNAILS_DIR
+from backend.config import DATA_DIR, ORTOMAPAS_DIR, THUMBNAILS_DIR
 from backend.database.connection import get_connection
 from backend.utils.file_manager import save_upload, get_file_size_mb
 from backend.utils.geo_utils import get_raster_info, get_raster_bounds
@@ -357,28 +359,31 @@ async def get_tile(ortomapa_id: int, z: int, x: int, y: int):
                 raise HTTPException(status_code=404, detail="Ortomapa nao encontrado")
 
             filepath = ortomapa.get("caminho_arquivo")
+            if filepath and not os.path.isabs(filepath):
+                filepath = os.path.join(DATA_DIR, filepath)
             if not filepath or not os.path.exists(filepath):
                 raise HTTPException(status_code=404, detail="Arquivo GeoTIFF nao encontrado")
 
-        # Convert TMS tile coordinates to geographic bounds
+        # Calculate XYZ tile bounds directly in Web Mercator (EPSG:3857).
         n = 2 ** z
-        lon_min = x / n * 360.0 - 180.0
-        lon_max = (x + 1) / n * 360.0 - 180.0
-        lat_max_rad = math.atan(math.sinh(math.pi * (1 - 2 * y / n)))
-        lat_min_rad = math.atan(math.sinh(math.pi * (1 - 2 * (y + 1) / n)))
-        lat_max = math.degrees(lat_max_rad)
-        lat_min = math.degrees(lat_min_rad)
+        world = 20037508.342789244
+        tile_span = (2 * world) / n
+        tile_left = -world + x * tile_span
+        tile_right = tile_left + tile_span
+        tile_top = world - y * tile_span
+        tile_bottom = tile_top - tile_span
 
         tile_size = 256
 
-        with rasterio.open(filepath) as dataset:
+        with rasterio.open(filepath) as source:
+          with WarpedVRT(source, crs="EPSG:3857", resampling=Resampling.bilinear) as dataset:
             # Check if tile intersects raster bounds
             raster_bounds = dataset.bounds
             if (
-                lon_max < raster_bounds.left
-                or lon_min > raster_bounds.right
-                or lat_max < raster_bounds.bottom
-                or lat_min > raster_bounds.top
+                tile_right < raster_bounds.left
+                or tile_left > raster_bounds.right
+                or tile_top < raster_bounds.bottom
+                or tile_bottom > raster_bounds.top
             ):
                 # Return transparent tile
                 img = Image.new("RGBA", (tile_size, tile_size), (0, 0, 0, 0))
@@ -388,10 +393,10 @@ async def get_tile(ortomapa_id: int, z: int, x: int, y: int):
                 return StreamingResponse(buf, media_type="image/png")
 
             # Clamp window to raster bounds
-            win_left = max(lon_min, raster_bounds.left)
-            win_bottom = max(lat_min, raster_bounds.bottom)
-            win_right = min(lon_max, raster_bounds.right)
-            win_top = min(lat_max, raster_bounds.top)
+            win_left = max(tile_left, raster_bounds.left)
+            win_bottom = max(tile_bottom, raster_bounds.bottom)
+            win_right = min(tile_right, raster_bounds.right)
+            win_top = min(tile_top, raster_bounds.top)
 
             window = from_bounds(
                 win_left, win_bottom, win_right, win_top, dataset.transform
