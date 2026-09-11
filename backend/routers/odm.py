@@ -214,6 +214,27 @@ async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge
         logger.exception("Point cloud sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler LAZ: {exc}")
 
 
+@router.get("/odm/produtos/{product_id}/surface")
+async def sample_surface(product_id: int, max_size: int = Query(128, ge=32, le=256), user: dict = Depends(current_user)):
+    """Return a bounded DSM elevation grid suitable for WebGL terrain rendering."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT p.*, COALESCE(o.projeto_id, j.projeto_id) AS projeto_id FROM produtos_processamento p LEFT JOIN ortomapas o ON o.id = p.ortomapa_id JOIN processamentos_odm j ON j.id = p.processamento_id WHERE p.id = %s AND p.tipo IN ('dsm','dtm')", (product_id,)); product = cur.fetchone()
+    if not product: raise HTTPException(status_code=404, detail="Superficie nao encontrada")
+    require_project_role(product["projeto_id"], user, {"proprietario", "editor", "visualizador"})
+    path = Path(DATA_DIR) / product["caminho"]
+    if not path.exists(): raise HTTPException(status_code=404, detail="Arquivo raster nao encontrado")
+    try:
+        with rasterio.open(path) as ds:
+            height = min(max_size, ds.height); width = min(max_size, ds.width)
+            grid = ds.read(1, out_shape=(height, width), resampling=rasterio.enums.Resampling.bilinear, masked=True)
+            values = np.asarray(grid.filled(np.nan), dtype=float); values[~np.isfinite(values)] = 0
+            bounds = ds.bounds
+            return {"width": width, "height": height, "bounds": [bounds.left, bounds.bottom, bounds.right, bounds.top], "crs": str(ds.crs) if ds.crs else None, "min": float(np.min(values)), "max": float(np.max(values)), "elevations": values.tolist()}
+    except Exception as exc:
+        logger.exception("DSM sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler DSM: {exc}")
+
+
 @router.get("/odm/produtos")
 async def list_odm_products(projeto_id: int = Query(...), user: dict = Depends(current_user)):
     """List imported ODM products, including non-raster assets such as LAZ."""

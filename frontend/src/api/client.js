@@ -96,6 +96,10 @@ export function getPointCloud(productId, maxPoints = 100000) {
   return api.get(`/odm/produtos/${productId}/points`, { params: { max_points: maxPoints }, timeout: 120000 })
 }
 
+export function getSurfaceGrid(productId, maxSize = 128) {
+  return api.get(`/odm/produtos/${productId}/surface`, { params: { max_size: maxSize }, timeout: 120000 })
+}
+
 // Ortomapas
 export function getOrtomapas(projetoId) {
   return api.get('/ortomapas', { params: { projeto_id: projetoId } })
