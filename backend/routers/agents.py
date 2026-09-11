@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from backend.agents.llm_client import LMStudioClient
 from backend.routers.auth import current_user
+from backend.agents.schemas import TOOL_CATALOG
 
 router = APIRouter()
+
+@router.get('/agents/tools')
+async def agent_tools(user: dict = Depends(current_user)):
+    return {'tools': [tool.model_dump() for tool in TOOL_CATALOG], 'count': len(TOOL_CATALOG)}
 
 @router.get('/agents/status')
 async def agent_status(user: dict = Depends(current_user)):
