@@ -307,8 +307,21 @@ async def processing_quality(processing_id: int, user: dict = Depends(current_us
         cur = conn.cursor(dictionary=True); cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,)); job = cur.fetchone(); cur.execute("SELECT tipo, tamanho_arquivo_mb FROM produtos_processamento WHERE processamento_id = %s", (processing_id,)); products = cur.fetchall()
     if not job: raise HTTPException(status_code=404, detail="Processamento nao encontrado")
     require_project_role(job['projeto_id'], user, {'proprietario', 'editor', 'visualizador'})
-    kinds = {p['tipo'] for p in products}; checks = [{'item': 'ortomosaico', 'ok': 'ortomosaico' in kinds}, {'item': 'modelo de elevacao', 'ok': bool({'dsm', 'dtm'} & kinds)}, {'item': 'nuvem de pontos', 'ok': 'nuvem_pontos' in kinds}]; score = round(sum(c['ok'] for c in checks) / len(checks) * 100)
-    return {'processamento_id': processing_id, 'score': score, 'nivel': 'bom' if score >= 80 else 'atencao', 'verificacoes': checks, 'produtos': products}
+    kinds = {p['tipo'] for p in products}; checks = [{'item': 'ortomosaico', 'ok': 'ortomosaico' in kinds}, {'item': 'modelo de elevacao', 'ok': bool({'dsm', 'dtm'} & kinds)}, {'item': 'nuvem de pontos', 'ok': 'nuvem_pontos' in kinds}]; metrics = {}
+    cloud = next((p for p in products if p['tipo'] == 'nuvem_pontos'), None)
+    if cloud:
+        try:
+            with laspy.open(Path(DATA_DIR) / cloud['caminho']) as reader: metrics['pontos_laz'] = reader.header.point_count
+        except Exception: metrics['pontos_laz'] = None
+    for kind in ('dsm', 'dtm', 'ortomosaico'):
+        item = next((p for p in products if p['tipo'] == kind), None)
+        if item:
+            try:
+                with rasterio.open(Path(DATA_DIR) / item['caminho']) as ds: metrics[f'{kind}_pixels'] = ds.width * ds.height; metrics[f'{kind}_resolucao'] = abs(ds.transform.a)
+            except Exception: pass
+    if metrics.get('pontos_laz', 0) < 100000: checks[2]['ok'] = False
+    score = round(sum(c['ok'] for c in checks) / len(checks) * 100)
+    return {'processamento_id': processing_id, 'score': score, 'nivel': 'bom' if score >= 80 else 'atencao', 'verificacoes': checks, 'metricas': metrics, 'produtos': products}
 
 
 @router.get("/odm/tasks/{task_id}/download/{asset}")
