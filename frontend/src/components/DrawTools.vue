@@ -186,6 +186,7 @@ async function saveAnnotation() {
       rotulo: form.rotulo,
       descricao: form.descricao,
       geometria_wkt: drawnGeometry.value,
+      atributos: mapStore.clipBbox ? { recorte_bbox: mapStore.clipBbox, fonte_produto: ortomapa.tipo } : {},
     })
     await projectStore.fetchAnotacoes()
     cancelAnnotation()

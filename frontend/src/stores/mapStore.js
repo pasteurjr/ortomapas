@@ -14,7 +14,7 @@ export const useMapStore = defineStore('map', {
     compareLeft: null,
     compareRight: null,
     pourPointCallback: null,
-    clipBbox: null,
+    clipBbox: (() => { try { return JSON.parse(localStorage.getItem('ortomapas.clipBbox') || 'null') } catch { return null } })(),
   }),
 
   getters: {
@@ -86,7 +86,7 @@ export const useMapStore = defineStore('map', {
       this.pourPointCallback = callback
     },
 
-    setClipBbox(bbox) { this.clipBbox = bbox },
+    setClipBbox(bbox) { this.clipBbox = bbox; try { localStorage.setItem('ortomapas.clipBbox', JSON.stringify(bbox)) } catch {} },
 
     handleMapClick(lat, lng) {
       if (this.pourPointCallback) {
