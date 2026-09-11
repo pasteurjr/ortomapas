@@ -1,5 +1,6 @@
 <template>
-  <div class="app-layout">
+  <LoginView v-if="!authenticated" @authenticated="onAuthenticated" />
+  <div v-else class="app-layout">
     <!-- Top Toolbar -->
     <header class="toolbar">
       <div class="toolbar-left">
@@ -130,6 +131,7 @@ import CompareView from './components/CompareView.vue'
 import AgentStatus from './components/AgentStatus.vue'
 import AnalysisForm from './components/AnalysisForm.vue'
 import ExportDialog from './components/ExportDialog.vue'
+import LoginView from './components/LoginView.vue'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
@@ -140,6 +142,9 @@ const searchQuery = ref('')
 const selectedProjectId = ref(null)
 const showAnalysisForm = ref(false)
 const showExportDialog = ref(false)
+const authenticated = ref(Boolean(localStorage.getItem('ortomapas_token')))
+
+function onAuthenticated() { authenticated.value = true; projectStore.fetchProjects() }
 
 const projectOptions = computed(() =>
   projectStore.projects.map((p) => ({ label: p.nome, value: p.id }))
@@ -158,7 +163,7 @@ provide('showAnalysisForm', showAnalysisForm)
 provide('showExportDialog', showExportDialog)
 
 onMounted(() => {
-  projectStore.fetchProjects()
+  if (authenticated.value) projectStore.fetchProjects()
 })
 </script>
 

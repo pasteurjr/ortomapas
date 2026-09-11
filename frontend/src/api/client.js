@@ -8,6 +8,12 @@ const api = axios.create({
   },
 })
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ortomapas_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -39,6 +45,14 @@ export function deleteProject(id) {
 
 export function searchProjects(q) {
   return api.get('/projetos/search', { params: { q } })
+}
+
+export function login(data) {
+  return api.post('/auth/login', data)
+}
+
+export function registerUser(data) {
+  return api.post('/auth/register', data)
 }
 
 // Voos (Flights)
