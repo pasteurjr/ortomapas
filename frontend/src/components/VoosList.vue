@@ -25,6 +25,14 @@
 
     <input ref="photoInput" type="file" accept=".jpg,.jpeg,.tif,.tiff" multiple hidden @change="uploadPhotos" />
 
+    <Dialog v-model:visible="showOdmDialog" header="Processar fotos no ODM" :modal="true" :style="{ width: '420px' }">
+      <p class="dialog-help">{{ selectedFiles.length }} foto(s) selecionada(s) para o voo {{ selectedVoo?.id }}.</p>
+      <div class="form-group"><label>Redimensionar para (px)</label><InputText v-model.number="odmResize" type="number" min="0" class="w-full" /></div>
+      <div class="form-group"><label><input v-model="odmFast" type="checkbox" /> Gerar ortofoto rápida</label></div>
+      <div class="form-group"><label><input v-model="odmSkip3d" type="checkbox" /> Não gerar modelo 3D</label></div>
+      <template #footer><Button label="Cancelar" severity="secondary" @click="showOdmDialog = false" /><Button label="Iniciar processamento" icon="pi pi-play" :loading="odmLoading" @click="submitOdm" /></template>
+    </Dialog>
+
     <div v-if="loading" class="loading-state">
       <ProgressSpinner style="width: 20px; height: 20px" strokeWidth="4" />
       <span>Carregando...</span>
@@ -125,6 +133,12 @@ const loading = ref(false)
 const showNewVoo = ref(false)
 const photoInput = ref(null)
 const selectedVoo = ref(null)
+const selectedFiles = ref([])
+const showOdmDialog = ref(false)
+const odmLoading = ref(false)
+const odmResize = ref(1200)
+const odmFast = ref(true)
+const odmSkip3d = ref(true)
 const newVoo = ref({
   data_voo: '',
   drone: '',
@@ -183,18 +197,32 @@ function choosePhotos(voo) {
 async function uploadPhotos(event) {
   const files = Array.from(event.target.files || [])
   if (!files.length || !selectedVoo.value || !projectStore.activeProject) return
+  selectedFiles.value = files
+  showOdmDialog.value = true
+  event.target.value = ''
+}
+
+async function submitOdm() {
+  if (!selectedFiles.value.length || !selectedVoo.value || !projectStore.activeProject) return
   const form = new FormData()
-  files.forEach((file) => form.append('images', file))
+  selectedFiles.value.forEach((file) => form.append('images', file))
   form.append('projeto_id', projectStore.activeProject.id)
   form.append('voo_id', selectedVoo.value.id)
   form.append('name', `${projectStore.activeProject.nome} - Voo ${selectedVoo.value.id}`)
+  const options = []
+  if (odmResize.value) options.push({ name: 'resize-to', value: Number(odmResize.value) })
+  if (odmFast.value) options.push({ name: 'fast-orthophoto', value: true })
+  if (odmSkip3d.value) options.push({ name: 'skip-3dmodel', value: true })
+  form.append('options', JSON.stringify(options))
+  odmLoading.value = true
   try {
     await createOdmTask(form)
+    showOdmDialog.value = false
     window.alert('Fotos enviadas. O processamento ODM foi iniciado.')
   } catch (e) {
     window.alert(e.response?.data?.detail || 'Falha ao iniciar processamento ODM')
   } finally {
-    event.target.value = ''
+    odmLoading.value = false
   }
 }
 
