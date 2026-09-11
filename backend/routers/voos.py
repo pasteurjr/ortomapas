@@ -93,6 +93,7 @@ async def create_voo(data: dict, user: dict = Depends(current_user)):
                     condicoes_vento, condicoes_ceu, temperatura_c,
                     app_voo, observacoes, criado_em
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
                 """,
                 (
                     projeto_id,
@@ -119,7 +120,7 @@ async def create_voo(data: dict, user: dict = Depends(current_user)):
                 ),
             )
             conn.commit()
-            new_id = cursor.lastrowid
+            new_id = cursor.fetchone()["id"]
 
             cursor.execute("SELECT * FROM voos WHERE id = %s", (new_id,))
             voo = cursor.fetchone()

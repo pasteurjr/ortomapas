@@ -140,6 +140,7 @@ async def create_projeto(data: dict, user: dict = Depends(current_user)):
                 """
                 INSERT INTO projetos (nome, descricao, area_estudo, status, criado_em)
                 VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
                 """,
                 (
                     nome,
@@ -150,7 +151,7 @@ async def create_projeto(data: dict, user: dict = Depends(current_user)):
                 ),
             )
             conn.commit()
-            new_id = cursor.lastrowid
+            new_id = cursor.fetchone()["id"]
 
             cursor.execute("INSERT INTO projeto_usuarios (projeto_id, usuario_id, papel) VALUES (%s, %s, 'proprietario') ON CONFLICT (projeto_id, usuario_id) DO NOTHING", (new_id, user["id"]))
             conn.commit()
