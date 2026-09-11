@@ -29,7 +29,10 @@
       <p class="dialog-help">{{ selectedFiles.length }} foto(s) selecionada(s) para o voo {{ selectedVoo?.id }}.</p>
       <div class="form-group"><label>Redimensionar para (px)</label><InputText v-model.number="odmResize" type="number" min="0" class="w-full" /></div>
       <div class="form-group"><label><input v-model="odmFast" type="checkbox" /> Gerar ortofoto rápida</label></div>
-      <div class="form-group"><label><input v-model="odmSkip3d" type="checkbox" /> Não gerar modelo 3D</label></div>
+      <div class="form-group"><label><input v-model="odmDsm" type="checkbox" /> Gerar DSM (superfície)</label></div>
+      <div class="form-group"><label><input v-model="odmDtm" type="checkbox" /> Gerar DTM (terreno)</label></div>
+      <div class="form-group"><label><input v-model="odmPointCloud" type="checkbox" /> Gerar nuvem de pontos LAZ</label></div>
+      <div class="form-group"><label><input v-model="odmSkip3d" type="checkbox" /> Não gerar modelo 3D texturizado</label></div>
       <template #footer><Button label="Cancelar" severity="secondary" @click="showOdmDialog = false" /><Button label="Iniciar processamento" icon="pi pi-play" :loading="odmLoading" @click="submitOdm" /></template>
     </Dialog>
 
@@ -139,6 +142,9 @@ const odmLoading = ref(false)
 const odmResize = ref(1200)
 const odmFast = ref(true)
 const odmSkip3d = ref(true)
+const odmDsm = ref(true)
+const odmDtm = ref(true)
+const odmPointCloud = ref(true)
 const newVoo = ref({
   data_voo: '',
   drone: '',
@@ -213,6 +219,9 @@ async function submitOdm() {
   if (odmResize.value) options.push({ name: 'resize-to', value: Number(odmResize.value) })
   if (odmFast.value) options.push({ name: 'fast-orthophoto', value: true })
   if (odmSkip3d.value) options.push({ name: 'skip-3dmodel', value: true })
+  if (odmDsm.value) options.push({ name: 'dsm', value: true })
+  if (odmDtm.value) options.push({ name: 'dtm', value: true })
+  if (odmPointCloud.value) options.push({ name: 'pc-las', value: true })
   form.append('options', JSON.stringify(options))
   odmLoading.value = true
   try {

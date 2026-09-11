@@ -84,6 +84,10 @@ export function getOdmProcessamentos(projetoId) {
   return api.get('/odm/processamentos', { params: { projeto_id: projetoId } })
 }
 
+export function importOdmProducts(processingId) {
+  return api.post(`/odm/processamentos/${processingId}/importar`)
+}
+
 // Ortomapas
 export function getOrtomapas(projetoId) {
   return api.get('/ortomapas', { params: { projeto_id: projetoId } })
