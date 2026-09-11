@@ -6,6 +6,10 @@ import logging
 import os
 import re
 import uuid
+import zipfile
+import shutil
+import rasterio
+from pyproj import Transformer
 from pathlib import Path
 from typing import List, Optional
 
@@ -132,6 +136,59 @@ async def list_processamentos(projeto_id: int = Query(...), user: dict = Depends
                 pass
         conn.commit()
     return {"total": len(jobs), "processamentos": jobs}
+
+
+@router.post("/odm/processamentos/{processing_id}/importar")
+async def import_odm_products(processing_id: int, user: dict = Depends(current_user)):
+    """Download and catalog products from a completed NodeODM task."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,)); job = cur.fetchone()
+        if not job: raise HTTPException(status_code=404, detail="Processamento nao encontrado")
+        require_project_role(job["projeto_id"], user, {"proprietario", "editor"})
+        cur.execute("SELECT id FROM produtos_processamento WHERE processamento_id = %s", (processing_id,))
+        if cur.fetchone(): return {"processing_id": processing_id, "message": "Produtos ja importados"}
+    try:
+        response = requests.get(f"{job['endpoint']}/task/{job['odm_task_id']}/download/all.zip", timeout=300)
+        response.raise_for_status()
+        work = ODM_UPLOADS_DIR / f"import_{processing_id}_{uuid.uuid4().hex[:8]}"; work.mkdir(parents=True)
+        archive = work / "results.zip"; archive.write_bytes(response.content)
+        with zipfile.ZipFile(archive) as zf:
+            for member in zf.infolist():
+                target = (work / member.filename).resolve()
+                if not str(target).startswith(str(work.resolve()) + os.sep): raise HTTPException(status_code=400, detail="Arquivo invalido no pacote ODM")
+            zf.extractall(work)
+        extracted = work / "odm_orthophoto" / "odm_orthophoto.tif"
+        if not extracted.exists(): raise HTTPException(status_code=422, detail="Ortofoto nao encontrada no resultado ODM")
+        products = []
+        for candidate, kind in [(extracted, "ortomosaico"), (work / "odm_dem" / "dsm.tif", "dsm"), (work / "odm_dem" / "dtm.tif", "dtm")]:
+            if candidate.exists(): products.append((candidate, kind))
+        stored = []
+        with get_connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            for source, kind in products:
+                destination = Path(DATA_DIR) / "ortomapas" / f"odm_{processing_id}_{kind}.tif"; shutil.copy2(source, destination)
+                with rasterio.open(destination) as ds:
+                    bounds = ds.bounds; crs = str(ds.crs) if ds.crs else None
+                    if ds.crs and ds.crs.to_epsg() != 4326:
+                        tx = Transformer.from_crs(ds.crs, "EPSG:4326", always_xy=True); west, south = tx.transform(bounds.left, bounds.bottom); east, north = tx.transform(bounds.right, bounds.top)
+                    else: west, south, east, north = bounds.left, bounds.bottom, bounds.right, bounds.top
+                    cur.execute("INSERT INTO ortomapas (voo_id, projeto_id, nome, tipo, formato, resolucao_cm, largura_px, altura_px, tamanho_arquivo_mb, sistema_coordenadas, bbox_norte, bbox_sul, bbox_leste, bbox_oeste, centro_lat, centro_lon, caminho_arquivo, webodm_task_id, status, data_processamento) VALUES (%s,%s,%s,%s,'GeoTIFF',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'disponivel',now()) RETURNING id", (job["voo_id"], job["projeto_id"], f"ODM {kind} {job['odm_task_id'][:8]}", kind, abs(ds.transform.a) * 100, ds.width, ds.height, destination.stat().st_size / 1048576, crs, north, south, east, west, (north + south) / 2, (east + west) / 2, str(destination.relative_to(DATA_DIR)), job["odm_task_id"]))
+                    orto_id = cur.fetchone()["id"]
+                    cur.execute("INSERT INTO produtos_processamento (processamento_id, ortomapa_id, tipo, caminho, formato, tamanho_arquivo_mb, crs, resolucao, largura_px, altura_px, bandas) VALUES (%s,%s,%s,%s,'GeoTIFF',%s,%s,%s,%s,%s,%s)", (processing_id, orto_id, kind, str(destination.relative_to(DATA_DIR)), destination.stat().st_size / 1048576, crs, abs(ds.transform.a), ds.width, ds.height, ds.count))
+                    stored.append({"id": orto_id, "tipo": kind, "caminho": str(destination.relative_to(DATA_DIR))})
+            for source, kind in [(work / "odm_report" / "report.pdf", "relatorio"), (work / "odm_georeferencing" / "odm_georeferenced_model.laz", "nuvem_pontos")]:
+                if source.exists():
+                    destination = Path(DATA_DIR) / "exports" / f"odm_{processing_id}_{kind}{source.suffix}"; shutil.copy2(source, destination)
+                    cur.execute("INSERT INTO produtos_processamento (processamento_id, tipo, caminho, formato, tamanho_arquivo_mb) VALUES (%s,%s,%s,%s,%s)", (processing_id, kind, str(destination.relative_to(DATA_DIR)), source.suffix.lstrip('.').upper(), destination.stat().st_size / 1048576))
+            cur.execute("UPDATE processamentos_odm SET status = 'concluido', atualizado_em = now() WHERE id = %s", (processing_id,)); conn.commit()
+        return {"processing_id": processing_id, "produtos": stored, "message": "Produtos importados"}
+    except HTTPException: raise
+    except (requests.RequestException, zipfile.BadZipFile) as exc:
+        raise HTTPException(status_code=502, detail=f"Falha ao obter resultado ODM: {exc}")
+    except Exception as exc:
+        logger.exception("ODM product import failed")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/odm/tasks/{task_id}/download/{asset}")
