@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS tarefas_agentes (
  agente VARCHAR(255) NOT NULL, prioridade INTEGER DEFAULT 5, parametros JSONB, status VARCHAR(30) DEFAULT 'pendente', resultado JSONB, erro_msg TEXT,
  tentativas INTEGER DEFAULT 0, max_tentativas INTEGER DEFAULT 3, inicio_execucao TIMESTAMPTZ, fim_execucao TIMESTAMPTZ, criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS copilot_threads (
+ id BIGSERIAL PRIMARY KEY, projeto_id BIGINT REFERENCES projetos(id) ON DELETE CASCADE, usuario_id BIGINT REFERENCES usuarios(id) ON DELETE CASCADE,
+ titulo VARCHAR(255), resumo TEXT, estado JSONB NOT NULL DEFAULT '{}'::jsonb, criado_em TIMESTAMPTZ NOT NULL DEFAULT now(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS copilot_messages (
+ id BIGSERIAL PRIMARY KEY, thread_id BIGINT NOT NULL REFERENCES copilot_threads(id) ON DELETE CASCADE, papel VARCHAR(20) NOT NULL, conteudo TEXT NOT NULL,
+ ferramentas JSONB, criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS copilot_memorias (
+ id BIGSERIAL PRIMARY KEY, projeto_id BIGINT NOT NULL REFERENCES projetos(id) ON DELETE CASCADE, usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+ chave VARCHAR(255) NOT NULL, valor JSONB NOT NULL, origem VARCHAR(50) DEFAULT 'copiloto', atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(projeto_id, usuario_id, chave)
+);
 CREATE TABLE IF NOT EXISTS metricas_processamento (
  processamento_id BIGINT PRIMARY KEY REFERENCES processamentos_odm(id) ON DELETE CASCADE, imagens_recebidas INTEGER, imagens_usadas INTEGER,
  gsd_cm DOUBLE PRECISION, erro_rms DOUBLE PRECISION, pontos BIGINT, tempo_segundos DOUBLE PRECISION, alertas JSONB, criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
