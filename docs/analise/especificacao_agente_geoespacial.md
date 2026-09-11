@@ -165,7 +165,7 @@ Será armazenada por projeto:
 
 O armazenamento primário será relacional. `pgvector` será usado para recuperar contexto semântico de documentos, relatórios e observações, mantendo sempre referência ao registro original.
 
-### RAG
+### RAG (fase final)
 
 RAG será usado para conhecimento textual e metadados:
 
@@ -177,7 +177,7 @@ RAG será usado para conhecimento textual e metadados:
 - legislação ou normas fornecidas pelo usuário;
 - histórico de análises.
 
-RAG não substituirá o processamento raster ou vetorial. Pixels, geometrias e pontos serão consultados pelas ferramentas analíticas, não transformados integralmente em texto.
+RAG não substituirá o processamento raster ou vetorial. Pixels, geometrias e pontos serão consultados pelas ferramentas analíticas, não transformados integralmente em texto. Como existe um modelo fine-tuned em desenvolvimento para análise geoespacial, o RAG ficará para a fase final, depois que as ferramentas, contexto e memória operacional estiverem estáveis.
 
 ## 10. Agentes detalhados
 

@@ -41,16 +41,15 @@ Implementar o Ortomapas Copilot com contexto, memória, RAG e ferramentas geoesp
 
 **Aceite:** uma conversa interrompida pode ser retomada mantendo projeto, área, ferramentas e resultados anteriores.
 
-### Fase 3 — RAG documental
+### Fase 3 — Contexto de sessão e projeto
 
-- habilitar `pgvector` no PostgreSQL;
-- criar tabelas de documentos e chunks;
-- importar Markdown, PDF, relatórios ODM e manuais;
-- gerar embeddings localmente;
-- recuperar trechos por projeto, fonte, versão e CRS;
-- apresentar referências usadas na resposta.
+- carregar projeto, voo, produtos e bbox ativos;
+- persistir histórico resumido da conversa;
+- registrar parâmetros e resultados anteriores;
+- manter estado de tarefas no PostgreSQL;
+- permitir retomada de análises interrompidas.
 
-**Aceite:** o agente responde uma pergunta técnica usando trechos recuperados e informa a fonte, sem usar RAG para calcular pixels ou geometrias.
+**Aceite:** uma nova pergunta usa corretamente o contexto do projeto e não exige repetição dos identificadores.
 
 ### Fase 4 — Ferramentas geoespaciais de leitura
 
@@ -109,6 +108,15 @@ Implementar o Ortomapas Copilot com contexto, memória, RAG e ferramentas geoesp
 
 **Aceite:** o usuário faz uma pergunta completa, acompanha o plano, aprova operações, visualiza o resultado e baixa um relatório rastreável.
 
+### Fase 9 — RAG documental (final)
+
+- habilitar `pgvector`;
+- indexar documentação, manuais, relatórios e normas;
+- recuperar contexto por projeto, fonte, versão e CRS;
+- apresentar referências na resposta.
+
+**Aceite:** o agente usa RAG apenas para explicações e conhecimento documental, sem substituir cálculos raster, vetoriais ou de nuvem.
+
 ## 3. Limites do agente
 
 - não executar SQL livre;
@@ -125,5 +133,4 @@ Cada resposta deverá conter pergunta interpretada, produtos usados, ferramentas
 
 ## 5. Primeira entrega de desenvolvimento
 
-A primeira implementação será a Fase 0 e a Fase 1: adaptador LM Studio, schemas de ferramentas, teste de tool calling e registro de auditoria. Somente depois serão habilitadas ferramentas que leem ou alteram dados reais.
-
+A primeira implementação será a Fase 0 e a Fase 1: adaptador LM Studio, schemas de ferramentas, teste de tool calling e registro de auditoria. O desenvolvimento seguirá imediatamente para as ferramentas analíticas reais. RAG ficará deliberadamente fora do caminho crítico até as análises estarem estáveis.
