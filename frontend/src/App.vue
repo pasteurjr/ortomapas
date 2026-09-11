@@ -60,6 +60,7 @@
             </div>
           </div>
           <VoosList />
+          <OdmTasks />
           <AnalysisResults />
         </div>
       </aside>
@@ -132,6 +133,7 @@ import AgentStatus from './components/AgentStatus.vue'
 import AnalysisForm from './components/AnalysisForm.vue'
 import ExportDialog from './components/ExportDialog.vue'
 import LoginView from './components/LoginView.vue'
+import OdmTasks from './components/OdmTasks.vue'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()

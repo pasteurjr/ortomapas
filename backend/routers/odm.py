@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import requests
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query
 
 from backend.config import DATA_DIR, NODEODM_URL
 from backend.database.connection import get_connection
@@ -109,6 +109,29 @@ async def get_odm_task(task_id: str):
         raise
     except requests.RequestException as exc:
         raise HTTPException(status_code=502, detail=f"NodeODM indisponivel: {exc}")
+
+
+@router.get("/odm/processamentos")
+async def list_processamentos(projeto_id: int = Query(...), user: dict = Depends(current_user)):
+    """List local ODM jobs and refresh their state from NodeODM."""
+    require_project_role(projeto_id, user, {"proprietario", "editor", "visualizador"})
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM processamentos_odm WHERE projeto_id = %s ORDER BY criado_em DESC", (projeto_id,))
+        jobs = [dict(row) for row in cur.fetchall()]
+        for job in jobs:
+            try:
+                info_response = requests.get(f"{job['endpoint']}/task/{job['odm_task_id']}/info", timeout=10)
+                if info_response.ok:
+                    info = info_response.json(); code = (info.get("status") or {}).get("code")
+                    status = {10: "pendente", 20: "processando", 30: "erro", 40: "concluido", 50: "cancelado"}.get(code, job["status"])
+                    etapa = (info.get("status") or {}).get("name")
+                    cur.execute("UPDATE processamentos_odm SET status = %s, progresso = %s, etapa = %s, atualizado_em = now() WHERE id = %s", (status, info.get("progress", 0), etapa, job["id"]))
+                    job.update(status=status, progresso=info.get("progress", 0), etapa=etapa)
+            except requests.RequestException:
+                pass
+        conn.commit()
+    return {"total": len(jobs), "processamentos": jobs}
 
 
 @router.get("/odm/tasks/{task_id}/download/{asset}")

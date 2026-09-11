@@ -80,6 +80,10 @@ export function createOdmTask(formData) {
   return api.post('/odm/tasks', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000 })
 }
 
+export function getOdmProcessamentos(projetoId) {
+  return api.get('/odm/processamentos', { params: { projeto_id: projetoId } })
+}
+
 // Ortomapas
 export function getOrtomapas(projetoId) {
   return api.get('/ortomapas', { params: { projeto_id: projetoId } })
