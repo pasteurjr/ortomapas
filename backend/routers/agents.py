@@ -45,6 +45,14 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); return {'status':'ok','dados':[dict(r) for r in cur.fetchall()]}
+    if name == 'perfil_altimetrico':
+        product_id=args.get('produto_id')
+        with get_connection() as conn:
+            cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE p.id=%s AND p.tipo IN ('dsm','dtm')",(product_id,)); product=cur.fetchone()
+        if not product: raise HTTPException(status_code=404, detail='DSM/DTM nao encontrado')
+        require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'})
+        with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds: arr=ds.read(1,out_shape=(1,min(512,ds.height),min(512,ds.width)),resampling=rasterio.enums.Resampling.bilinear)[0]
+        profile=np.nanmean(arr,axis=0); return {'status':'ok','dados':{'produto_id':product_id,'elevacoes':profile.tolist(),'pontos':len(profile)}}
     if name == 'calcular_volume':
         product_id=args.get('produto_id'); cota=float(args.get('cota'))
         with get_connection() as conn:
