@@ -250,6 +250,28 @@ async def list_odm_products(projeto_id: int = Query(...), user: dict = Depends(c
         return {"produtos": [dict(row) for row in cur.fetchall()]}
 
 
+@router.get("/odm/processamentos/{processing_id}/elevacao-diferenca")
+async def elevation_difference(processing_id: int, max_size: int = Query(128, ge=32, le=256), user: dict = Depends(current_user)):
+    """Compare DSM and DTM from one processing and return a bounded difference grid."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True); cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,)); job = cur.fetchone()
+        cur.execute("SELECT * FROM produtos_processamento WHERE processamento_id = %s AND tipo IN ('dsm','dtm')", (processing_id,)); products = {r['tipo']: r for r in cur.fetchall()}
+    if not job or not {'dsm', 'dtm'}.issubset(products): raise HTTPException(status_code=404, detail="DSM e DTM nao encontrados")
+    require_project_role(job['projeto_id'], user, {'proprietario', 'editor', 'visualizador'})
+    try:
+        with rasterio.open(Path(DATA_DIR) / products['dsm']['caminho']) as dsm, rasterio.open(Path(DATA_DIR) / products['dtm']['caminho']) as dtm:
+            height = min(max_size, dsm.height, dtm.height); width = min(max_size, dsm.width, dtm.width)
+            a = dsm.read(1, out_shape=(height, width), resampling=rasterio.enums.Resampling.bilinear, masked=True).filled(np.nan)
+            b = dtm.read(1, out_shape=(height, width), resampling=rasterio.enums.Resampling.bilinear, masked=True).filled(np.nan)
+            diff = np.asarray(a - b, dtype=float); valid = diff[np.isfinite(diff)]
+            if not valid.size: raise HTTPException(status_code=422, detail="Produtos sem dados validos")
+            diff[~np.isfinite(diff)] = 0
+            return {'width': width, 'height': height, 'min': float(valid.min()), 'max': float(valid.max()), 'mean': float(valid.mean()), 'bounds': [dsm.bounds.left, dsm.bounds.bottom, dsm.bounds.right, dsm.bounds.top], 'differences': diff.tolist()}
+    except HTTPException: raise
+    except Exception as exc:
+        logger.exception("Elevation comparison failed"); raise HTTPException(status_code=500, detail=f"Falha ao comparar DSM e DTM: {exc}")
+
+
 @router.get("/odm/tasks/{task_id}/download/{asset}")
 async def download_odm_asset(task_id: str, asset: str):
     """Expose a validated download URL for a NodeODM asset."""
