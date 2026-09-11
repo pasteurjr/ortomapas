@@ -9,6 +9,7 @@ import uuid
 import zipfile
 import shutil
 import time
+from fastapi.responses import FileResponse
 import rasterio
 import laspy
 import numpy as np
@@ -264,6 +265,17 @@ async def list_odm_products(projeto_id: int = Query(...), user: dict = Depends(c
                        JOIN processamentos_odm j ON j.id = p.processamento_id
                        WHERE j.projeto_id = %s ORDER BY p.criado_em DESC, p.id DESC""", (projeto_id,))
         return {"produtos": [dict(row) for row in cur.fetchall()]}
+
+
+@router.get("/odm/produtos/{product_id}/download")
+async def download_product(product_id: int, user: dict = Depends(current_user)):
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id = p.processamento_id WHERE p.id = %s", (product_id,)); product = cur.fetchone()
+    if not product: raise HTTPException(status_code=404, detail="Produto nao encontrado")
+    require_project_role(product['projeto_id'], user, {'proprietario', 'editor', 'visualizador'})
+    path = Path(DATA_DIR) / product['caminho']
+    if not path.exists(): raise HTTPException(status_code=404, detail="Arquivo nao encontrado")
+    return FileResponse(path, filename=path.name, media_type='application/pdf' if product['tipo'] == 'relatorio' else 'application/octet-stream')
 
 
 @router.get("/odm/processamentos/{processing_id}/elevacao-diferenca")

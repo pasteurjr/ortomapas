@@ -104,6 +104,10 @@ export function getElevationDifference(processingId, maxSize = 128) {
   return api.get(`/odm/processamentos/${processingId}/elevacao-diferenca`, { params: { max_size: maxSize }, timeout: 120000 })
 }
 
+export function downloadOdmProduct(productId) {
+  return api.get(`/odm/produtos/${productId}/download`, { responseType: 'blob', timeout: 120000 })
+}
+
 // Ortomapas
 export function getOrtomapas(projetoId) {
   return api.get('/ortomapas', { params: { projeto_id: projetoId } })
