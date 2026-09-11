@@ -37,3 +37,15 @@ Confirmar que o NodeODM instalado pelo `docker-compose.yml` aceita imagens reais
 ## Conclusao
 
 O serviço NodeODM está funcional para processamento fotogramétrico real. O teste valida a infraestrutura WebODM/NodeODM e o banco PostgreSQL compartilhado, mas não valida integração automática com a aplicação Ortomapas: o código da aplicação ainda não chama a API ODM nem importa esses produtos para o visualizador.
+
+## Teste completo de produtos
+
+Foi executada uma segunda tarefa com `dsm=true`, `dtm=true`, `pc-las=true` e `skip-3dmodel=true`:
+
+- UUID: `f7563d3d-f68c-400a-a11f-bb5991d3d424`
+- 77 imagens; status `40`; progresso `100%`
+- Tempo: aproximadamente 14min35s
+- Processamento local: `processamentos_odm.id=2`
+- Produtos catalogados: ortomosaico (89 MB), DSM (60 MB), DTM (72 MB), LAZ (57 MB) e relatório PDF (15 MB)
+
+Esse teste confirma o fluxo completo de geração e importação dos produtos. A visualização no mapa e a execução das análises sobre esses novos registros ainda exigem a correção do tile server e a integração das camadas no frontend.
