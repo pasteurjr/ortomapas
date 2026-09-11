@@ -29,6 +29,7 @@ ODM_UPLOADS_DIR = Path(DATA_DIR) / "odm_uploads"
 ODM_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 _POINT_CACHE = {}
 _POINT_CACHE_TTL = 300
+_POINT_CACHE_MAX = 8
 
 
 def _safe_name(name: str) -> str:
@@ -222,6 +223,8 @@ async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge
         if not xs: raise HTTPException(status_code=422, detail="Recorte sem pontos")
         result = {"total": total, "candidates": len(candidates), "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
         _POINT_CACHE[cache_key] = (time.time(), result)
+        while len(_POINT_CACHE) > _POINT_CACHE_MAX:
+            oldest = min(_POINT_CACHE, key=lambda key: _POINT_CACHE[key][0]); _POINT_CACHE.pop(oldest, None)
         return result
     except Exception as exc:
         logger.exception("Point cloud sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler LAZ: {exc}")
