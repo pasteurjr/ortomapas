@@ -3,10 +3,13 @@ Main FastAPI application for the Sistema de Ortomapas.
 """
 
 import logging
+import time
+from collections import defaultdict, deque
 from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import DATA_DIR, API_HOST, API_PORT
@@ -17,6 +20,17 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, limit=120, window=60):
+        super().__init__(app); self.limit=limit; self.window=window; self.hits=defaultdict(deque)
+    async def dispatch(self, request, call_next):
+        key=request.client.host if request.client else 'unknown'; now=time.monotonic(); q=self.hits[key]
+        while q and now-q[0] > self.window: q.popleft()
+        if len(q) >= self.limit:
+            from fastapi.responses import JSONResponse
+            return JSONResponse({'detail':'Limite de requisicoes excedido'}, status_code=429, headers={'Retry-After':str(self.window)})
+        q.append(now); return await call_next(request)
 
 app = FastAPI(
     title="Sistema de Ortomapas",
@@ -32,6 +46,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware)
 
 # Mount static files from data/ at /data
 app.mount("/data", StaticFiles(directory=DATA_DIR), name="data")
@@ -81,6 +96,20 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0",
     }
+
+@app.get("/health/ready", tags=["Health"])
+async def readiness_check():
+    checks = {'database': False, 'lm_studio': False}
+    try:
+        from backend.database.connection import get_connection
+        with get_connection() as conn:
+            cur=conn.cursor(); cur.execute('SELECT 1'); checks['database']=True
+    except Exception: pass
+    try:
+        from backend.agents.llm_client import LMStudioClient
+        checks['lm_studio']=bool(LMStudioClient().models().get('data'))
+    except Exception: pass
+    return {'status':'ready' if all(checks.values()) else 'degraded', 'checks':checks, 'timestamp':datetime.utcnow().isoformat()}
 
 
 if __name__ == "__main__":
