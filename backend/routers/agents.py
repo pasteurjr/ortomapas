@@ -59,6 +59,17 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
                 try: direct = {'tool':'calcular_declividade','result':await execute_tool({'name':'calcular_declividade','arguments':{'produto_id':dsm['id']}}, user)}
                 except HTTPException as exc: direct = {'tool':'calcular_declividade','error':exc.detail}
                 tool_results.append(direct); messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultado da ferramenta: {direct}. Responda com base nesse resultado.'}]); result, telemetry_final = client.complete(messages, []); telemetry = {**telemetry, 'declividade_direta': telemetry_final}
+        if project_id and not result.tool_calls and ('aspecto' in prompt.lower() or 'volume' in prompt.lower()):
+            dsm = next((p for p in produtos if p.get('tipo') == 'dsm'), None)
+            if dsm:
+                if 'aspecto' in prompt.lower(): name, args = 'calcular_aspecto', {'produto_id': dsm['id']}
+                else:
+                    import re
+                    match = re.search(r'cota\s*(-?\d+(?:[\.,]\d+)?)', prompt.lower()); cota = float(match.group(1).replace(',', '.')) if match else 0.0
+                    name, args = 'calcular_volume', {'produto_id': dsm['id'], 'cota': cota}
+                try: direct = {'tool':name,'result':await execute_tool({'name':name,'arguments':args}, user)}
+                except HTTPException as exc: direct = {'tool':name,'error':exc.detail}
+                tool_results.append(direct); messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultado da ferramenta: {direct}. Responda com base nesse resultado.'}]); result, telemetry_final = client.complete(messages, []); telemetry = {**telemetry, f'{name}_direta': telemetry_final}
         # Permite encadear descoberta de produto -> analise, sem loops longos.
         for _ in range(3):
             if not result.tool_calls: break
