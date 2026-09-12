@@ -42,6 +42,12 @@ O teste cria um usuario e um projeto temporarios, acessa a aplicacao, seleciona 
 
 **Resultado:** aprovado. O backend recebeu a geometria, o modelo selecionou `buffer_geometria`, a resposta foi exibida no chat e uma nova camada foi desenhada no mapa.
 
+### 5. Camada persistida e exportacao
+
+![Camada persistida e exportacao](evidencias/05-camada-persistida-exportacao.png)
+
+**Resultado:** aprovado. A camada reapareceu ao reabrir o projeto e os botoes exportaram `Intersecao_calculada.geojson` e `Intersecao_calculada.kml`.
+
 ## Persistencia
 
 A consulta autenticada a `/api/agents/layers` retornou HTTP 200 com uma camada persistida. O endpoint de persistencia tambem foi validado com HTTP 201/200/200 (salvar/listar/remover).
