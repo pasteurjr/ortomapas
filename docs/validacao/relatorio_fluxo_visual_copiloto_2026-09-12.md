@@ -48,6 +48,24 @@ O teste cria um usuario e um projeto temporarios, acessa a aplicacao, seleciona 
 
 **Resultado:** aprovado. A camada reapareceu ao reabrir o projeto e os botoes exportaram `Intersecao_calculada.geojson` e `Intersecao_calculada.kml`.
 
+### 6. Declividade no DSM
+
+![Declividade](evidencias/06-declividade-copiloto.png)
+
+**Resultado:** aprovado. O Copiloto executou `calcular_declividade` no DSM `id=5`, retornando media aproximada de `63,59 graus` e maxima de `89,83 graus`.
+
+### 7. Aspecto no DSM
+
+![Aspecto](evidencias/07-resposta-copiloto.png)
+
+**Resultado:** aprovado. O Copiloto executou `calcular_aspecto`, retornando media aproximada de `192,13 graus`, interpretada como orientacao predominante para sudoeste.
+
+### 8. Volume no DSM
+
+![Volume](evidencias/08-resposta-copiloto.png)
+
+**Resultado:** aprovado. O Copiloto executou `calcular_volume` acima da cota `0`, retornando aproximadamente `21.780.468,20 m3`.
+
 ## Persistencia
 
 A consulta autenticada a `/api/agents/layers` retornou HTTP 200 com uma camada persistida. O endpoint de persistencia tambem foi validado com HTTP 201/200/200 (salvar/listar/remover).
