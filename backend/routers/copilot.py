@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+import json
 from backend.database.connection import get_connection
 from backend.routers.auth import current_user, require_project_role
 
@@ -16,7 +17,7 @@ async def add_message(thread_id: int, data: dict, user: dict = Depends(current_u
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True); cur.execute("SELECT * FROM copilot_threads WHERE id=%s AND usuario_id=%s",(thread_id,user['id'])); thread=cur.fetchone()
         if not thread: raise HTTPException(status_code=404, detail='Thread nao encontrada')
-        require_project_role(thread['projeto_id'], user, {'proprietario','editor','visualizador'}); cur.execute("INSERT INTO copilot_messages (thread_id,papel,conteudo,ferramentas) VALUES (%s,%s,%s,%s) RETURNING *",(thread_id,data['papel'],data['conteudo'],data.get('ferramentas',{}))); row=cur.fetchone(); conn.commit(); return dict(row)
+        require_project_role(thread['projeto_id'], user, {'proprietario','editor','visualizador'}); ferramentas = data.get('ferramentas') or {}; cur.execute("INSERT INTO copilot_messages (thread_id,papel,conteudo,ferramentas) VALUES (%s,%s,%s,%s::jsonb) RETURNING *",(thread_id,data['papel'],data['conteudo'],json.dumps(ferramentas))); row=cur.fetchone(); conn.commit(); return dict(row)
 
 @router.get('/copilot/threads/{thread_id}')
 async def get_thread(thread_id: int, user: dict = Depends(current_user)):

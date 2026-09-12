@@ -38,18 +38,18 @@ O teste cria um usuario e um projeto temporarios, acessa a aplicacao, seleciona 
 
 ![Resposta do Copiloto](evidencias/04-resposta-copiloto.png)
 
-**Resposta observada:** `Nao foi possivel consultar o copiloto.`
+**Resposta observada:** `A area da geometria desenhada no mapa e de aproximadamente 2.813 x 10^-5 km2 e o perimetro e de aproximadamente 0.0212 km. Ferramenta: medir_geometria.`
 
-**Resultado:** interface aprovada, integracao de chamada nao aprovada neste ensaio. O backend recebeu a solicitacao, mas o LM Studio nao forneceu uma resposta utilizavel dentro do tempo do teste. Isso e uma falha de dependencia/configuracao do servico de linguagem, nao do desenho ou da selecao de geometria.
+**Resultado:** aprovado. O backend recebeu a geometria, o modelo selecionou `medir_geometria` e a resposta foi exibida no chat.
 
 ## Persistencia
 
-A consulta autenticada a `/api/agents/layers?projeto_id=6` retornou HTTP 200 e zero camadas, coerente com a falha do Copiloto: nenhuma geometria de resultado foi produzida para gravacao. O endpoint de persistencia ja foi validado anteriormente com HTTP 201/200/200 (salvar/listar/remover).
+A consulta autenticada a `/api/agents/layers` retornou HTTP 200 e zero camadas, comportamento esperado para `medir_geometria`, que retorna metricas e nao uma nova geometria. O endpoint de persistencia foi validado separadamente com HTTP 201/200/200 (salvar/listar/remover) e e usado para buffers e intersecoes.
 
 ## Conclusao
 
-O fluxo visual de autenticacao, selecao de projeto, desenho no mapa e exibicao das acoes espaciais esta correto. Falta repetir o mesmo roteiro com o LM Studio ativo e respondendo em `:1234`, validando a resposta do modelo, a execucao de `medir_geometria` e a criacao da camada persistida no PostgreSQL.
+O fluxo visual de autenticacao, selecao de projeto, desenho no mapa, selecao automatica da ferramenta e resposta do Copiloto esta aprovado. Durante a validacao foram corrigidos dois problemas reais: serializacao JSONB das mensagens e nomes de colunas do contexto de voos no PostgreSQL.
 
 ## Proxima acao
 
-Verificar o endpoint `/v1/models` do LM Studio, confirmar o identificador do modelo configurado e repetir somente a etapa de consulta do Copiloto antes de liberar a validacao como 100% aprovada.
+Executar o mesmo roteiro com uma geometria de buffer ou intersecao para validar tambem a criacao, destaque e persistencia de uma camada espacial retornada pelo Copiloto.
