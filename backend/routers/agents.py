@@ -52,12 +52,27 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
     messages = [{'role':'system','content':'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. Nunca invente dados; solicite ferramentas quando precisar de dados do projeto.'}, {'role':'user','content': f'Contexto autorizado: {context}\nPergunta: {prompt}'}]
     try:
         client = LMStudioClient(); result, telemetry = client.complete(messages, TOOL_CATALOG); tool_results = []
-        for call in result.tool_calls:
-            try: tool_results.append({'tool': call.name, 'result': await execute_tool({'name': call.name, 'arguments': call.arguments}, user)})
-            except HTTPException as exc: tool_results.append({'tool': call.name, 'error': exc.detail})
-        if tool_results:
-            messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultados das ferramentas: {tool_results}. Responda ao usuario com base nesses dados.'}]); final, final_telemetry = client.complete(messages, [])
-            return {'status':'ok','resposta':final.model_dump(),'ferramentas_executadas':tool_results,'telemetria':{**telemetry,'final':final_telemetry}}
+        # Permite encadear descoberta de produto -> analise, sem loops longos.
+        for _ in range(3):
+            if not result.tool_calls: break
+            calls = result.tool_calls; batch = []
+            for call in calls:
+                try:
+                    item = {'tool': call.name, 'result': await execute_tool({'name': call.name, 'arguments': call.arguments}, user)}
+                except HTTPException as exc: item = {'tool': call.name, 'error': exc.detail}
+                tool_results.append(item); batch.append(item)
+            # Fallback deterministico para intencoes explicitas apos listar produtos.
+            if any(x['tool'] == 'listar_produtos' for x in batch) and not any(x['tool'] == 'calcular_declividade' for x in tool_results) and 'declividade' in prompt.lower():
+                products = next((x['result'].get('dados', []) for x in batch if x['tool'] == 'listar_produtos' and isinstance(x.get('result'), dict)), [])
+                dsm = next((p for p in products if p.get('tipo') == 'dsm'), None)
+                if dsm:
+                    try: extra = {'tool':'calcular_declividade','result':await execute_tool({'name':'calcular_declividade','arguments':{'produto_id':dsm['id']}}, user)}
+                    except HTTPException as exc: extra = {'tool':'calcular_declividade','error':exc.detail}
+                    tool_results.append(extra); batch.append(extra)
+            messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultados das ferramentas: {batch}. Se outra ferramenta for necessaria para responder, solicite-a; caso contrario, responda ao usuario.'}])
+            result, cycle_telemetry = client.complete(messages, TOOL_CATALOG)
+            telemetry = {**telemetry, f'ciclo_{_+1}': cycle_telemetry}
+        if tool_results: return {'status':'ok','resposta':result.model_dump(),'ferramentas_executadas':tool_results,'telemetria':telemetry}
         return {'status':'ok','resposta':result.model_dump(),'telemetria':telemetry}
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f'Falha no LM Studio: {exc}')
