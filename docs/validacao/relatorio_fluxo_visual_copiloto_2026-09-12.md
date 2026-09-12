@@ -38,13 +38,13 @@ O teste cria um usuario e um projeto temporarios, acessa a aplicacao, seleciona 
 
 ![Resposta do Copiloto](evidencias/04-resposta-copiloto.png)
 
-**Resposta observada:** `A area da geometria desenhada no mapa e de aproximadamente 2.813 x 10^-5 km2 e o perimetro e de aproximadamente 0.0212 km. Ferramenta: medir_geometria.`
+**Resposta observada:** `O buffer de 0.001 graus ao redor da geometria foi criado com sucesso. Ferramenta: buffer_geometria.`
 
-**Resultado:** aprovado. O backend recebeu a geometria, o modelo selecionou `medir_geometria` e a resposta foi exibida no chat.
+**Resultado:** aprovado. O backend recebeu a geometria, o modelo selecionou `buffer_geometria`, a resposta foi exibida no chat e uma nova camada foi desenhada no mapa.
 
 ## Persistencia
 
-A consulta autenticada a `/api/agents/layers` retornou HTTP 200 e zero camadas, comportamento esperado para `medir_geometria`, que retorna metricas e nao uma nova geometria. O endpoint de persistencia foi validado separadamente com HTTP 201/200/200 (salvar/listar/remover) e e usado para buffers e intersecoes.
+A consulta autenticada a `/api/agents/layers` retornou HTTP 200 com uma camada persistida. O endpoint de persistencia tambem foi validado com HTTP 201/200/200 (salvar/listar/remover).
 
 ## Conclusao
 
