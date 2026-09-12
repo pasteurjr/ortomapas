@@ -13,6 +13,13 @@ from backend.agents.llm_client import LMStudioClient
 
 router = APIRouter()
 
+def _audit(user, acao, projeto_id=None, detalhes=None):
+    try:
+        with get_connection() as conn:
+            cur=conn.cursor(); cur.execute('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,detalhes) VALUES (%s,%s,%s,%s,%s::jsonb)', (user.get('id'), acao, 'copilot', projeto_id, json.dumps(detalhes or {}))); conn.commit()
+    except Exception:
+        pass
+
 @router.get('/agents/layers')
 async def list_agent_layers(projeto_id: int, user: dict = Depends(current_user)):
     require_project_role(projeto_id, user, {'proprietario','editor','visualizador'})
@@ -45,6 +52,7 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
     prompt = (data.get('prompt') or '').strip()
     if not prompt: raise HTTPException(status_code=400, detail='Prompt obrigatorio')
     context = data.get('context') or {}; project_id = context.get('projeto_id')
+    _audit(user, 'copilot_ask', project_id, {'prompt_chars': len(prompt)})
     if project_id:
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
@@ -90,7 +98,9 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
             messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultados das ferramentas: {batch}. Se outra ferramenta for necessaria para responder, solicite-a; caso contrario, responda ao usuario.'}])
             result, cycle_telemetry = client.complete(messages, TOOL_CATALOG)
             telemetry = {**telemetry, f'ciclo_{_+1}': cycle_telemetry}
-        if tool_results: return {'status':'ok','resposta':result.model_dump(),'ferramentas_executadas':tool_results,'telemetria':telemetry}
+        if tool_results:
+            _audit(user, 'copilot_tools', project_id, {'tools':[x.get('tool') for x in tool_results]})
+            return {'status':'ok','resposta':result.model_dump(),'ferramentas_executadas':tool_results,'telemetria':telemetry}
         return {'status':'ok','resposta':result.model_dump(),'telemetria':telemetry}
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f'Falha no LM Studio: {exc}')
