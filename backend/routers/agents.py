@@ -52,6 +52,13 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
     messages = [{'role':'system','content':'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. Nunca invente dados; solicite ferramentas quando precisar de dados do projeto.'}, {'role':'user','content': f'Contexto autorizado: {context}\nPergunta: {prompt}'}]
     try:
         client = LMStudioClient(); result, telemetry = client.complete(messages, TOOL_CATALOG); tool_results = []
+        # Intencao inequivoca: garante a analise pedida mesmo se o modelo responder apenas em texto.
+        if 'declividade' in prompt.lower() and project_id and context.get('geometria') and not result.tool_calls:
+            dsm = next((p for p in produtos if p.get('tipo') == 'dsm'), None)
+            if dsm:
+                try: direct = {'tool':'calcular_declividade','result':await execute_tool({'name':'calcular_declividade','arguments':{'produto_id':dsm['id']}}, user)}
+                except HTTPException as exc: direct = {'tool':'calcular_declividade','error':exc.detail}
+                tool_results.append(direct); messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultado da ferramenta: {direct}. Responda com base nesse resultado.'}]); result, telemetry_final = client.complete(messages, []); telemetry = {**telemetry, 'declividade_direta': telemetry_final}
         # Permite encadear descoberta de produto -> analise, sem loops longos.
         for _ in range(3):
             if not result.tool_calls: break
