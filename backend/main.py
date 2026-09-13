@@ -4,6 +4,7 @@ Main FastAPI application for the Sistema de Ortomapas.
 
 import logging
 import time
+from threading import Lock
 from collections import defaultdict, deque
 from datetime import datetime
 
@@ -21,6 +22,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_metrics = {"requests_total": 0, "errors_total": 0, "latency_ms_total": 0.0, "by_status": {}}
+_metrics_lock = Lock()
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, limit=120, window=60):
         super().__init__(app); self.limit=limit; self.window=window; self.hits=defaultdict(deque)
@@ -29,8 +33,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         while q and now-q[0] > self.window: q.popleft()
         if len(q) >= self.limit:
             from fastapi.responses import JSONResponse
+            with _metrics_lock:
+                _metrics["requests_total"] += 1
+                _metrics["errors_total"] += 1
+                _metrics["by_status"]["429"] = _metrics["by_status"].get("429", 0) + 1
             return JSONResponse({'detail':'Limite de requisicoes excedido'}, status_code=429, headers={'Retry-After':str(self.window)})
-        q.append(now); return await call_next(request)
+        q.append(now)
+        started = time.perf_counter()
+        response = await call_next(request)
+        elapsed = (time.perf_counter() - started) * 1000
+        with _metrics_lock:
+            _metrics["requests_total"] += 1
+            _metrics["latency_ms_total"] += elapsed
+            status = str(response.status_code)
+            _metrics["by_status"][status] = _metrics["by_status"].get(status, 0) + 1
+            if response.status_code >= 500:
+                _metrics["errors_total"] += 1
+        return response
 
 app = FastAPI(
     title="Sistema de Ortomapas",
@@ -110,6 +129,19 @@ async def readiness_check():
         checks['lm_studio']=bool(LMStudioClient().models().get('data'))
     except Exception: pass
     return {'status':'ready' if all(checks.values()) else 'degraded', 'checks':checks, 'timestamp':datetime.utcnow().isoformat()}
+
+@app.get("/health/metrics", tags=["Health"])
+async def metrics():
+    """Return process-local request metrics for operational monitoring."""
+    with _metrics_lock:
+        total = _metrics["requests_total"]
+        return {
+            "requests_total": total,
+            "errors_total": _metrics["errors_total"],
+            "average_latency_ms": round(_metrics["latency_ms_total"] / total, 2) if total else 0.0,
+            "by_status": dict(_metrics["by_status"]),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
 
 
 if __name__ == "__main__":
