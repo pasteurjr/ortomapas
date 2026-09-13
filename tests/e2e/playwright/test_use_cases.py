@@ -187,7 +187,7 @@ def uc_002_buscar_projetos(page):
         # Step 1: Buscar por texto
         STEP_COUNT += 1
         r = api(page, "GET", "/api/projetos/search?q=Serra")
-        assert r.status == 200, f"HTTP {r.status}: {r.text[:200]}"
+        assert r.status == 200, f"HTTP {r.status}: {r.text()[:200]}"
         d = r.json()
         results = d if isinstance(d, list) else d.get("projetos", d.get("results", []))
         uc.step_pass(f"Busca por 'Serra': {len(results)} resultados")
@@ -267,7 +267,7 @@ def uc_005_vegetacao_vari(page):
             "input_path": "ortomapas/serra_moeda_teste.tif",
             "output_name": "e2e_vari", "index_name": "VARI"
         })
-        assert r.status == 200, f"HTTP {r.status}: {r.text()[:200]}"
+        assert r.status == 200, f"HTTP {r.status}: {r.text[:200]}"
         d = r.json()
         out = d.get("output_path", "")
         uc.step_pass(f"VARI calculado. Output: {os.path.basename(out)}")
