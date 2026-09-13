@@ -4,11 +4,11 @@
 ## DIV-001
 
 - **Caso de Uso:** UC-001
-- **Passo:** 3
+- **Passo:** 5
 - **Esperado:** Criacao sem erros
-- **Observado:** HTTP 401
+- **Observado:** 
 - **Severidade:** MEDIA
-- **Evidencia:** UC001_step03_erro.png
+- **Evidencia:** UC001_step05_erro.png
 
 ## DIV-002
 
@@ -30,9 +30,9 @@
 ## DIV-004
 
 - **Caso de Uso:** UC-019
-- **Passo:** 1
+- **Passo:** 2
 - **Esperado:** Voo criado
-- **Observado:** HTTP 401: {"detail":"Autenticacao necessaria"}
+- **Observado:** 
 - **Severidade:** MEDIA
 
 ## DIV-005

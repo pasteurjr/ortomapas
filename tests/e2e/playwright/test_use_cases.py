@@ -13,6 +13,7 @@ import sys
 import json
 import time
 import traceback
+import uuid
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
@@ -30,6 +31,8 @@ REPORT = []
 DIVERGENCIAS = []
 UC_RESULTS = []
 STEP_COUNT = 0
+AUTH_HEADERS = {}
+TEST_PROJECT_ID = None
 
 
 def snap(page, uc_id, step_name):
@@ -42,7 +45,7 @@ def snap(page, uc_id, step_name):
 def api(page, method, path, body=None):
     """API call helper."""
     url = f"{API_URL}{path}"
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", **AUTH_HEADERS}
     if method == "GET":
         return page.request.get(url)
     elif method == "POST":
@@ -106,7 +109,7 @@ class UCResult:
 
 def uc_001_criar_projeto(page):
     """UC-001: Criar Novo Projeto via API"""
-    global STEP_COUNT
+    global STEP_COUNT, TEST_PROJECT_ID
     STEP_COUNT = 0
     uc = UCResult("UC-001", "Criar Novo Projeto")
 
@@ -135,6 +138,7 @@ def uc_001_criar_projeto(page):
         r = api(page, "POST", "/api/projetos", body)
         assert r.status in (200, 201), f"HTTP {r.status}"
         d = r.json()
+        TEST_PROJECT_ID = d.get("id")
         new_id = d.get("id")
         assert new_id is not None, "ID nao retornado"
         uc.step_pass(f"Projeto criado com ID={new_id}, HTTP {r.status}")
@@ -156,7 +160,8 @@ def uc_001_criar_projeto(page):
         # Step 5: Verificar contagem aumentou
         STEP_COUNT += 1
         r3 = api(page, "GET", "/api/projetos")
-        new_count = r3.json().get("total", len(r3.json().get("projetos", [])))
+        payload = r3.json()
+        new_count = payload.get("total", len(payload.get("projetos", []))) if isinstance(payload, dict) else len(payload)
         assert new_count > initial_count, f"Contagem nao aumentou: {new_count}"
         uc.step_pass(f"Contagem aumentou de {initial_count} para {new_count}")
 
@@ -217,7 +222,8 @@ def uc_003_selecionar_projeto(page):
     try:
         # Step 1: Listar ortomapas do projeto 3
         STEP_COUNT += 1
-        r = api(page, "GET", "/api/projetos/3/ortomapas")
+        project_id = TEST_PROJECT_ID or 3
+        r = api(page, "GET", f"/api/projetos/{project_id}/ortomapas")
         assert r.status == 200
         d = r.json()
         ortos = d if isinstance(d, list) else d.get("ortomapas", [])
@@ -617,7 +623,7 @@ def uc_019_registrar_voo(page):
     try:
         STEP_COUNT += 1
         body = {
-            "projeto_id": 3,
+            "projeto_id": TEST_PROJECT_ID or 3,
             "data_voo": "2026-05-20T09:30:00",
             "local_decolagem_lat": -20.083,
             "local_decolagem_lon": -43.950,
@@ -641,7 +647,7 @@ def uc_019_registrar_voo(page):
         uc.step_pass(f"Voo criado ID={d.get('id')}, altitude={d.get('altitude_voo_m')}m")
 
         STEP_COUNT += 1
-        r2 = api(page, "GET", "/api/voos?projeto_id=3")
+        r2 = api(page, "GET", f"/api/voos?projeto_id={TEST_PROJECT_ID or 3}")
         assert r2.status == 200
         voos = r2.json()
         count = len(voos) if isinstance(voos, list) else voos.get("total", 0)
@@ -753,11 +759,23 @@ def uc_ui_frontend(page):
 
 def run_all_tests():
     """Execute all use case tests."""
+    global AUTH_HEADERS
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-gpu"])
         ctx = browser.new_context(viewport={"width": 1920, "height": 1080}, ignore_https_errors=True)
         page = ctx.new_page()
         page.set_default_timeout(15000)
+
+        # Cada execução usa uma conta pesquisador efêmera para exercitar os
+        # endpoints protegidos sem depender de credenciais de produção.
+        email = f"e2e-{uuid.uuid4().hex[:12]}@example.invalid"
+        reg = page.request.post(f"{API_URL}/api/auth/register", data=json.dumps({"email": email, "nome": "E2E Playwright", "senha": "Validacao#2026", "perfil": "pesquisador"}), headers={"Content-Type": "application/json"})
+        if reg.status not in (201, 409):
+            raise RuntimeError(f"Falha ao registrar usuario E2E: HTTP {reg.status}")
+        auth = page.request.post(f"{API_URL}/api/auth/login", data=json.dumps({"email": email, "senha": "Validacao#2026"}), headers={"Content-Type": "application/json"})
+        if auth.status != 200:
+            raise RuntimeError(f"Falha ao autenticar usuario E2E: HTTP {auth.status}")
+        AUTH_HEADERS = {"Authorization": f"Bearer {auth.json()['access_token']}"}
 
         print("\n  Executando casos de uso...\n")
 

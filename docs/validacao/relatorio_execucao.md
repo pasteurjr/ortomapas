@@ -1,6 +1,6 @@
 # Relatorio de Execucao — Validacao Playwright E2E
 
-**Data:** 2026-09-13 03:24:12
+**Data:** 2026-09-13 03:37:37
 
 **Backend:** http://localhost:8888
 
@@ -31,9 +31,10 @@ Taxa: **70.6%**
 
 1. ✅ Estado inicial: 0 projetos existentes
    ![](../runtime/screenshots/UC001_step01_estado_inicial.png)
-2. ❌ Erro na execucao
-   - **Erro:** `HTTP 401`
-   ![](../runtime/screenshots/UC001_step03_erro.png)
+2. ✅ Projeto criado com ID=16, HTTP 201
+3. ✅ Campos validados: nome='UC-001 Teste Automatizado', status='em_andamento'
+4. ❌ Erro na execucao
+   ![](../runtime/screenshots/UC001_step05_erro.png)
 
 
 ### UC-002: Buscar e Filtrar Projetos
@@ -145,7 +146,7 @@ Taxa: **70.6%**
 **Passos executados:**
 
 1. ✅ Anotacao poligono criada
-2. ✅ Total anotacoes: 1
+2. ✅ Total anotacoes: 5
 
 
 ### UC-014: Criar Anotacao Ponto
@@ -173,8 +174,8 @@ Taxa: **70.6%**
 
 **Passos executados:**
 
-1. ❌ Erro
-   - **Erro:** `HTTP 401: {"detail":"Autenticacao necessaria"}`
+1. ✅ Voo criado ID=3, altitude=50.0m
+2. ❌ Erro
 
 
 ### UC-020: Segmentar Ortomapa
@@ -209,10 +210,10 @@ Taxa: **70.6%**
 
 | ID | UC | Passo | Esperado | Observado | Severidade |
 |---|---|---|---|---|---|
-| DIV-001 | UC-001 | 3 | Criacao sem erros | HTTP 401 | MEDIA |
+| DIV-001 | UC-001 | 5 | Criacao sem erros |  | MEDIA |
 | DIV-002 | UC-002 | 1 | Busca/filtro funcional |  | MEDIA |
 | DIV-003 | UC-003 | 1 | Listar ortomapas do projeto |  | MEDIA |
-| DIV-004 | UC-019 | 1 | Voo criado | HTTP 401: {"detail":"Autenticacao necessaria"} | MEDIA |
+| DIV-004 | UC-019 | 2 | Voo criado |  | MEDIA |
 | DIV-005 | UC-UI | 2 | Mapa Leaflet visivel | Container nao encontrado | ALTA |
 | DIV-006 | UC-UI | 3 | Zoom funcional | Botao zoom ausente | MEDIA |
 
@@ -227,8 +228,9 @@ Taxa: **70.6%**
 - `UC-UI_step05_final_completo.png`
 - `UC001_step01_estado_inicial.png`
 - `UC001_step03_erro.png`
+- `UC001_step05_erro.png`
 - `UC003_step01_erro.png`
 - `UC003_step03_sidebar_projetos.png`
 
 
-*Gerado em 2026-09-13 03:24:12*
+*Gerado em 2026-09-13 03:37:37*
