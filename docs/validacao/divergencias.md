@@ -3,32 +3,67 @@
 
 ## DIV-001
 
-- **Caso de Uso:** UC-003
+- **Caso de Uso:** UC-001
 - **Passo:** 3
-- **Esperado:** Listar ortomapas do projeto
-- **Observado:** Page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5176/
-Call log:
-  - navigating to "http://localhost:5176/", waiting until "networkidle"
-
+- **Esperado:** Criacao sem erros
+- **Observado:** HTTP 401
 - **Severidade:** MEDIA
-- **Evidencia:** UC003_step03_erro.png
+- **Evidencia:** UC001_step03_erro.png
 
 ## DIV-002
 
-- **Caso de Uso:** UC-009
-- **Passo:** 2
-- **Esperado:** Mudancas detectadas
-- **Observado:** Nenhuma mudanca detectada (deveria haver)
+- **Caso de Uso:** UC-002
+- **Passo:** 1
+- **Esperado:** Busca/filtro funcional
+- **Observado:** 
 - **Severidade:** MEDIA
 
 ## DIV-003
 
-- **Caso de Uso:** UC-UI
+- **Caso de Uso:** UC-003
 - **Passo:** 1
-- **Esperado:** UI funcional
-- **Observado:** Page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5176/
-Call log:
-  - navigating to "http://localhost:5176/", waiting until "networkidle"
+- **Esperado:** Listar ortomapas do projeto
+- **Observado:** 
+- **Severidade:** MEDIA
+- **Evidencia:** UC003_step01_erro.png
 
+## DIV-004
+
+- **Caso de Uso:** UC-013
+- **Passo:** 1
+- **Esperado:** Anotacao criada
+- **Observado:** HTTP 500: {"detail":"invalid input syntax for type bigint: \"E2E Playwright\"\nLINE 6: ...,  -20.095,  -43.965, NULL, '{}', NULL, 'manual', 'E2E Playw...\n                                                       
+- **Severidade:** MEDIA
+
+## DIV-005
+
+- **Caso de Uso:** UC-014
+- **Passo:** 1
+- **Esperado:** Anotacao ponto criada
+- **Observado:** 
+- **Severidade:** MEDIA
+
+## DIV-006
+
+- **Caso de Uso:** UC-019
+- **Passo:** 1
+- **Esperado:** Voo criado
+- **Observado:** HTTP 401: {"detail":"Autenticacao necessaria"}
+- **Severidade:** MEDIA
+
+## DIV-007
+
+- **Caso de Uso:** UC-UI
+- **Passo:** 2
+- **Esperado:** Mapa Leaflet visivel
+- **Observado:** Container nao encontrado
 - **Severidade:** ALTA
-- **Evidencia:** UC-UI_step01_erro_geral.png
+- **Evidencia:** UC-UI_step02_mapa_leaflet.png
+
+## DIV-008
+
+- **Caso de Uso:** UC-UI
+- **Passo:** 3
+- **Esperado:** Zoom funcional
+- **Observado:** Botao zoom ausente
+- **Severidade:** MEDIA

@@ -1,6 +1,6 @@
 # Relatorio de Execucao — Validacao Playwright E2E
 
-**Data:** 2026-03-29 13:16:57
+**Data:** 2026-09-13 03:19:03
 
 **Backend:** http://localhost:8888
 
@@ -13,9 +13,9 @@
 
 | Total | Aprovados | Reprovados |
 |---|---|---|
-| **17** | **17** ✅ | **0** ❌ |
+| **17** | **10** ✅ | **7** ❌ |
 
-Taxa: **100.0%**
+Taxa: **58.8%**
 
 
 ---
@@ -25,39 +25,34 @@ Taxa: **100.0%**
 
 ### UC-001: Criar Novo Projeto
 
-**Status:** ✅ **APROVADO**
+**Status:** ❌ **REPROVADO**
 
 **Passos executados:**
 
-1. ✅ Estado inicial: 9 projetos existentes
+1. ✅ Estado inicial: 0 projetos existentes
    ![](../runtime/screenshots/UC001_step01_estado_inicial.png)
-2. ✅ Projeto criado com ID=13, HTTP 201
-3. ✅ Campos validados: nome='UC-001 Teste Automatizado', status='em_andamento'
-4. ✅ GET /api/projetos/13 retornou projeto correto
-5. ✅ Contagem aumentou de 9 para 10
+2. ❌ Erro na execucao
+   - **Erro:** `HTTP 401`
+   ![](../runtime/screenshots/UC001_step03_erro.png)
 
 
 ### UC-002: Buscar e Filtrar Projetos
 
-**Status:** ✅ **APROVADO**
+**Status:** ❌ **REPROVADO**
 
 **Passos executados:**
 
-1. ✅ Busca por 'Serra': 8 resultados
-2. ✅ Filtro status=planejado: 4 projetos
-3. ✅ Filtro status=em_andamento funciona
+1. ❌ Erro
 
 
 ### UC-003: Selecionar Projeto e Listar Ortomapas
 
-**Status:** ✅ **APROVADO**
+**Status:** ❌ **REPROVADO**
 
 **Passos executados:**
 
-1. ✅ Projeto 3 tem 6 ortomapas
-2. ✅ Tipos presentes: {'dsm', 'ortomosaico'}
-3. ✅ Frontend carregado, conteudo: 479 chars
-   ![](../runtime/screenshots/UC003_step03_sidebar_projetos.png)
+1. ❌ Erro
+   ![](../runtime/screenshots/UC003_step01_erro.png)
 
 
 ### UC-005: Calcular Indice de Vegetacao VARI
@@ -145,21 +140,21 @@ Taxa: **100.0%**
 
 ### UC-013: Criar Anotacao Poligono
 
-**Status:** ✅ **APROVADO**
+**Status:** ❌ **REPROVADO**
 
 **Passos executados:**
 
-1. ✅ Anotacao poligono criada
-2. ✅ Total anotacoes: 11
+1. ❌ Erro
+   - **Erro:** `HTTP 500: {"detail":"invalid input syntax for type bigint: \"E2E Playwright\"\nLINE 6: ...,  -20.095,  -43.965, NULL, '{}', NULL, 'manual', 'E2E Playw...\n                                                       `
 
 
 ### UC-014: Criar Anotacao Ponto
 
-**Status:** ✅ **APROVADO**
+**Status:** ❌ **REPROVADO**
 
 **Passos executados:**
 
-1. ✅ Anotacao ponto criada
+1. ❌ Erro
 
 
 ### UC-017: Comparar Dois Ortomapas
@@ -174,12 +169,12 @@ Taxa: **100.0%**
 
 ### UC-019: Registrar Voo de Drone
 
-**Status:** ✅ **APROVADO**
+**Status:** ❌ **REPROVADO**
 
 **Passos executados:**
 
-1. ✅ Voo criado ID=3, altitude=50.0m
-2. ✅ Voos do projeto 3: 3
+1. ❌ Erro
+   - **Erro:** `HTTP 401: {"detail":"Autenticacao necessaria"}`
 
 
 ### UC-020: Segmentar Ortomapa
@@ -193,16 +188,15 @@ Taxa: **100.0%**
 
 ### UC-UI: Validacao da Interface Web
 
-**Status:** ✅ **APROVADO**
+**Status:** ❌ **REPROVADO**
 
 **Passos executados:**
 
 1. ✅ Pagina carregada. Titulo: 'Sistema de Ortomapas'
    ![](../runtime/screenshots/UC-UI_step01_pagina_inicial.png)
-2. ✅ Mapa Leaflet presente, 30 tiles
+2. ❌ Mapa Leaflet NAO encontrado
    ![](../runtime/screenshots/UC-UI_step02_mapa_leaflet.png)
-3. ✅ Zoom In (2 cliques) executado
-   ![](../runtime/screenshots/UC-UI_step03_zoom_in.png)
+3. ❌ Botao zoom nao encontrado
 4. ✅ Zero erros no console JS
    ![](../runtime/screenshots/UC-UI_step04_console_check.png)
 5. ✅ Screenshot final da interface capturado
@@ -211,10 +205,18 @@ Taxa: **100.0%**
 
 ---
 
-## Divergencias
+## Divergencias Encontradas
 
-**Nenhuma divergencia encontrada.**
-
+| ID | UC | Passo | Esperado | Observado | Severidade |
+|---|---|---|---|---|---|
+| DIV-001 | UC-001 | 3 | Criacao sem erros | HTTP 401 | MEDIA |
+| DIV-002 | UC-002 | 1 | Busca/filtro funcional |  | MEDIA |
+| DIV-003 | UC-003 | 1 | Listar ortomapas do projeto |  | MEDIA |
+| DIV-004 | UC-013 | 1 | Anotacao criada | HTTP 500: {"detail":"invalid input syntax for type | MEDIA |
+| DIV-005 | UC-014 | 1 | Anotacao ponto criada |  | MEDIA |
+| DIV-006 | UC-019 | 1 | Voo criado | HTTP 401: {"detail":"Autenticacao necessaria"} | MEDIA |
+| DIV-007 | UC-UI | 2 | Mapa Leaflet visivel | Container nao encontrado | ALTA |
+| DIV-008 | UC-UI | 3 | Zoom funcional | Botao zoom ausente | MEDIA |
 
 ---
 
@@ -226,7 +228,9 @@ Taxa: **100.0%**
 - `UC-UI_step04_console_check.png`
 - `UC-UI_step05_final_completo.png`
 - `UC001_step01_estado_inicial.png`
+- `UC001_step03_erro.png`
+- `UC003_step01_erro.png`
 - `UC003_step03_sidebar_projetos.png`
 
 
-*Gerado em 2026-03-29 13:16:57*
+*Gerado em 2026-09-13 03:19:03*
