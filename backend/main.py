@@ -143,6 +143,30 @@ async def metrics():
             "timestamp": datetime.utcnow().isoformat(),
         }
 
+@app.get("/metrics", include_in_schema=False)
+async def prometheus_metrics():
+    """Expose basic counters in Prometheus text exposition format."""
+    with _metrics_lock:
+        total = _metrics["requests_total"]
+        errors = _metrics["errors_total"]
+        latency = _metrics["latency_ms_total"]
+        statuses = dict(_metrics["by_status"])
+    lines = [
+        "# HELP ortomapas_http_requests_total Total HTTP requests.",
+        "# TYPE ortomapas_http_requests_total counter",
+        f"ortomapas_http_requests_total {total}",
+        "# HELP ortomapas_http_errors_total Total HTTP 5xx and rate-limit errors.",
+        "# TYPE ortomapas_http_errors_total counter",
+        f"ortomapas_http_errors_total {errors}",
+        "# HELP ortomapas_http_latency_ms_total Cumulative request latency in milliseconds.",
+        "# TYPE ortomapas_http_latency_ms_total counter",
+        f"ortomapas_http_latency_ms_total {latency:.3f}",
+    ]
+    for status, count in sorted(statuses.items()):
+        lines.append(f'ortomapas_http_responses_total{{status="{status}"}} {count}')
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
 
 if __name__ == "__main__":
     import uvicorn
