@@ -168,6 +168,12 @@ async def create_anotacao(data: dict):
                     status_code=400, detail="geometria_wkt invalida"
                 )
 
+            criado_por = data.get("criado_por")
+            try:
+                criado_por = int(criado_por) if criado_por is not None else None
+            except (TypeError, ValueError):
+                criado_por = None
+
             cursor.execute(
                 """
                 INSERT INTO anotacoes (
@@ -188,7 +194,7 @@ async def create_anotacao(data: dict):
                     json.dumps(data.get("atributos", {})),
                     data.get("confianca"),
                     data.get("fonte", "manual"),
-                    data.get("criado_por", ""),
+                    criado_por,
                     datetime.utcnow(),
                 ),
             )
