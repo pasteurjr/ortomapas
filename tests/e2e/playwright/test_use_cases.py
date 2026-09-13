@@ -32,6 +32,7 @@ DIVERGENCIAS = []
 UC_RESULTS = []
 STEP_COUNT = 0
 AUTH_HEADERS = {}
+AUTH_TOKEN = ""
 TEST_PROJECT_ID = None
 
 
@@ -759,7 +760,7 @@ def uc_ui_frontend(page):
 
 def run_all_tests():
     """Execute all use case tests."""
-    global AUTH_HEADERS
+    global AUTH_HEADERS, AUTH_TOKEN
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-gpu"])
         ctx = browser.new_context(viewport={"width": 1920, "height": 1080}, ignore_https_errors=True)
@@ -775,7 +776,12 @@ def run_all_tests():
         auth = page.request.post(f"{API_URL}/api/auth/login", data=json.dumps({"email": email, "senha": "Validacao#2026"}), headers={"Content-Type": "application/json"})
         if auth.status != 200:
             raise RuntimeError(f"Falha ao autenticar usuario E2E: HTTP {auth.status}")
-        AUTH_HEADERS = {"Authorization": f"Bearer {auth.json()['access_token']}"}
+        AUTH_TOKEN = auth.json()['access_token']
+        AUTH_HEADERS = {"Authorization": f"Bearer {AUTH_TOKEN}"}
+        # A tela autenticada usa o mesmo token no localStorage.
+        page.goto(BASE_URL, wait_until="domcontentloaded", timeout=20000)
+        page.evaluate("token => localStorage.setItem('ortomapas_token', token)", AUTH_TOKEN)
+        page.reload(wait_until="networkidle", timeout=20000)
 
         print("\n  Executando casos de uso...\n")
 

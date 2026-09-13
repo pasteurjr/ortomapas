@@ -1,6 +1,6 @@
 # Relatorio de Execucao — Validacao Playwright E2E
 
-**Data:** 2026-09-13 03:37:37
+**Data:** 2026-09-13 03:39:29
 
 **Backend:** http://localhost:8888
 
@@ -13,9 +13,9 @@
 
 | Total | Aprovados | Reprovados |
 |---|---|---|
-| **17** | **12** ✅ | **5** ❌ |
+| **17** | **13** ✅ | **4** ❌ |
 
-Taxa: **70.6%**
+Taxa: **76.5%**
 
 
 ---
@@ -31,7 +31,7 @@ Taxa: **70.6%**
 
 1. ✅ Estado inicial: 0 projetos existentes
    ![](../runtime/screenshots/UC001_step01_estado_inicial.png)
-2. ✅ Projeto criado com ID=16, HTTP 201
+2. ✅ Projeto criado com ID=17, HTTP 201
 3. ✅ Campos validados: nome='UC-001 Teste Automatizado', status='em_andamento'
 4. ❌ Erro na execucao
    ![](../runtime/screenshots/UC001_step05_erro.png)
@@ -146,7 +146,7 @@ Taxa: **70.6%**
 **Passos executados:**
 
 1. ✅ Anotacao poligono criada
-2. ✅ Total anotacoes: 5
+2. ✅ Total anotacoes: 7
 
 
 ### UC-014: Criar Anotacao Ponto
@@ -174,7 +174,7 @@ Taxa: **70.6%**
 
 **Passos executados:**
 
-1. ✅ Voo criado ID=3, altitude=50.0m
+1. ✅ Voo criado ID=4, altitude=50.0m
 2. ❌ Erro
 
 
@@ -189,15 +189,16 @@ Taxa: **70.6%**
 
 ### UC-UI: Validacao da Interface Web
 
-**Status:** ❌ **REPROVADO**
+**Status:** ✅ **APROVADO**
 
 **Passos executados:**
 
 1. ✅ Pagina carregada. Titulo: 'Sistema de Ortomapas'
    ![](../runtime/screenshots/UC-UI_step01_pagina_inicial.png)
-2. ❌ Mapa Leaflet NAO encontrado
+2. ✅ Mapa Leaflet presente, 30 tiles
    ![](../runtime/screenshots/UC-UI_step02_mapa_leaflet.png)
-3. ❌ Botao zoom nao encontrado
+3. ✅ Zoom In (2 cliques) executado
+   ![](../runtime/screenshots/UC-UI_step03_zoom_in.png)
 4. ✅ Zero erros no console JS
    ![](../runtime/screenshots/UC-UI_step04_console_check.png)
 5. ✅ Screenshot final da interface capturado
@@ -214,8 +215,6 @@ Taxa: **70.6%**
 | DIV-002 | UC-002 | 1 | Busca/filtro funcional |  | MEDIA |
 | DIV-003 | UC-003 | 1 | Listar ortomapas do projeto |  | MEDIA |
 | DIV-004 | UC-019 | 2 | Voo criado |  | MEDIA |
-| DIV-005 | UC-UI | 2 | Mapa Leaflet visivel | Container nao encontrado | ALTA |
-| DIV-006 | UC-UI | 3 | Zoom funcional | Botao zoom ausente | MEDIA |
 
 ---
 
@@ -233,4 +232,4 @@ Taxa: **70.6%**
 - `UC003_step03_sidebar_projetos.png`
 
 
-*Gerado em 2026-09-13 03:37:37*
+*Gerado em 2026-09-13 03:39:29*
