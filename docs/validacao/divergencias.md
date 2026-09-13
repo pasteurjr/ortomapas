@@ -29,29 +29,13 @@
 
 ## DIV-004
 
-- **Caso de Uso:** UC-013
-- **Passo:** 1
-- **Esperado:** Anotacao criada
-- **Observado:** HTTP 500: {"detail":"invalid input syntax for type bigint: \"E2E Playwright\"\nLINE 6: ...,  -20.095,  -43.965, NULL, '{}', NULL, 'manual', 'E2E Playw...\n                                                       
-- **Severidade:** MEDIA
-
-## DIV-005
-
-- **Caso de Uso:** UC-014
-- **Passo:** 1
-- **Esperado:** Anotacao ponto criada
-- **Observado:** 
-- **Severidade:** MEDIA
-
-## DIV-006
-
 - **Caso de Uso:** UC-019
 - **Passo:** 1
 - **Esperado:** Voo criado
 - **Observado:** HTTP 401: {"detail":"Autenticacao necessaria"}
 - **Severidade:** MEDIA
 
-## DIV-007
+## DIV-005
 
 - **Caso de Uso:** UC-UI
 - **Passo:** 2
@@ -60,7 +44,7 @@
 - **Severidade:** ALTA
 - **Evidencia:** UC-UI_step02_mapa_leaflet.png
 
-## DIV-008
+## DIV-006
 
 - **Caso de Uso:** UC-UI
 - **Passo:** 3

@@ -1,6 +1,6 @@
 # Relatorio de Execucao — Validacao Playwright E2E
 
-**Data:** 2026-09-13 03:19:03
+**Data:** 2026-09-13 03:24:12
 
 **Backend:** http://localhost:8888
 
@@ -13,9 +13,9 @@
 
 | Total | Aprovados | Reprovados |
 |---|---|---|
-| **17** | **10** ✅ | **7** ❌ |
+| **17** | **12** ✅ | **5** ❌ |
 
-Taxa: **58.8%**
+Taxa: **70.6%**
 
 
 ---
@@ -140,21 +140,21 @@ Taxa: **58.8%**
 
 ### UC-013: Criar Anotacao Poligono
 
-**Status:** ❌ **REPROVADO**
+**Status:** ✅ **APROVADO**
 
 **Passos executados:**
 
-1. ❌ Erro
-   - **Erro:** `HTTP 500: {"detail":"invalid input syntax for type bigint: \"E2E Playwright\"\nLINE 6: ...,  -20.095,  -43.965, NULL, '{}', NULL, 'manual', 'E2E Playw...\n                                                       `
+1. ✅ Anotacao poligono criada
+2. ✅ Total anotacoes: 1
 
 
 ### UC-014: Criar Anotacao Ponto
 
-**Status:** ❌ **REPROVADO**
+**Status:** ✅ **APROVADO**
 
 **Passos executados:**
 
-1. ❌ Erro
+1. ✅ Anotacao ponto criada
 
 
 ### UC-017: Comparar Dois Ortomapas
@@ -212,11 +212,9 @@ Taxa: **58.8%**
 | DIV-001 | UC-001 | 3 | Criacao sem erros | HTTP 401 | MEDIA |
 | DIV-002 | UC-002 | 1 | Busca/filtro funcional |  | MEDIA |
 | DIV-003 | UC-003 | 1 | Listar ortomapas do projeto |  | MEDIA |
-| DIV-004 | UC-013 | 1 | Anotacao criada | HTTP 500: {"detail":"invalid input syntax for type | MEDIA |
-| DIV-005 | UC-014 | 1 | Anotacao ponto criada |  | MEDIA |
-| DIV-006 | UC-019 | 1 | Voo criado | HTTP 401: {"detail":"Autenticacao necessaria"} | MEDIA |
-| DIV-007 | UC-UI | 2 | Mapa Leaflet visivel | Container nao encontrado | ALTA |
-| DIV-008 | UC-UI | 3 | Zoom funcional | Botao zoom ausente | MEDIA |
+| DIV-004 | UC-019 | 1 | Voo criado | HTTP 401: {"detail":"Autenticacao necessaria"} | MEDIA |
+| DIV-005 | UC-UI | 2 | Mapa Leaflet visivel | Container nao encontrado | ALTA |
+| DIV-006 | UC-UI | 3 | Zoom funcional | Botao zoom ausente | MEDIA |
 
 ---
 
@@ -233,4 +231,4 @@ Taxa: **58.8%**
 - `UC003_step03_sidebar_projetos.png`
 
 
-*Gerado em 2026-09-13 03:19:03*
+*Gerado em 2026-09-13 03:24:12*
