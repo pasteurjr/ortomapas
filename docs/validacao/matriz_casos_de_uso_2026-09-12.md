@@ -5,9 +5,9 @@
 
 | ID | Caso de uso | Implementação | Validação | Pendência principal |
 |---|---|---|---|---|
-| UC-001 | Criar novo projeto | Implementado | API e UI observadas | Repetir cenário de validação formal |
-| UC-002 | Buscar e filtrar projetos | Implementado | UI existente | Suíte Playwright dedicada |
-| UC-003 | Selecionar projeto e visualizar ortomapas | Implementado | UI e API | Suíte Playwright dedicada |
+| UC-001 | Criar novo projeto | Implementado | Playwright autenticado: aprovado | Monitorar permissões por perfil |
+| UC-002 | Buscar e filtrar projetos | Implementado | Playwright autenticado: aprovado | Monitorar permissões por perfil |
+| UC-003 | Selecionar projeto e visualizar ortomapas | Implementado | Playwright autenticado: aprovado | Validar com novos datasets |
 | UC-004 | Upload de GeoTIFF e visualização | Implementado | API/fluxo existente | Testar arquivo inválido e timeout |
 | UC-005 | Índice de vegetação VARI | Implementado | Código e endpoint | Validar com raster multibanda real |
 | UC-006 | Declividade a partir de DSM | Implementado | API e Playwright aprovados | Avaliar limiar de NoData por projeto |
@@ -23,14 +23,14 @@
 | UC-016 | Medir área | Implementado | Código existente | Validar CRS métrico para áreas oficiais |
 | UC-017 | Comparar ortomapas por swipe | Implementado | Código existente | Captura visual dedicada |
 | UC-018 | Exportar ortomapa | Implementado | Exportações testadas | Validar metadados CRS nos arquivos |
-| UC-019 | Registrar voo de drone | Implementado | API/UI existentes | Validar todos os campos obrigatórios |
+| UC-019 | Registrar voo de drone | Implementado | Playwright autenticado: aprovado | Validar edição e exclusão |
 | UC-020 | Disparar análise via agente IA | Implementado | Playwright/API aprovados | Completar suíte de intenções e ferramentas |
 
 ## Resumo
 
 - **Implementados:** 20
 - **Parcialmente implementados:** 0
-- **Pendentes de validação formal:** 16 cenários, principalmente casos alternativos e de exceção.
+- **Suíte E2E principal:** 17/17 casos aprovados (100%); cenários alternativos adicionais permanecem no roadmap.
 - **Copiloto:** núcleo operacional implementado; ferramentas de geometria e relevo testadas com LM Studio/Qwen e PostgreSQL reais.
 
 ## Critério para considerar pronto
@@ -42,6 +42,10 @@ Um caso só será marcado como concluído operacionalmente quando tiver implemen
 1. Validar UC-007, UC-009, UC-010 e UC-011 com dados reais.
 2. Executar cenários de exceção de UC-004, UC-005 e UC-006.
 3. Criar uma suíte Playwright cobrindo os 20 casos e seus fluxos alternativos críticos.
+
+## Fechamento E2E em 13/09/2026
+
+A suíte Playwright autenticada foi executada contra PostgreSQL real, produtos ODM reais e frontend em execução. Os 17 fluxos cobertos foram aprovados, sem divergências. Evidência detalhada em `docs/validacao/relatorio_execucao.md` e no PDF correspondente.
 
 ## Lote executado em 13/09/2026
 
