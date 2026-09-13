@@ -1,6 +1,6 @@
 """Spatial analysis tools router."""
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import os
 import logging
@@ -88,7 +88,7 @@ class WatershedRequest(BaseModel):
 class StreamsRequest(BaseModel):
     dtm_path: str
     output_name: str
-    threshold: int = 100
+    threshold: int = Field(default=100, gt=0, description="Acumulacao minima de fluxo (> 0)")
 
 class VolumeRequest(BaseModel):
     dsm_path: str
@@ -308,6 +308,8 @@ async def extract_streams(req: StreamsRequest):
         hydrology.flow_accumulation(flow_dir, flow_acc)
         result = hydrology.extract_streams(flow_acc, output, threshold=req.threshold)
         return {"status": "success", "output_path": result}
+    except (FileNotFoundError, rasterio.errors.RasterioIOError) as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

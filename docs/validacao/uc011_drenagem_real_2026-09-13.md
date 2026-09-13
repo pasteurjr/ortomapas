@@ -2,7 +2,7 @@
 
 **Data:** 13/09/2026  03:09 (America/Sao_Paulo)  
 **Caso de uso:** UC-011 - Extrair rede de drenagem a partir de um DTM  
-**Resultado:** Aprovado no cenário principal
+**Resultado:** Aprovado no cenário principal e nos cenários de validação de entrada
 
 ## Dados utilizados
 
@@ -21,4 +21,12 @@
 
 ## Conclusão
 
-O cenário principal de UC-011 está implementado e demonstrado com dados reais de fotogrametria. A pendência operacional é completar os cenários de erro (DTM inexistente, raster sem dados válidos e limiar inválido) e uma captura visual Playwright da camada no mapa.
+O cenário principal de UC-011 está implementado e demonstrado com dados reais de fotogrametria. Os cenários de entrada também foram verificados: DTM inexistente retorna `404 Not Found` e limiares `0` ou negativos retornam `422 Unprocessable Entity`. Permanece como trabalho de validação a captura visual Playwright da camada no mapa e o caso de raster sem dados válidos.
+
+## Cenários alternativos executados
+
+| Cenário | Entrada | Resultado observado |
+|---|---|---|
+| DTM ausente | `does-not-exist.tif` | HTTP `404` |
+| Limiar zero | `threshold=0` | HTTP `422` |
+| Limiar negativo | `threshold=-1` | HTTP `422` |
