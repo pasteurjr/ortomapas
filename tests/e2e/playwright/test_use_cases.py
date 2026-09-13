@@ -189,7 +189,7 @@ def uc_002_buscar_projetos(page):
         r = api(page, "GET", "/api/projetos/search?q=Serra")
         assert r.status == 200, f"HTTP {r.status}: {r.text()[:200]}"
         d = r.json()
-        results = d if isinstance(d, list) else d.get("projetos", d.get("results", []))
+        results = d if isinstance(d, list) else (d.get("projetos") or d.get("results") or [])
         uc.step_pass(f"Busca por 'Serra': {len(results)} resultados")
 
         # Step 2: Filtrar por status

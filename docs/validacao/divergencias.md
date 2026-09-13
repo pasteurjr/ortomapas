@@ -1,5 +1,7 @@
 # Registro de Divergencias
 
+> Reproducao direta autenticada em 13/09/2026 confirmou que os endpoints de projetos, ortomapas e voos respondem corretamente no PostgreSQL real (projeto criado/listado HTTP 200, busca HTTP 200, voo criado HTTP 201). As divergencias abaixo permanecem restritas ao script E2E e ao fluxo visual.
+
 
 ## DIV-001
 
