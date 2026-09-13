@@ -11,11 +11,11 @@
 | UC-004 | Upload de GeoTIFF e visualização | Implementado | API/fluxo existente | Testar arquivo inválido e timeout |
 | UC-005 | Índice de vegetação VARI | Implementado | Código e endpoint | Validar com raster multibanda real |
 | UC-006 | Declividade a partir de DSM | Implementado | API e Playwright aprovados | Avaliar limiar de NoData por projeto |
-| UC-007 | Curvas de nível | Implementado | Endpoint disponível | Captura visual e validação de geometria |
+| UC-007 | Curvas de nível | Implementado | API real HTTP 200 | Captura visual e validação de geometria |
 | UC-008 | Hillshade | Implementado | API aprovada | Captura visual no mapa |
-| UC-009 | Mudanças entre ortomapas | Implementado | Backend existente | Validar com dois ortomapas reais |
-| UC-010 | Classificação KMeans | Implementado | Backend existente | Validar resultado visual e métricas |
-| UC-011 | Rede de drenagem | Parcialmente implementado | Formulário/endpoint | Validar processamento hidrológico real |
+| UC-009 | Mudanças entre ortomapas | Implementado | API real HTTP 200 | Validar com voos de datas distintas |
+| UC-010 | Classificação KMeans | Implementado | API real HTTP 200 | Validar resultado visual e métricas |
+| UC-011 | Rede de drenagem | Parcialmente implementado | Não concluiu no limite operacional | Otimizar processamento e testar novamente |
 | UC-012 | Volume acima/abaixo de referência | Implementado | API e Copiloto aprovados | Exigir cota explícita em prompts ambíguos |
 | UC-013 | Anotação poligonal | Implementado | UI existente | Suíte Playwright dedicada |
 | UC-014 | Anotação pontual | Implementado | UI existente | Suíte Playwright dedicada |
@@ -42,3 +42,10 @@ Um caso só será marcado como concluído operacionalmente quando tiver implemen
 1. Validar UC-007, UC-009, UC-010 e UC-011 com dados reais.
 2. Executar cenários de exceção de UC-004, UC-005 e UC-006.
 3. Criar uma suíte Playwright cobrindo os 20 casos e seus fluxos alternativos críticos.
+
+## Lote executado em 13/09/2026
+
+- UC-007: `POST /api/tools/contours` retornou HTTP 200 e GeoJSON de curvas.
+- UC-009: `POST /api/tools/changes` retornou HTTP 200; raster de teste sem pixels alterados.
+- UC-010: `POST /api/tools/classify` retornou HTTP 200 com saída KMeans.
+- UC-011: `POST /api/tools/hydrology/streams` excedeu o limite de execução; permanece parcial.
