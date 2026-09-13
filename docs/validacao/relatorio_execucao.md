@@ -1,6 +1,6 @@
 # Relatorio de Execucao — Validacao Playwright E2E
 
-**Data:** 2026-09-13 03:45:50
+**Data:** 2026-09-13 04:43:09
 
 **Backend:** http://localhost:8888
 
@@ -13,9 +13,9 @@
 
 | Total | Aprovados | Reprovados |
 |---|---|---|
-| **17** | **13** ✅ | **4** ❌ |
+| **17** | **17** ✅ | **0** ❌ |
 
-Taxa: **76.5%**
+Taxa: **100.0%**
 
 
 ---
@@ -25,36 +25,39 @@ Taxa: **76.5%**
 
 ### UC-001: Criar Novo Projeto
 
-**Status:** ❌ **REPROVADO**
+**Status:** ✅ **APROVADO**
 
 **Passos executados:**
 
 1. ✅ Estado inicial: 0 projetos existentes
    ![](../runtime/screenshots/UC001_step01_estado_inicial.png)
-2. ✅ Projeto criado com ID=20, HTTP 201
+2. ✅ Projeto criado com ID=23, HTTP 201
 3. ✅ Campos validados: nome='UC-001 Teste Automatizado', status='em_andamento'
-4. ❌ Erro na execucao
-   ![](../runtime/screenshots/UC001_step05_erro.png)
+4. ✅ GET /api/projetos/23 retornou projeto correto
+5. ✅ Contagem aumentou de 0 para 1
 
 
 ### UC-002: Buscar e Filtrar Projetos
 
-**Status:** ❌ **REPROVADO**
+**Status:** ✅ **APROVADO**
 
 **Passos executados:**
 
-1. ❌ Erro
-   - **Erro:** `'method' object is not subscriptable`
+1. ✅ Busca por 'Serra': 1 resultados
+2. ✅ Filtro status=planejado: 0 projetos
+3. ✅ Filtro status=em_andamento funciona
 
 
 ### UC-003: Selecionar Projeto e Listar Ortomapas
 
-**Status:** ❌ **REPROVADO**
+**Status:** ✅ **APROVADO**
 
 **Passos executados:**
 
-1. ❌ Erro
-   ![](../runtime/screenshots/UC003_step01_erro.png)
+1. ✅ Projeto 3 tem 0 ortomapas
+2. ✅ Tipos presentes: set()
+3. ✅ Frontend carregado, conteudo: 624 chars
+   ![](../runtime/screenshots/UC003_step03_sidebar_projetos.png)
 
 
 ### UC-005: Calcular Indice de Vegetacao VARI
@@ -147,7 +150,7 @@ Taxa: **76.5%**
 **Passos executados:**
 
 1. ✅ Anotacao poligono criada
-2. ✅ Total anotacoes: 11
+2. ✅ Total anotacoes: 15
 
 
 ### UC-014: Criar Anotacao Ponto
@@ -171,12 +174,12 @@ Taxa: **76.5%**
 
 ### UC-019: Registrar Voo de Drone
 
-**Status:** ❌ **REPROVADO**
+**Status:** ✅ **APROVADO**
 
 **Passos executados:**
 
-1. ✅ Voo criado ID=7, altitude=50.0m
-2. ❌ Erro
+1. ✅ Voo criado ID=10, altitude=50.0m
+2. ✅ Voos do projeto 3: 1
 
 
 ### UC-020: Segmentar Ortomapa
@@ -208,14 +211,10 @@ Taxa: **76.5%**
 
 ---
 
-## Divergencias Encontradas
+## Divergencias
 
-| ID | UC | Passo | Esperado | Observado | Severidade |
-|---|---|---|---|---|---|
-| DIV-001 | UC-001 | 5 | Criacao sem erros |  | MEDIA |
-| DIV-002 | UC-002 | 1 | Busca/filtro funcional | 'method' object is not subscriptable | MEDIA |
-| DIV-003 | UC-003 | 1 | Listar ortomapas do projeto |  | MEDIA |
-| DIV-004 | UC-019 | 2 | Voo criado |  | MEDIA |
+**Nenhuma divergencia encontrada.**
+
 
 ---
 
@@ -233,4 +232,4 @@ Taxa: **76.5%**
 - `UC003_step03_sidebar_projetos.png`
 
 
-*Gerado em 2026-09-13 03:45:50*
+*Gerado em 2026-09-13 04:43:09*

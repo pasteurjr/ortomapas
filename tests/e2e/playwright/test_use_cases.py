@@ -48,13 +48,13 @@ def api(page, method, path, body=None):
     url = f"{API_URL}{path}"
     headers = {"Content-Type": "application/json", **AUTH_HEADERS}
     if method == "GET":
-        return page.request.get(url)
+        return page.request.get(url, headers=headers)
     elif method == "POST":
         return page.request.post(url, data=json.dumps(body) if body else None, headers=headers)
     elif method == "PUT":
         return page.request.put(url, data=json.dumps(body) if body else None, headers=headers)
     elif method == "DELETE":
-        return page.request.delete(url)
+        return page.request.delete(url, headers=headers)
 
 
 def divergencia(uc_id, step, esperado, observado, evidencia, severidade="MEDIA"):
