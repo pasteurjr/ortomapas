@@ -5,6 +5,8 @@ from typing import Optional, List, Dict, Any
 import os
 import logging
 import json
+import rasterio
+from rasterio.enums import Resampling
 from datetime import datetime
 
 from backend.config import ANALISES_DIR, DATA_DIR
@@ -285,6 +287,16 @@ async def delineate_watershed(req: WatershedRequest):
 async def extract_streams(req: StreamsRequest):
     try:
         dtm = _resolve_path(req.dtm_path)
+        # O pipeline D8 usa estruturas em memoria; reduzimos rasters muito grandes
+        # para manter tempo e memoria previsiveis, preservando a extensao espacial.
+        with rasterio.open(dtm) as src:
+            scale = min(1.0, 512 / max(src.width, src.height))
+            if scale < 1.0:
+                work = _output_path(f"{req.output_name}_resampled", ".tif")
+                h, w = max(1, int(src.height * scale)), max(1, int(src.width * scale))
+                profile = src.profile.copy(); profile.update(height=h, width=w, transform=src.transform * src.transform.scale(src.width / w, src.height / h))
+                with rasterio.open(work, 'w', **profile) as dst: dst.write(src.read(1, out_shape=(h, w), resampling=Resampling.bilinear), 1)
+                dtm = work
         # Generate intermediate products
         filled = _output_path(f"{req.output_name}_filled")
         flow_dir = _output_path(f"{req.output_name}_flowdir")
