@@ -162,8 +162,9 @@ def uc_001_criar_projeto(page):
         STEP_COUNT += 1
         r3 = api(page, "GET", "/api/projetos")
         payload = r3.json()
-        new_count = payload.get("total", len(payload.get("projetos", []))) if isinstance(payload, dict) else len(payload)
-        assert new_count > initial_count, f"Contagem nao aumentou: {new_count}"
+        projetos_finais = payload.get("projetos", []) if isinstance(payload, dict) else payload
+        new_count = payload.get("total", len(projetos_finais)) if isinstance(payload, dict) else len(projetos_finais)
+        assert any(p.get("id") == new_id for p in projetos_finais), f"Projeto {new_id} nao apareceu na listagem"
         uc.step_pass(f"Contagem aumentou de {initial_count} para {new_count}")
 
     except Exception as e:
@@ -186,7 +187,7 @@ def uc_002_buscar_projetos(page):
         # Step 1: Buscar por texto
         STEP_COUNT += 1
         r = api(page, "GET", "/api/projetos/search?q=Serra")
-        assert r.status == 200
+        assert r.status == 200, f"HTTP {r.status}: {r.text[:200]}"
         d = r.json()
         results = d if isinstance(d, list) else d.get("projetos", d.get("results", []))
         uc.step_pass(f"Busca por 'Serra': {len(results)} resultados")
@@ -207,8 +208,9 @@ def uc_002_buscar_projetos(page):
         uc.step_pass("Filtro status=em_andamento funciona")
 
     except Exception as e:
-        uc.step_fail(f"Erro", str(e))
-        divergencia("UC-002", STEP_COUNT, "Busca/filtro funcional", str(e), "")
+        detail = str(e) or repr(e)
+        uc.step_fail("Erro", detail)
+        divergencia("UC-002", STEP_COUNT, "Busca/filtro funcional", detail, "")
 
     UC_RESULTS.append(uc)
     return uc

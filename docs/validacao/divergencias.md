@@ -15,7 +15,7 @@
 - **Caso de Uso:** UC-002
 - **Passo:** 1
 - **Esperado:** Busca/filtro funcional
-- **Observado:** 
+- **Observado:** 'method' object is not subscriptable
 - **Severidade:** MEDIA
 
 ## DIV-003

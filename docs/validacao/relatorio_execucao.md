@@ -1,6 +1,6 @@
 # Relatorio de Execucao — Validacao Playwright E2E
 
-**Data:** 2026-09-13 03:39:29
+**Data:** 2026-09-13 03:42:14
 
 **Backend:** http://localhost:8888
 
@@ -31,7 +31,7 @@ Taxa: **76.5%**
 
 1. ✅ Estado inicial: 0 projetos existentes
    ![](../runtime/screenshots/UC001_step01_estado_inicial.png)
-2. ✅ Projeto criado com ID=17, HTTP 201
+2. ✅ Projeto criado com ID=19, HTTP 201
 3. ✅ Campos validados: nome='UC-001 Teste Automatizado', status='em_andamento'
 4. ❌ Erro na execucao
    ![](../runtime/screenshots/UC001_step05_erro.png)
@@ -44,6 +44,7 @@ Taxa: **76.5%**
 **Passos executados:**
 
 1. ❌ Erro
+   - **Erro:** `'method' object is not subscriptable`
 
 
 ### UC-003: Selecionar Projeto e Listar Ortomapas
@@ -146,7 +147,7 @@ Taxa: **76.5%**
 **Passos executados:**
 
 1. ✅ Anotacao poligono criada
-2. ✅ Total anotacoes: 7
+2. ✅ Total anotacoes: 9
 
 
 ### UC-014: Criar Anotacao Ponto
@@ -174,7 +175,7 @@ Taxa: **76.5%**
 
 **Passos executados:**
 
-1. ✅ Voo criado ID=4, altitude=50.0m
+1. ✅ Voo criado ID=6, altitude=50.0m
 2. ❌ Erro
 
 
@@ -212,7 +213,7 @@ Taxa: **76.5%**
 | ID | UC | Passo | Esperado | Observado | Severidade |
 |---|---|---|---|---|---|
 | DIV-001 | UC-001 | 5 | Criacao sem erros |  | MEDIA |
-| DIV-002 | UC-002 | 1 | Busca/filtro funcional |  | MEDIA |
+| DIV-002 | UC-002 | 1 | Busca/filtro funcional | 'method' object is not subscriptable | MEDIA |
 | DIV-003 | UC-003 | 1 | Listar ortomapas do projeto |  | MEDIA |
 | DIV-004 | UC-019 | 2 | Voo criado |  | MEDIA |
 
@@ -232,4 +233,4 @@ Taxa: **76.5%**
 - `UC003_step03_sidebar_projetos.png`
 
 
-*Gerado em 2026-09-13 03:39:29*
+*Gerado em 2026-09-13 03:42:14*
