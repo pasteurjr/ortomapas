@@ -15,7 +15,7 @@
 | UC-008 | Hillshade | Implementado | API aprovada | Captura visual no mapa |
 | UC-009 | Mudanças entre ortomapas | Implementado | API real HTTP 200 | Validar com voos de datas distintas |
 | UC-010 | Classificação KMeans | Implementado | API real HTTP 200 | Validar resultado visual e métricas |
-| UC-011 | Rede de drenagem | Parcialmente implementado | Não concluiu no limite operacional | Otimizar processamento e testar novamente |
+| UC-011 | Rede de drenagem | Implementado | API real HTTP 200; DTM real; 1.173 feições GeoJSON | Suíte Playwright dedicada e cenários de erro |
 | UC-012 | Volume acima/abaixo de referência | Implementado | API e Copiloto aprovados | Exigir cota explícita em prompts ambíguos |
 | UC-013 | Anotação poligonal | Implementado | UI existente | Suíte Playwright dedicada |
 | UC-014 | Anotação pontual | Implementado | UI existente | Suíte Playwright dedicada |
@@ -28,8 +28,8 @@
 
 ## Resumo
 
-- **Implementados:** 19
-- **Parcialmente implementados:** 1 (UC-011)
+- **Implementados:** 20
+- **Parcialmente implementados:** 0
 - **Pendentes de validação formal:** 16 cenários, principalmente casos alternativos e de exceção.
 - **Copiloto:** núcleo operacional implementado; ferramentas de geometria e relevo testadas com LM Studio/Qwen e PostgreSQL reais.
 
@@ -48,4 +48,10 @@ Um caso só será marcado como concluído operacionalmente quando tiver implemen
 - UC-007: `POST /api/tools/contours` retornou HTTP 200 e GeoJSON de curvas.
 - UC-009: `POST /api/tools/changes` retornou HTTP 200; raster de teste sem pixels alterados.
 - UC-010: `POST /api/tools/classify` retornou HTTP 200 com saída KMeans.
-- UC-011: `POST /api/tools/hydrology/streams` excedeu o limite de execução; permanece parcial.
+- UC-011 (revalidação): `POST /api/tools/hydrology/streams` respondeu HTTP 200 em aproximadamente 2,0 s usando `ortomapas/odm_2_dtm.tif`; saída `data/analises/real_streams_validation.geojson` com 1.173 feições Polygon (364.943 bytes).
+
+## Evidência detalhada UC-011
+
+O teste foi executado contra o backend local na porta 8890, sem mocks, com o DTM produzido pelo processamento ODM real (produto 6). O endpoint aplicou reamostragem operacional, preenchimento de depressões, direção/acumulação de fluxo e extração de drenagens. O arquivo GeoJSON foi lido após a chamada e sua estrutura validada: `FeatureCollection`, 1.173 feições e geometrias `Polygon`.
+
+Relatório detalhado: `docs/validacao/uc011_drenagem_real_2026-09-13.md` e respectivo PDF.
