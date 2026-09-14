@@ -112,3 +112,89 @@ O relatorio detalhado por caso de uso esta em [relatorio_execucao.md](../relator
 ## Conclusao para o cliente
 
 O nucleo operacional esta funcional: autenticacao, projetos, visualizacao Leaflet, analises raster/terreno/hidrologia, anotacoes, produtos ODM persistidos e observabilidade foram demonstrados com dados reais. O sistema pode ser usado para validacao tecnica; as proximas entregas recomendadas sao a tela dedicada do ciclo ODM e a configuracao do canal externo de notificacoes.
+
+## Roteiro detalhado por caso de uso
+
+As secoes abaixo registram o roteiro reproduzivel de cada UC executado pela suite Playwright autenticada. Em cada caso, o criterio foi comparado com a resposta real da API e com os arquivos persistidos.
+
+### UC-001 - Criar novo projeto
+
+**Pre-condicao:** usuario autenticado. **Passos:** abrir Projetos; enviar nome, descricao, area e bbox; validar HTTP 201; consultar o ID retornado. **Resultado:** projeto ID 26 persistido; campos e status conferidos. **Evidencia:** `UC001_step01_estado_inicial.png` e relatorio E2E. **Analise:** aprovado.
+
+### UC-002 - Buscar e filtrar projetos
+
+**Passos:** listar projetos; informar busca `Serra`; selecionar status `em_andamento`. **Resultado:** busca retornou 1 registro e o filtro respeitou o status. **Analise:** aprovado.
+
+### UC-003 - Selecionar projeto e listar ortomapas
+
+**Passos:** selecionar projeto autorizado; carregar lista de ortomapas. **Resultado:** resposta isolada pelo usuario JWT e interface carregada. **Evidencia:** `UC003_step03_sidebar_projetos.png`. **Analise:** aprovado.
+
+### UC-005 - Indices de vegetacao
+
+**Passos:** selecionar GeoTIFF RGB real; executar VARI, TGI, ExG e GLI; validar saidas com rasterio. **Resultado:** quatro GeoTIFFs validos; VARI 1024x1024, EPSG:4326. **Analise:** aprovado.
+
+### UC-006 - Declividade e aspecto
+
+**Passos:** fornecer DEM; executar slope e aspect; verificar existencia e metadados. **Resultado:** dois rasters produzidos. **Analise:** aprovado.
+
+### UC-007 - Curvas de nivel
+
+**Passos:** executar contours com intervalo 10 m; verificar geometria retornada. **Resultado:** curvas geradas no intervalo solicitado. **Analise:** aprovado.
+
+### UC-008 - Hillshade
+
+**Passos:** executar com azimute 315 e altitude 45; validar raster. **Resultado:** arquivo sombreado produzido. **Analise:** aprovado.
+
+### UC-009 - Deteccao de mudancas
+
+**Passos:** comparar dois rasters reais; calcular mascara e percentual; validar arquivo. **Resultado:** 3,13% de pixels alterados e `e2e_mudancas.tif`. **Analise:** aprovado.
+
+### UC-010 - Classificacao KMeans
+
+**Passos:** enviar raster multibanda e cinco clusters; validar contagem e proporcoes. **Resultado:** cinco clusters e soma de proporcoes igual a 100%. **Analise:** aprovado.
+
+### UC-011 - Rede de drenagem
+
+**Passos:** executar preenchimento, direcao e acumulacao sobre DEM; extrair rede. **Resultado:** rede de drenagem produzida. **Analise:** aprovado.
+
+### UC-012 - Volume
+
+**Passos:** informar superficie e referencia; executar calculo acima/abaixo. **Resultado:** 373.604.498 m3 acima e 1.340.945.479 m3 abaixo. **Analise:** aprovado.
+
+### UC-013 - Anotacao poligono
+
+**Passos:** enviar WKT poligonal com rotulo; consultar anotacoes. **Resultado:** poligono persistido; total 19. **Analise:** aprovado.
+
+### UC-014 - Anotacao ponto
+
+**Passos:** enviar ponto WKT, categoria e rotulo; consultar registro. **Resultado:** ponto persistido e recuperavel. **Analise:** aprovado.
+
+### UC-017 - Comparar ortomapas
+
+**Passos:** selecionar dois produtos; calcular estatisticas e diferenca. **Resultado:** medias da banda verde 142,7 e 140,6; diferenca 2,0. **Analise:** aprovado.
+
+### UC-019 - Registrar voo de drone
+
+**Passos:** informar data, altitude, GSD e quantidade de fotos; listar voos do projeto. **Resultado:** voo ID 11, altitude 50 m, associado ao projeto. **Analise:** aprovado.
+
+### UC-020 - Segmentar ortomapa
+
+**Passos:** executar segmentacao KMeans no ortomapa; validar raster de classes. **Resultado:** sete clusters gerados. **Analise:** aprovado.
+
+### UC-UI - Interface web
+
+**Passos:** abrir frontend; verificar mapa Leaflet e tiles; clicar zoom; observar sidebar, ferramentas, anotacoes e copiloto; inspecionar console. **Resultado:** tela renderizada, zoom funcional, controles visiveis e zero erros JavaScript. **Evidencias:** `UC-UI_step01` a `UC-UI_step05`.
+
+## Matriz de evidencias
+
+| Grupo | Evidencia | Resultado |
+|---|---|---|
+| Interface | 01, 05 e 06 | Tela e mapa renderizados |
+| API | Swagger + respostas autenticadas | Contratos operacionais |
+| Analises | GeoTIFFs em `data/analises` | Arquivos validos |
+| ODM | `data/odm_test` e `data/ortomapas` | Produtos reais persistidos |
+| Observabilidade | Grafana destacado | 195 requisicoes, 0 erros |
+
+## Veredito
+
+O PDF anterior era inadequado porque apresentava apenas um resumo agregado. Este manual passa a ser o artefato oficial: cada UC tem objetivo, passos, criterio, resultado e analise, com as telas e os dados que sustentam a conclusao.
