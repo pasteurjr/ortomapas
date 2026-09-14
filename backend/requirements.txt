@@ -31,6 +31,12 @@ pillow>=10.0.0
 ultralytics>=8.3.0
 anthropic>=0.75.0
 
+# Observabilidade distribuida (opcional, habilitada por OTEL_ENABLED=1)
+opentelemetry-api>=1.27.0
+opentelemetry-sdk>=1.27.0
+opentelemetry-instrumentation-fastapi>=0.48b0
+opentelemetry-exporter-otlp>=1.27.0
+
 # Visualization
 matplotlib>=3.9.0
 folium>=0.17.0

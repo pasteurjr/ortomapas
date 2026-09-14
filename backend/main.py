@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.config import DATA_DIR, API_HOST, API_PORT
+from backend.config import DATA_DIR, API_HOST, API_PORT, OTEL_ENABLED, OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT
 from backend.routers import projetos, voos, ortomapas, analises, anotacoes, tools, odm, auth, agents, copilot
 
 logging.basicConfig(
@@ -56,6 +56,23 @@ app = FastAPI(
     description="API para gerenciamento de ortomapas, voos, analises e anotacoes geoespaciais.",
     version="1.0.0",
 )
+
+if OTEL_ENABLED:
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        provider = TracerProvider(resource=Resource.create({"service.name": OTEL_SERVICE_NAME}))
+        # Console exporter is deterministic for local validation; deployments can
+        # replace it with OTLP by configuring a collector endpoint.
+        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+        trace.set_tracer_provider(provider)
+        FastAPIInstrumentor.instrument_app(app)
+        logger.info("OpenTelemetry habilitado para %s (endpoint=%s)", OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT)
+    except ImportError as exc:
+        logger.warning("OpenTelemetry solicitado, mas dependencias ausentes: %s", exc)
 
 # CORS middleware — allow all origins
 app.add_middleware(
