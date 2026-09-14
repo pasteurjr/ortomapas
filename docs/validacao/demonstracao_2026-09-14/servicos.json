@@ -1,0 +1,6 @@
+{
+  "webodm_url": "http://127.0.0.1:8020",
+  "nodeodm_url": "http://127.0.0.1:8021/info",
+  "frontend_url": "http://127.0.0.1:5176",
+  "backend_url": "http://127.0.0.1:8888"
+}
