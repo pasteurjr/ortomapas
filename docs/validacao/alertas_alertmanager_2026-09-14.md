@@ -26,6 +26,8 @@ Foi concluida a etapa 5/5 da revisao operacional: regras de alerta no Prometheus
 
 O monitoramento externo e a avaliacao automatica de disponibilidade e taxa de erros estao operacionais. O Alertmanager esta pronto para encaminhar notificacoes; a configuracao de um destino externo (e-mail, Slack ou webhook) permanece especifica do ambiente de implantacao e nao foi inventada nesta etapa.
 
+Para ativar um webhook, use `observability/alertmanager-webhook.yml.example` como modelo, substitua a URL pelo endpoint real e aplique a alteracao com `docker compose restart alertmanager`. O exemplo nao e carregado automaticamente e nao contem credenciais.
+
 ## Endpoints locais
 
 - Prometheus: `http://localhost:9090`

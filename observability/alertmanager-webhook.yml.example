@@ -1,0 +1,10 @@
+# Exemplo de destino externo. Copie o bloco receiver para alertmanager.yml
+# e substitua a URL por um endpoint protegido do ambiente de producao.
+receivers:
+  - name: ortomapas-webhook
+    webhook_configs:
+      - url: https://monitoramento.exemplo.invalid/ortomapas-alertas
+        send_resolved: true
+
+route:
+  receiver: ortomapas-webhook
