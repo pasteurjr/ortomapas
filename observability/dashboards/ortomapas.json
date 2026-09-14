@@ -6,10 +6,10 @@
   "refresh": "15s",
   "time": {"from": "now-30m", "to": "now"},
   "panels": [
-    {"id": 1, "type": "stat", "title": "Requisições totais", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}, "targets": [{"expr": "ortomapas_http_requests_total", "refId": "A"}]},
-    {"id": 2, "type": "stat", "title": "Erros", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}, "targets": [{"expr": "ortomapas_http_errors_total", "refId": "A"}]},
-    {"id": 3, "type": "stat", "title": "Latência média (ms)", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}, "targets": [{"expr": "ortomapas_http_latency_ms_total / ortomapas_http_requests_total", "refId": "A"}]},
-    {"id": 4, "type": "timeseries", "title": "Respostas por status", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}, "targets": [{"expr": "rate(ortomapas_http_responses_total[5m])", "legendFormat": "{{status}}", "refId": "A"}]},
-    {"id": 5, "type": "timeseries", "title": "Taxa de requisições", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}, "targets": [{"expr": "rate(ortomapas_http_requests_total[5m])", "legendFormat": "requests/s", "refId": "A"}]}
+    {"id": 1, "type": "stat", "title": "Requisições totais", "datasource": {"type": "prometheus", "uid": "ortomapas-prometheus"}, "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}, "targets": [{"expr": "ortomapas_http_requests_total", "refId": "A"}]},
+    {"id": 2, "type": "stat", "title": "Erros", "datasource": {"type": "prometheus", "uid": "ortomapas-prometheus"}, "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}, "targets": [{"expr": "ortomapas_http_errors_total", "refId": "A"}]},
+    {"id": 3, "type": "stat", "title": "Latência média (ms)", "datasource": {"type": "prometheus", "uid": "ortomapas-prometheus"}, "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}, "targets": [{"expr": "ortomapas_http_latency_ms_total / ortomapas_http_requests_total", "refId": "A"}]},
+    {"id": 4, "type": "timeseries", "title": "Respostas por status", "datasource": {"type": "prometheus", "uid": "ortomapas-prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}, "targets": [{"expr": "rate(ortomapas_http_responses_total[5m])", "legendFormat": "{{status}}", "refId": "A"}]},
+    {"id": 5, "type": "timeseries", "title": "Taxa de requisições", "datasource": {"type": "prometheus", "uid": "ortomapas-prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}, "targets": [{"expr": "rate(ortomapas_http_requests_total[5m])", "legendFormat": "requests/s", "refId": "A"}]}
   ]
 }
