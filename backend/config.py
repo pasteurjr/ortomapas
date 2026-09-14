@@ -43,6 +43,7 @@ LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-coder-32b-instruct")
 OTEL_ENABLED = os.getenv("OTEL_ENABLED", "0").lower() in {"1", "true", "yes"}
 OTEL_SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "ortomapas-api")
 OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4317")
+OTEL_OTLP_ENABLED = os.getenv("OTEL_OTLP_ENABLED", "0").lower() in {"1", "true", "yes"}
 
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8888"))

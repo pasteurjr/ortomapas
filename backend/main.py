@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.config import DATA_DIR, API_HOST, API_PORT, OTEL_ENABLED, OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT
+from backend.config import DATA_DIR, API_HOST, API_PORT, OTEL_ENABLED, OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_OTLP_ENABLED
 from backend.routers import projetos, voos, ortomapas, analises, anotacoes, tools, odm, auth, agents, copilot
 
 logging.basicConfig(
@@ -63,11 +63,15 @@ if OTEL_ENABLED:
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         provider = TracerProvider(resource=Resource.create({"service.name": OTEL_SERVICE_NAME}))
         # Console exporter is deterministic for local validation; deployments can
         # replace it with OTLP by configuring a collector endpoint.
-        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+        if OTEL_OTLP_ENABLED:
+            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=OTEL_EXPORTER_OTLP_ENDPOINT, insecure=True)))
+        else:
+            provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
         trace.set_tracer_provider(provider)
         FastAPIInstrumentor.instrument_app(app)
         logger.info("OpenTelemetry habilitado para %s (endpoint=%s)", OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT)

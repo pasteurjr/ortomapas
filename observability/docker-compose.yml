@@ -1,4 +1,15 @@
 services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.109.0
+    container_name: ortomapas-otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yml:ro
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:v2.54.1
     container_name: ortomapas-prometheus
