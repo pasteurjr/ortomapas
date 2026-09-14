@@ -1,0 +1,19 @@
+groups:
+  - name: ortomapas-operacional
+    rules:
+      - alert: OrtomapasApiSemMetricas
+        expr: absent(ortomapas_http_requests_total)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: API Ortomapas sem metricas
+          description: Prometheus nao recebe metricas da API Ortomapas.
+      - alert: OrtomapasTaxaDeErrosAlta
+        expr: rate(ortomapas_http_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Taxa de erros elevada
+          description: A API está apresentando mais de 0,1 erro por segundo.
