@@ -110,7 +110,6 @@
         <div v-if="!rightCollapsed" class="sidebar-content">
           <DrawTools v-if="activeWorkspace === 'dados' || activeWorkspace === 'analises'" />
           <MeasureTools v-if="activeWorkspace === 'dados'" />
-          <CopilotChat v-if="activeWorkspace === 'copiloto'" />
           <div v-if="activeWorkspace === 'odm'" class="workspace-help"><i class="pi pi-cog"></i><strong>Pipeline ODM</strong><span>Envie fotos, acompanhe o processamento, importe produtos e abra as visualizações 3D.</span></div>
           <div v-if="activeWorkspace === 'missoes'" class="workspace-help"><i class="pi pi-send"></i><strong>Planejamento de voo</strong><span>Crie AOI, exclusões, takeoff, waypoints, grid e exportação para o aplicativo de voo.</span></div>
         </div>
