@@ -45,12 +45,6 @@
       </div>
     </header>
 
-    <nav class="workspace-nav" aria-label="Navegacao principal">
-      <button v-for="item in workspaceItems" :key="item.id" type="button" :class="{ active: activeWorkspace === item.id }" @click="selectWorkspace(item.id)">
-        <i :class="item.icon"></i><span>{{ item.label }}</span>
-      </button>
-    </nav>
-
     <!-- Main Content -->
     <div class="main-content">
       <!-- Left Sidebar -->
@@ -58,6 +52,14 @@
         <div class="sidebar-toggle" @click="leftCollapsed = !leftCollapsed">
           <i :class="leftCollapsed ? 'pi pi-angle-right' : 'pi pi-angle-left'"></i>
         </div>
+        <nav class="workspace-sidebar-nav" aria-label="Navegacao principal">
+          <button v-for="item in workspaceItems" :key="item.id" type="button" class="workspace-nav-item" :class="{ active: activeWorkspace === item.id }" :title="leftCollapsed ? item.label : undefined" @click="selectWorkspace(item.id)">
+            <i :class="item.icon"></i><span v-if="!leftCollapsed">{{ item.label }}</span>
+          </button>
+          <div v-if="!leftCollapsed" class="workspace-subnav">
+            <button v-for="sub in (workspaceSubitems[activeWorkspace] || [])" :key="sub.label" type="button" @click="sub.action ? sub.action() : null"><i :class="sub.icon"></i>{{ sub.label }}</button>
+          </div>
+        </nav>
         <div v-if="!leftCollapsed" class="sidebar-content">
           <template v-if="activeWorkspace === 'dados'">
             <ProjectList />
@@ -190,6 +192,13 @@ const workspaceItems = [
   { id: 'missoes', label: 'Missões', icon: 'pi pi-send' },
   { id: 'copiloto', label: 'Copiloto', icon: 'pi pi-sparkles' },
 ]
+const workspaceSubitems = {
+  dados: [{ label: 'Camadas e ortomapas', icon: 'pi pi-images' }, { label: 'Importar dados', icon: 'pi pi-upload' }],
+  odm: [{ label: 'Voos e fotos', icon: 'pi pi-camera' }, { label: 'Fila de processamento', icon: 'pi pi-clock' }, { label: 'Produtos e qualidade', icon: 'pi pi-check-circle' }],
+  analises: [{ label: 'Ferramentas espaciais', icon: 'pi pi-sliders-h' }, { label: 'Resultados', icon: 'pi pi-chart-line' }],
+  missoes: [{ label: 'Planejador de captura', icon: 'pi pi-send' }, { label: 'Validação e exportação', icon: 'pi pi-download' }],
+  copiloto: [{ label: 'Conversas do projeto', icon: 'pi pi-comments' }, { label: 'Ferramentas executadas', icon: 'pi pi-wrench' }],
+}
 
 function onAuthenticated() { authenticated.value = true; projectStore.fetchProjects() }
 
@@ -322,7 +331,7 @@ body {
 }
 
 .sidebar-left {
-  width: 280px;
+  width: 292px;
   border-right: 1px solid var(--border);
 }
 
@@ -333,7 +342,7 @@ body {
 }
 
 .sidebar-left.collapsed {
-  width: 32px;
+  width: 56px;
 }
 
 .sidebar-right.collapsed {
@@ -369,6 +378,36 @@ body {
   padding: 8px;
   gap: 8px;
 }
+
+.workspace-sidebar-nav {
+  flex: 0 0 auto;
+  padding: 10px 8px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+  font-size: .82rem;
+}
+
+.workspace-nav-item:hover { background: var(--sidebar-hover); color: var(--text); }
+.workspace-nav-item.active { background: #243b35; color: #86efac; box-shadow: inset 3px 0 0 var(--accent); }
+.sidebar-left.collapsed .workspace-nav-item { justify-content: center; padding-inline: 0; }
+.sidebar-left.collapsed .workspace-nav-item.active { box-shadow: inset 3px 0 0 var(--accent); }
+.workspace-subnav { margin: 2px 0 4px 28px; display: grid; gap: 2px; }
+.workspace-subnav button { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; background: transparent; color: var(--text-dim); font-size: .74rem; text-align: left; cursor: pointer; border-radius: 4px; }
+.workspace-subnav button:hover { background: var(--sidebar-hover); color: var(--text); }
 
 .sidebar-section {
   margin-bottom: 4px;

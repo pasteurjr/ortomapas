@@ -2,6 +2,7 @@
   <div class="map-container" ref="mapContainer">
     <l-map
       ref="leafletMap"
+      :key="projectStore.activeProject?.id || 'sem-projeto'"
       v-model:zoom="currentZoom"
       v-model:center="currentCenter"
       :useGlobalLeaflet="false"
@@ -264,15 +265,20 @@ function exportLayer(layer, format) {
 watch(
   () => projectStore.activeProject,
   (project) => {
-    if (project?.bbox) {
-      const bbox = project.bbox
+    const bbox = project?.bbox || (project?.bbox_oeste != null && project?.bbox_sul != null && project?.bbox_leste != null && project?.bbox_norte != null
+      ? [project.bbox_oeste, project.bbox_sul, project.bbox_leste, project.bbox_norte]
+      : null)
+    if (bbox) {
       currentCenter.value = [
         (bbox[1] + bbox[3]) / 2,
         (bbox[0] + bbox[2]) / 2,
       ]
       currentZoom.value = 14
+      mapStore.setView(currentCenter.value, 14)
+      setTimeout(() => leafletMap.value?.leafletObject?.setView(currentCenter.value, 14), 0)
     }
-  }
+  },
+  { immediate: true }
 )
 
 // Enquadra automaticamente a camada espacial mais recente retornada pelo Copiloto.

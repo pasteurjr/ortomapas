@@ -63,7 +63,7 @@ def main() -> int:
             wait()
 
             # Painéis de análise: cada aba é capturada com os seus controles reais.
-            page.locator(".workspace-nav").get_by_text("Análises", exact=True).click()
+            page.locator(".workspace-sidebar-nav").get_by_text("Análises", exact=True).click()
             page.get_by_text("Veg", exact=True).wait_for(timeout=7000)
             tabs = [("Veg", "05_ferramenta_vegetacao", "Vegetação", "O painel de vegetação permite calcular índices espectrais a partir do ortomapa selecionado."), ("Ter", "06_ferramenta_terreno", "Terreno", "O painel de terreno oferece DSM, DTM, declividade, aspecto e curvas de nível."), ("Cls", "07_ferramenta_classificacao", "Classificação", "A classificação organiza o ortomapa em classes e permite definir áreas de treinamento."), ("Hid", "08_ferramenta_hidrologia", "Hidrologia", "A hidrologia executa análises de fluxo, acumulação e bacias a partir do DTM."), ("Mud", "09_ferramenta_mudancas", "Mudanças", "A comparação antes/depois evidencia alterações entre dois ortomapas."), ("Vol", "10_ferramenta_volume", "Volume", "A ferramenta de volume calcula corte e aterro dentro de uma geometria."), ("Rec", "11_ferramenta_recorte", "Recorte", "O recorte limita o processamento a um polígono desenhado no mapa."), ("Exp", "12_ferramenta_exportacao", "Exportação", "A exportação permite baixar camadas e resultados para uso externo.")]
             for tab, scene_id, title, narration in tabs:
@@ -81,7 +81,7 @@ def main() -> int:
             wait()
             shot("13_geometria_desenhada", "Geometria espacial", "O usuário desenha uma área no mapa. Essa geometria pode alimentar medições, análises espaciais e o copiloto.", "Desenhar um polígono no mapa")
             page.get_by_title("Medir area e perimetro").click() if page.get_by_title("Medir area e perimetro").count() else None
-            page.locator(".workspace-nav").get_by_text("Copiloto", exact=True).click()
+            page.locator(".workspace-sidebar-nav").get_by_text("Copiloto", exact=True).click()
             page.get_by_placeholder("Ex.: compare DSM e DTM deste projeto...").fill("Calcule a área e o perímetro da geometria desenhada.")
             page.locator('.copilot button[title="Enviar"]').click()
             wait(); page.wait_for_timeout(1200)
