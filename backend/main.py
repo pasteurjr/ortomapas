@@ -14,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import DATA_DIR, API_HOST, API_PORT, OTEL_ENABLED, OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_OTLP_ENABLED
-from backend.routers import projetos, voos, ortomapas, analises, anotacoes, tools, odm, auth, agents, copilot
+from backend.routers import projetos, voos, ortomapas, analises, anotacoes, tools, odm, auth, agents, copilot, missoes_captura
 
 logging.basicConfig(
     level=logging.INFO,
@@ -102,6 +102,7 @@ app.include_router(odm.router, prefix="/api", tags=["ODM"])
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
 app.include_router(copilot.router, prefix="/api", tags=["Copilot"])
+app.include_router(missoes_captura.router, prefix="/api", tags=["Missoes de captura"])
 
 
 @app.on_event("startup")

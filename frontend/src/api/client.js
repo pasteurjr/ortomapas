@@ -43,6 +43,41 @@ export function deleteProject(id) {
   return api.delete(`/projetos/${id}`)
 }
 
+// Capture mission planning
+export function createCaptureMission(projectId, data) {
+  return api.post(`/projetos/${projectId}/missoes-captura`, data)
+}
+
+export function getCaptureMissions(projectId) {
+  return api.get('/missoes-captura', { params: { projeto_id: projectId } })
+}
+
+export function getCaptureMission(id) {
+  return api.get(`/missoes-captura/${id}`)
+}
+
+export function updateCaptureMission(id, data) {
+  return api.patch(`/missoes-captura/${id}`, data)
+}
+
+export function generateCaptureGrid(id, data = {}) {
+  return api.post(`/missoes-captura/${id}/gerar-grid`, data)
+}
+
+export function updateCaptureWaypoints(id, waypoints) {
+  return api.put(`/missoes-captura/${id}/waypoints`, {
+    waypoints: waypoints.map(({ lat, lng, altitude_m, velocidade_ms, gimbal_graus, rumo_graus }) => ({ lat, lon: lng, altitude_m, velocidade_ms, gimbal_graus, rumo_graus })),
+  })
+}
+
+export function validateCaptureMission(id) {
+  return api.post(`/missoes-captura/${id}/validar`)
+}
+
+export function exportCaptureMission(id, formato = 'kml') {
+  return api.get(`/missoes-captura/${id}/exportar`, { params: { formato }, responseType: 'blob' })
+}
+
 export function searchProjects(q) {
   return api.get('/projetos/search', { params: { q } })
 }

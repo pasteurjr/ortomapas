@@ -1,6 +1,6 @@
 # Relatorio de Execucao — Validacao Playwright E2E
 
-**Data:** 2026-09-13 04:43:09
+**Data:** 2026-09-14 13:29:33
 
 **Backend:** http://localhost:8888
 
@@ -31,9 +31,9 @@ Taxa: **100.0%**
 
 1. ✅ Estado inicial: 0 projetos existentes
    ![](../runtime/screenshots/UC001_step01_estado_inicial.png)
-2. ✅ Projeto criado com ID=23, HTTP 201
+2. ✅ Projeto criado com ID=26, HTTP 201
 3. ✅ Campos validados: nome='UC-001 Teste Automatizado', status='em_andamento'
-4. ✅ GET /api/projetos/23 retornou projeto correto
+4. ✅ GET /api/projetos/26 retornou projeto correto
 5. ✅ Contagem aumentou de 0 para 1
 
 
@@ -150,7 +150,7 @@ Taxa: **100.0%**
 **Passos executados:**
 
 1. ✅ Anotacao poligono criada
-2. ✅ Total anotacoes: 15
+2. ✅ Total anotacoes: 19
 
 
 ### UC-014: Criar Anotacao Ponto
@@ -178,7 +178,7 @@ Taxa: **100.0%**
 
 **Passos executados:**
 
-1. ✅ Voo criado ID=10, altitude=50.0m
+1. ✅ Voo criado ID=11, altitude=50.0m
 2. ✅ Voos do projeto 3: 1
 
 
@@ -230,6 +230,8 @@ Taxa: **100.0%**
 - `UC001_step05_erro.png`
 - `UC003_step01_erro.png`
 - `UC003_step03_sidebar_projetos.png`
+- `grafana_dashboard_operacional.png`
+- `grafana_dashboard_operacional_com_dados.png`
 
 
-*Gerado em 2026-09-13 04:43:09*
+*Gerado em 2026-09-14 13:29:33*

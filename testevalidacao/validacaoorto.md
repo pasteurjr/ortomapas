@@ -1,6 +1,6 @@
 # Relatorio de Validacao Completo — Sistema de Ortomapas
 
-**Data de Execucao:** 2026-03-26 19:42:29
+**Data de Execucao:** 2026-09-14 13:28:55
 
 **Ferramenta:** Playwright (Chromium headless)
 
@@ -18,12 +18,12 @@
 | Metrica | Valor |
 |---|---|
 | Total de Testes | **32** |
-| Aprovados | **32** ✅ |
-| Reprovados | **0** ❌ |
-| Alertas | **0** ⚠️ |
-| Taxa de Aprovacao | **100.0%** |
+| Aprovados | **23** ✅ |
+| Reprovados | **5** ❌ |
+| Alertas | **4** ⚠️ |
+| Taxa de Aprovacao | **71.9%** |
 
-> **VEREDICTO: SISTEMA APROVADO** — Todos os testes passaram com sucesso.
+> **VEREDICTO: 5 FALHA(S) DETECTADA(S)** — Correcoes necessarias.
 
 
 ### Categorias Testadas
@@ -49,14 +49,14 @@
 
 **Status:** ✅ **PASS**
 
-Servidor respondeu `healthy`. Versao: `1.0.0`. Timestamp: `2026-03-26T22:42:09.262186`.
+Servidor respondeu `healthy`. Versao: `1.0.0`. Timestamp: `2026-09-14T16:28:39.808387`.
 
 
 **Dados retornados:**
 ```json
 {
   "status": "healthy",
-  "timestamp": "2026-03-26T22:42:09.262186",
+  "timestamp": "2026-09-14T16:28:39.808387",
   "version": "1.0.0"
 }
 ```
@@ -80,7 +80,7 @@ O endpoint `/` retorna metadados do sistema.
   "sistema": "Sistema de Ortomapas",
   "versao": "1.0.0",
   "status": "online",
-  "timestamp": "2026-03-26T22:42:09.399910",
+  "timestamp": "2026-09-14T16:28:40.000573",
   "endpoints": {
     "docs": "/docs",
     "redoc": "/redoc",
@@ -108,100 +108,49 @@ Swagger carregado com sucesso. Todos os endpoints documentados automaticamente p
 
 ### Teste 4: GET /api/projetos — Listar Projetos
 
-**Status:** ✅ **PASS**
-
-Retornou **5 projetos** com status HTTP 200. Nomes: Serra do Cipo - Lapinha, Brumadinho - Rio Paraopeba, Serra da Moeda - Topo do Mundo, Rio das Velhas - Rio Acima, Serra da Piedade.
+**Status:** ❌ **FAIL**
 
 
-**Dados retornados:**
-```json
-{
-  "total": 5,
-  "primeiro": {
-    "id": 1,
-    "nome": "Serra do Cipo - Lapinha",
-    "descricao": "Classificacao de campos rupestres com deep learning e monitoramento temporal",
-    "area_estudo": "Lapinha da Serra",
-    "bbox_norte": -19.067,
-    "bbox_sul": -19.167,
-    "bbox_leste": -43.617,
-    "bbox_oeste": -43.717,
-    "centro_lat": -19.117,
-    "centro_lon": -43.667,
-    "objetivo": "Classificacao de campos rupestres e deteccao de mudancas",
-    "responsavel": "Dr. Pesquisador",
-    "data_inicio": "2026-05-01",
-    "data_fim": null,
-    "status": "planejado",
-    "criado_em": "2026-03-26 22:39:24",
-    "atualizado_em": "2026-03-26 22:39:24"
-  }
-}
+**Erro encontrado:**
+```
+Traceback (most recent call last):
+  File "/mnt/data1/progpython/ortomapas/testevalidacao/test_ui_completo.py", line 127, in run_all
+    assert r.status == 200
+           ^^^^^^^^^^^^^^^
+AssertionError
+
 ```
 
 
 ### Teste 5: POST /api/projetos — Criar Projeto
 
-**Status:** ✅ **PASS**
-
-Projeto criado com **ID 6**. Nome: `Teste Playwright — Validacao Automatizada`.
+**Status:** ❌ **FAIL**
 
 
-**Dados retornados:**
-```json
-{
-  "id": 6,
-  "nome": "Teste Playwright — Validacao Automatizada",
-  "descricao": "Projeto criado pelo teste automatizado de validacao do sistema",
-  "area_estudo": "Serra da Moeda (Teste)",
-  "bbox_norte": null,
-  "bbox_sul": null,
-  "bbox_leste": null,
-  "bbox_oeste": null,
-  "centro_lat": null,
-  "centro_lon": null,
-  "objetivo": null,
-  "responsavel": null,
-  "data_inicio": null,
-  "data_fim": null,
-  "status": "em_andamento",
-  "criado_em": "2026-03-26 22:42:12.497783",
-  "atualizado_em": "2026-03-26 22:42:12"
-}
+**Erro encontrado:**
+```
+Traceback (most recent call last):
+  File "/mnt/data1/progpython/ortomapas/testevalidacao/test_ui_completo.py", line 148, in run_all
+    assert r.status in (200, 201), f"HTTP {r.status}: {r.text()}"
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: HTTP 401: {"detail":"Autenticacao necessaria"}
+
 ```
 
 
 ### Teste 6: GET /api/projetos/3 — Buscar por ID
 
-**Status:** ✅ **PASS**
-
-Retornou projeto: `Serra da Moeda - Topo do Mundo`.
+**Status:** ❌ **FAIL**
 
 
-**Dados retornados:**
-```json
-{
-  "id": 3,
-  "nome": "Serra da Moeda - Topo do Mundo",
-  "descricao": "Mapeamento geologico estrutural do sinclinal da Moeda",
-  "area_estudo": "Serra da Moeda",
-  "bbox_norte": -20.033,
-  "bbox_sul": -20.133,
-  "bbox_leste": -43.9,
-  "bbox_oeste": -44.0,
-  "centro_lat": -20.083,
-  "centro_lon": -43.95,
-  "objetivo": "Mapeamento geologico estrutural e vegetacao",
-  "responsavel": "Dr. Pesquisador",
-  "data_inicio": "2026-05-01",
-  "data_fim": null,
-  "status": "em_andamento",
-  "criado_em": "2026-03-26 22:39:24",
-  "atualizado_em": "2026-03-26 22:39:24",
-  "total_voos": 0,
-  "total_ortomapas": 3,
-  "total_analises": 0
-}
+**Erro encontrado:**
+```
+Traceback (most recent call last):
+  File "/mnt/data1/progpython/ortomapas/testevalidacao/test_ui_completo.py", line 160, in run_all
+    assert r.status == 200
+           ^^^^^^^^^^^^^^^
+AssertionError
+
 ```
 
 
@@ -212,57 +161,30 @@ Retornou projeto: `Serra da Moeda - Topo do Mundo`.
 
 **Status:** ✅ **PASS**
 
-Retornou **3 ortomapas**. Tipos: ortomosaico, dsm.
+Retornou **4 ortomapas**. Tipos: dsm, dtm, ortomosaico.
 
 
 **Dados retornados:**
 ```json
 {
-  "total": 3
+  "total": 4
 }
 ```
 
 
 ### Teste 8: POST /api/ortomapas — Registrar Ortomapa
 
-**Status:** ✅ **PASS**
-
-Ortomapa registrado. ID: `4`, tipo: `ortomosaico`.
+**Status:** ❌ **FAIL**
 
 
-**Dados retornados:**
-```json
-{
-  "id": 4,
-  "voo_id": null,
-  "projeto_id": 3,
-  "nome": "Ortomapa Teste Playwright",
-  "tipo": "ortomosaico",
-  "formato": "GeoTIFF",
-  "resolucao_cm": 1.5,
-  "largura_px": 1024,
-  "altura_px": 1024,
-  "tamanho_arquivo_mb": 3.1,
-  "sistema_coordenadas": "EPSG:4326",
-  "bbox_norte": -20.08,
-  "bbox_sul": -20.12,
-  "bbox_leste": -43.94,
-  "bbox_oeste": -43.98,
-  "centro_lat": -20.1,
-  "centro_lon": -43.96,
-  "caminho_arquivo": "data/ortomapas/serra_moeda_teste.tif",
-  "caminho_thumbnail": null,
-  "webodm_task_id": null,
-  "parametros_processamento": null,
-  "qualidade_processamento": null,
-  "num_fotos_processadas": null,
-  "tempo_processamento_min": null,
-  "erro_rms": null,
-  "gcps_utilizados": 0,
-  "num_gcps": 0,
-  "status": "concluido",
-  "data_processamento": null,
-  "observacoes": 
+**Erro encontrado:**
+```
+Traceback (most recent call last):
+  File "/mnt/data1/progpython/ortomapas/testevalidacao/test_ui_completo.py", line 197, in run_all
+    assert r.status in (200, 201), f"HTTP {r.status}"
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: HTTP 500
+
 ```
 
 
@@ -275,7 +197,7 @@ Cada ferramenta e testada enviando dados GeoTIFF reais e validando os resultados
 
 **Status:** ✅ **PASS**
 
-Banda 1 (R): min=10.0, max=149.0, mean=90.95, std=33.22. Total de bandas: 3.
+Banda 1 (R): min=10.0, max=189.0, mean=92.46, std=34.14. Total de bandas: 3.
 
 
 **Dados retornados:**
@@ -283,62 +205,61 @@ Banda 1 (R): min=10.0, max=149.0, mean=90.95, std=33.22. Total de bandas: 3.
 {
   "band_1": {
     "min": 10.0,
-    "max": 149.0,
-    "mean": 90.9452486038208,
-    "std": 33.21836916926956,
-    "median": 91.0,
+    "max": 189.0,
+    "mean": 92.45590686798096,
+    "std": 34.14333333607057,
+    "median": 92.0,
     "histogram": {
       "counts": [
-        1176,
-        1204,
+        1152,
+        1174,
+        1162,
         0,
-        1193,
+        1086,
+        1071,
         0,
+        1096,
+        1160,
+        0,
+        1069,
+        1050,
         1111,
         0,
-        1095,
+        1123,
+        1125,
         0,
-        1120,
+        1107,
+        1102,
         0,
-        1186,
-        1093,
+        1135,
+        1085,
+        1119,
         0,
-        1078,
+        1155,
+        1195,
         0,
-        1133,
+        1064,
+        1158,
         0,
-        1142,
+        1161,
+        1103,
+        1113,
         0,
-        1156,
+        1073,
+        1089,
         0,
-        1139,
-        1140,
+        1144,
+        1081,
         0,
-        1168,
+        1123,
+        1102,
+        9116,
         0,
-        1115,
+        9207,
+        9191,
         0,
-        1139,
-        0,
-        1175,
-        0,
-        1220,
-        1095,
-        0,
-        1186,
-        0,
-        1183,
-        0,
-        1137,
-        0,
-        1147,
-        0,
-        1101,
-        0,
-        1118,
-        1174,
-        0,
-        1105
+        9043,
+ 
 ```
 
 
@@ -346,7 +267,7 @@ Banda 1 (R): min=10.0, max=149.0, mean=90.95, std=33.22. Total de bandas: 3.
 
 **Status:** ✅ **PASS**
 
-VARI calculado com sucesso. Arquivo: `teste_vari.tif` (4492 KB).
+VARI calculado com sucesso. Arquivo: `teste_vari.tif` (4511 KB).
 
 
 **Dados retornados:**
@@ -358,12 +279,12 @@ VARI calculado com sucesso. Arquivo: `teste_vari.tif` (4492 KB).
     "band_1": {
       "min": -1000000.0,
       "max": 118.0,
-      "mean": -50.173392782064894,
-      "std": 7109.305329657097,
-      "median": 0.3333333432674408,
+      "mean": -75.96686188666595,
+      "std": 8734.310262441195,
+      "median": 0.31506848335266113,
       "histogram": {
         "counts": [
-          53,
+          80,
           0,
           0,
           0,
@@ -417,47 +338,45 @@ TGI calculado. Arquivo: `teste_tgi.tif`.
   "output_path": "/mnt/data1/progpython/ortomapas/data/analises/teste_tgi.tif",
   "statistics": {
     "band_1": {
-      "min": -119.0,
+      "min": -142.91000366210938,
       "max": 232.8000030517578,
-      "mean": 64.75263216568115,
-      "std": 46.516547596482525,
-      "median": 63.97999954223633,
+      "mean": 61.16339914873495,
+      "std": 50.10847698605513,
+      "median": 61.650001525878906,
       "histogram": {
         "counts": [
-          3,
-          1,
+          5,
           4,
-          10,
+          12,
+          7,
+          2,
           15,
-          21,
-          24,
-          20,
-          24,
+          18,
+          27,
+          38,
+          40,
           29,
-          25,
-          41,
-          35,
-          45,
-          48,
-          63,
-          63,
-          52,
+          38,
           55,
-          60,
-          76,
-          79,
+          54,
+          64,
+          65,
           69,
-          67,
-          83,
-          79,
-          72,
-          82,
-          96,
-          73,
-          106,
-          113,
-          113,
-    
+          103,
+          108,
+          117,
+          120,
+          131,
+          180,
+          148,
+          204,
+          211,
+          197,
+          220,
+          243,
+          244,
+          265,
+         
 ```
 
 
@@ -502,8 +421,8 @@ Contornos gerados com intervalo de 10 metros. Saida em GeoJSON.
 
 Mudancas detectadas entre campanha 1 e 2.
 - Pixels totais: **1,048,576**
-- Pixels alterados: **39,601**
-- Percentual de mudanca: **3.78%**
+- Pixels alterados: **32,787**
+- Percentual de mudanca: **3.13%**
 - Threshold utilizado: 30.0
 
 
@@ -511,9 +430,9 @@ Mudancas detectadas entre campanha 1 e 2.
 ```json
 {
   "total_pixels": 1048576,
-  "changed_pixels": 39601,
-  "unchanged_pixels": 1008975,
-  "percent_changed": 3.78,
+  "changed_pixels": 32787,
+  "unchanged_pixels": 1015789,
+  "percent_changed": 3.13,
   "area_changed_m2": 0.0,
   "area_changed_ha": 0.0
 }
@@ -525,11 +444,11 @@ Mudancas detectadas entre campanha 1 e 2.
 **Status:** ✅ **PASS**
 
 Segmentacao em **5 clusters** concluida.
-- Cluster 1: 20.7% (381.97 ha), RGB=(121,105,73)
-- Cluster 2: 20.5% (378.48 ha), RGB=(55,187,73)
-- Cluster 3: 17.4% (320.94 ha), RGB=(111,167,98)
-- Cluster 4: 24.2% (447.75 ha), RGB=(64,113,74)
-- Cluster 5: 17.2% (317.93 ha), RGB=(112,168,50)
+- Cluster 1: 20.6% (379.79 ha), RGB=(56,187,73)
+- Cluster 2: 20.2% (373.36 ha), RGB=(124,94,74)
+- Cluster 3: 17.4% (321.79 ha), RGB=(113,165,50)
+- Cluster 4: 17.4% (321.07 ha), RGB=(113,165,98)
+- Cluster 5: 24.4% (450.53 ha), RGB=(65,113,74)
 
 
 **Dados retornados:**
@@ -539,39 +458,39 @@ Segmentacao em **5 clusters** concluida.
   "clusters_resumo": [
     {
       "cluster": 1,
-      "pixel_count": 216622,
-      "area_m2": 3819657.93,
-      "area_ha": 381.9658,
+      "pixel_count": 215387,
+      "area_m2": 3797881.39,
+      "area_ha": 379.7881,
       "center_rgb": [
-        121,
-        105,
-        73
-      ],
-      "percent": 20.68
-    },
-    {
-      "cluster": 2,
-      "pixel_count": 214644,
-      "area_m2": 3784780.2,
-      "area_ha": 378.478,
-      "center_rgb": [
-        55,
+        56,
         187,
         73
       ],
-      "percent": 20.49
+      "percent": 20.57
+    },
+    {
+      "cluster": 2,
+      "pixel_count": 211744,
+      "area_m2": 3733645.0,
+      "area_ha": 373.3645,
+      "center_rgb": [
+        124,
+        94,
+        74
+      ],
+      "percent": 20.22
     },
     {
       "cluster": 3,
-      "pixel_count": 182010,
-      "area_m2": 3209350.57,
-      "area_ha": 320.9351,
+      "pixel_count": 182493,
+      "area_m2": 3217867.22,
+      "area_ha": 321.7867,
       "center_rgb": [
-        111,
-        167,
-        98
+        113,
+        165,
+        50
       ],
-      "percent": 17.38
+      "percent": 17.43
     }
   ]
 }
@@ -612,28 +531,6 @@ Volume calculado com referencia a 950m de altitude.
 Anotacao criada com geometria WKT. Categoria: `vegetacao_densa`. Tipo: `poligono`.
 
 
-**Dados retornados:**
-```json
-{
-  "id": 1,
-  "ortomapa_id": 1,
-  "analise_id": null,
-  "tipo": "poligono",
-  "categoria": "vegetacao_densa",
-  "rotulo": "Area de campo rupestre preservado - zona central",
-  "geometria_wkt": "POLYGON((-43.97 -20.09, -43.96 -20.09, -43.96 -20.10, -43.97 -20.10, -43.97 -20.09))",
-  "centro_lat": -20.095,
-  "centro_lon": -43.965,
-  "area_m2": null,
-  "atributos": "{}",
-  "confianca": null,
-  "fonte": "manual",
-  "criado_por": "Playwright Bot",
-  "criado_em": "2026-03-26 22:42:17.748539"
-}
-```
-
-
 ### Teste 21: POST /api/anotacoes — Criar Anotacao (Ponto)
 
 **Status:** ✅ **PASS**
@@ -645,7 +542,7 @@ Ponto de erosao anotado com coordenadas WKT.
 
 **Status:** ✅ **PASS**
 
-Retornou **2 anotacoes** registradas.
+Retornou **18 anotacoes** registradas.
 
 
 ## Categoria 6: Analises Registradas
@@ -677,48 +574,31 @@ Pagina carregou com titulo: **'Sistema de Ortomapas'**.
 
 ### Teste 25: UI — Mapa Leaflet Renderizado
 
-**Status:** ✅ **PASS**
+**Status:** ❌ **FAIL**
 
-Container Leaflet presente. **30 tiles** carregados.
+
+**Erro encontrado:**
+```
+Container Leaflet nao encontrado
+```
 
 
 **Screenshot:**
 
-![UI — Mapa Leaflet Renderizado](screenshots/25_ui_mapa_leaflet.png)
+![UI — Mapa Leaflet Renderizado](screenshots/25_ui_mapa_leaflet_err.png)
 
 
 ### Teste 26: UI — Sidebar de Projetos Visivel
 
-**Status:** ✅ **PASS**
+**Status:** ⚠️ **WARN**
 
-Texto da pagina contem secao de projetos: `Sim`.
-Primeiros 300 chars do body: `Sistema de Ortomapas
-Selecionar projeto...
-PROJETOS
-Novo
-Carregando...
-ORTOMAPAS
-0
-Nenhum ortomapa carregado
-ANALISES
-0
-Nenhuma analise realizada
-+
-−
-1 km
- Leaflet | © OpenStreetMap contributors
-FERRAMENTAS DE ANALISE
- Veg
- Ter
- Cls
- Hid
- Mud
- Vol
- Rec
- Exp
-Ortomapa
-Selecionar...
-Indice de Vegetacao`
+Texto da pagina contem secao de projetos: `Nao`.
+Primeiros 300 chars do body: `Ortomapas
+Entrar
+E-mail
+Senha
+Enter a password
+Entrar`
 
 
 **Screenshot:**
@@ -728,7 +608,7 @@ Indice de Vegetacao`
 
 ### Teste 27: UI — Painel de Ferramentas Visivel
 
-**Status:** ✅ **PASS**
+**Status:** ⚠️ **WARN**
 
 Painel de ferramentas de analise espacial esta presente na interface.
 
@@ -740,9 +620,9 @@ Painel de ferramentas de analise espacial esta presente na interface.
 
 ### Teste 28: UI — Controles do Mapa
 
-**Status:** ✅ **PASS**
+**Status:** ⚠️ **WARN**
 
-Controles encontrados: **Zoom+, Zoom-, Escala**.
+Controles encontrados: ****.
 
 
 **Screenshot:**
@@ -750,16 +630,11 @@ Controles encontrados: **Zoom+, Zoom-, Escala**.
 ![UI — Controles do Mapa](screenshots/28_ui_controles_mapa.png)
 
 
-### Teste 29: UI — Interacao: Zoom In (2 cliques)
+### Teste 29: UI — Interacao: Zoom In
 
-**Status:** ✅ **PASS**
+**Status:** ⚠️ **WARN**
 
-Clicou 2x no botao zoom+ do Leaflet. Mapa ampliou.
-
-
-**Screenshot:**
-
-![UI — Interacao: Zoom In (2 cliques)](screenshots/29_ui_zoom_in.png)
+Botao zoom+ nao encontrado.
 
 
 ### Teste 30: UI — Console JavaScript sem Erros
@@ -781,20 +656,178 @@ Nenhum erro no console do navegador apos carregamento completo.
 
 **Status:** ✅ **PASS**
 
-Diretorio `data/analises/` contem **9 GeoTIFFs** e **1 GeoJSON**.
+Diretorio `data/analises/` contem **145 GeoTIFFs** e **23 GeoJSON**.
 
 | Arquivo | Tamanho |
 |---|---|
+| `classified_kmeans.tif` | 2801 KB |
+| `debug_mudancas.tif` | 41 KB |
+| `e2e_aspect.tif` | 4679 KB |
+| `e2e_changes.tif` | 304 KB |
+| `e2e_classificacao.tif` | 1027 KB |
+| `e2e_contornos.geojson` | 73746 KB |
+| `e2e_contours.geojson` | 31806 KB |
+| `e2e_drenagem.geojson` | 3273 KB |
+| `e2e_drenagem_filled.tif` | 1050 KB |
+| `e2e_drenagem_flowacc.tif` | 283 KB |
+| `e2e_drenagem_flowdir.tif` | 137 KB |
+| `e2e_drenagem_resampled.tif` | 1026 KB |
+| `e2e_exg.tif` | 2025 KB |
+| `e2e_gli.tif` | 4614 KB |
+| `e2e_hillshade.tif` | 1025 KB |
+| `e2e_mudancas.tif` | 48 KB |
+| `e2e_segmentacao.tif` | 1027 KB |
+| `e2e_slope.tif` | 1702 KB |
+| `e2e_streams.geojson` | 137542 KB |
+| `e2e_streams_filled.tif` | 87812 KB |
+| `e2e_streams_flowacc.tif` | 37546 KB |
+| `e2e_streams_flowdir.tif` | 9338 KB |
+| `e2e_tgi.tif` | 3195 KB |
+| `e2e_vari.tif` | 4511 KB |
+| `e2e_volume.tif` | 4099 KB |
+| `err_negative.geojson` | 0 KB |
+| `err_negative_filled.tif` | 610 KB |
+| `err_negative_flowacc.tif` | 133 KB |
+| `err_negative_flowdir.tif` | 67 KB |
+| `err_negative_resampled.tif` | 498 KB |
+| `err_zero.geojson` | 0 KB |
+| `err_zero_filled.tif` | 610 KB |
+| `err_zero_flowacc.tif` | 133 KB |
+| `err_zero_flowdir.tif` | 67 KB |
+| `err_zero_resampled.tif` | 498 KB |
+| `manual_derna_vari.tif` | 15154 KB |
+| `manual_slope.tif` | 6805 KB |
+| `multi_dem_90m_aspect.tif` | 41714 KB |
+| `multi_dem_90m_contours.geojson` | 235220 KB |
+| `multi_dem_90m_hillshade.tif` | 12997 KB |
+| `multi_dem_90m_seg7.tif` | 292 KB |
+| `multi_dem_90m_segment.tif` | 207 KB |
+| `multi_dem_90m_slope.tif` | 42980 KB |
+| `multi_dem_90m_volume.tif` | 13332 KB |
+| `multi_dem_small_aspect.tif` | 6684 KB |
+| `multi_dem_small_contours.geojson` | 9352 KB |
+| `multi_dem_small_hillshade.tif` | 4992 KB |
+| `multi_dem_small_seg7.tif` | 44 KB |
+| `multi_dem_small_segment.tif` | 38 KB |
+| `multi_dem_small_slope.tif` | 6805 KB |
+| `multi_dem_small_streams.geojson` | 5880 KB |
+| `multi_dem_small_streams_filled.tif` | 5885 KB |
+| `multi_dem_small_streams_flowacc.tif` | 1299 KB |
+| `multi_dem_small_streams_flowdir.tif` | 522 KB |
+| `multi_dem_small_volume.tif` | 3839 KB |
+| `multi_derna_aspect.tif` | 6684 KB |
+| `multi_derna_contours.geojson` | 9352 KB |
+| `multi_derna_exg.tif` | 4363 KB |
+| `multi_derna_gli.tif` | 16547 KB |
+| `multi_derna_hillshade.tif` | 4992 KB |
+| `multi_derna_seg7.tif` | 3963 KB |
+| `multi_derna_segment.tif` | 3963 KB |
+| `multi_derna_slope.tif` | 6805 KB |
+| `multi_derna_streams.geojson` | 5880 KB |
+| `multi_derna_streams_filled.tif` | 5885 KB |
+| `multi_derna_streams_flowacc.tif` | 1299 KB |
+| `multi_derna_streams_flowdir.tif` | 522 KB |
+| `multi_derna_tgi.tif` | 8311 KB |
+| `multi_derna_vari.tif` | 15154 KB |
+| `multi_derna_volume.tif` | 3839 KB |
+| `multi_derna_vs_sentinel2_changes.tif` | 228 KB |
+| `multi_landsat_aspect.tif` | 6684 KB |
+| `multi_landsat_contours.geojson` | 9352 KB |
+| `multi_landsat_exg.tif` | 3157 KB |
+| `multi_landsat_gli.tif` | 7798 KB |
+| `multi_landsat_hillshade.tif` | 4992 KB |
+| `multi_landsat_seg7.tif` | 689 KB |
+| `multi_landsat_segment.tif` | 549 KB |
+| `multi_landsat_slope.tif` | 6805 KB |
+| `multi_landsat_streams.geojson` | 5880 KB |
+| `multi_landsat_streams_filled.tif` | 5885 KB |
+| `multi_landsat_streams_flowacc.tif` | 1299 KB |
+| `multi_landsat_streams_flowdir.tif` | 522 KB |
+| `multi_landsat_tgi.tif` | 6156 KB |
+| `multi_landsat_vari.tif` | 7655 KB |
+| `multi_landsat_volume.tif` | 3839 KB |
+| `multi_rasterio_rgb_aspect.tif` | 6684 KB |
+| `multi_rasterio_rgb_contours.geojson` | 9352 KB |
+| `multi_rasterio_rgb_exg.tif` | 506 KB |
+| `multi_rasterio_rgb_gli.tif` | 1215 KB |
+| `multi_rasterio_rgb_hillshade.tif` | 4992 KB |
+| `multi_rasterio_rgb_seg7.tif` | 558 KB |
+| `multi_rasterio_rgb_segment.tif` | 558 KB |
+| `multi_rasterio_rgb_slope.tif` | 6805 KB |
+| `multi_rasterio_rgb_streams.geojson` | 5880 KB |
+| `multi_rasterio_rgb_streams_filled.tif` | 5885 KB |
+| `multi_rasterio_rgb_streams_flowacc.tif` | 1299 KB |
+| `multi_rasterio_rgb_streams_flowdir.tif` | 522 KB |
+| `multi_rasterio_rgb_tgi.tif` | 918 KB |
+| `multi_rasterio_rgb_vari.tif` | 1056 KB |
+| `multi_rasterio_rgb_volume.tif` | 3839 KB |
+| `multi_sentinel2_aspect.tif` | 6684 KB |
+| `multi_sentinel2_contours.geojson` | 9352 KB |
+| `multi_sentinel2_exg.tif` | 1440 KB |
+| `multi_sentinel2_gli.tif` | 3436 KB |
+| `multi_sentinel2_hillshade.tif` | 4992 KB |
+| `multi_sentinel2_seg7.tif` | 269 KB |
+| `multi_sentinel2_segment.tif` | 232 KB |
+| `multi_sentinel2_slope.tif` | 6805 KB |
+| `multi_sentinel2_streams.geojson` | 5880 KB |
+| `multi_sentinel2_streams_filled.tif` | 5885 KB |
+| `multi_sentinel2_streams_flowacc.tif` | 1299 KB |
+| `multi_sentinel2_streams_flowdir.tif` | 522 KB |
+| `multi_sentinel2_tgi.tif` | 2549 KB |
+| `multi_sentinel2_vari.tif` | 2939 KB |
+| `multi_sentinel2_volume.tif` | 3839 KB |
+| `multi_sentinel2_vs_landsat_changes.tif` | 104 KB |
+| `multi_trento_aspect.tif` | 6684 KB |
+| `multi_trento_contours.geojson` | 9352 KB |
+| `multi_trento_exg.tif` | 18218 KB |
+| `multi_trento_gli.tif` | 69773 KB |
+| `multi_trento_hillshade.tif` | 4992 KB |
+| `multi_trento_seg7.tif` | 457 KB |
+| `multi_trento_segment.tif` | 304 KB |
+| `multi_trento_slope.tif` | 6805 KB |
+| `multi_trento_streams.geojson` | 5880 KB |
+| `multi_trento_streams_filled.tif` | 5885 KB |
+| `multi_trento_streams_flowacc.tif` | 1299 KB |
+| `multi_trento_streams_flowdir.tif` | 522 KB |
+| `multi_trento_tgi.tif` | 40495 KB |
+| `multi_trento_vari.tif` | 59758 KB |
+| `multi_trento_volume.tif` | 3839 KB |
+| `multi_trento_vs_rasterio_changes.tif` | 132 KB |
+| `real_streams_validation.geojson` | 356 KB |
+| `real_streams_validation2.geojson` | 356 KB |
+| `real_streams_validation2_filled.tif` | 610 KB |
+| `real_streams_validation2_flowacc.tif` | 133 KB |
+| `real_streams_validation2_flowdir.tif` | 67 KB |
+| `real_streams_validation2_resampled.tif` | 498 KB |
+| `real_streams_validation_filled.tif` | 610 KB |
+| `real_streams_validation_flowacc.tif` | 133 KB |
+| `real_streams_validation_flowdir.tif` | 67 KB |
+| `real_streams_validation_resampled.tif` | 498 KB |
+| `reval_aspect.tif` | 4679 KB |
+| `reval_changes.tif` | 41 KB |
+| `reval_contours.geojson` | 147715 KB |
+| `reval_exg.tif` | 2025 KB |
+| `reval_gli.tif` | 4614 KB |
+| `reval_hillshade.tif` | 1025 KB |
+| `reval_slope.tif` | 1702 KB |
+| `reval_tgi.tif` | 3195 KB |
+| `reval_vari.tif` | 4511 KB |
+| `reval_veg_dataprefix.tif` | 4511 KB |
+| `reval_veg_noprefix.tif` | 4511 KB |
+| `reval_volume.tif` | 4099 KB |
 | `teste_aspect.tif` | 4679 KB |
 | `teste_contornos.geojson` | 73746 KB |
-| `teste_exg.tif` | 2009 KB |
+| `teste_exg.tif` | 2025 KB |
 | `teste_hillshade.tif` | 1025 KB |
-| `teste_mudancas.tif` | 43 KB |
+| `teste_mudancas.tif` | 48 KB |
 | `teste_segmentacao.tif` | 1027 KB |
 | `teste_slope.tif` | 1702 KB |
-| `teste_tgi.tif` | 3179 KB |
-| `teste_vari.tif` | 4492 KB |
+| `teste_tgi.tif` | 3195 KB |
+| `teste_vari.tif` | 4511 KB |
 | `teste_volume.tif` | 4099 KB |
+| `validacao_streams_uc009_filled.tif` | 4155 KB |
+| `validacao_streams_uc009_flowacc.tif` | 639 KB |
+| `validacao_streams_uc009_flowdir.tif` | 548 KB |
 
 
 ### Teste 32: Validar Integridade GeoTIFF (VARI)
@@ -812,4 +845,4 @@ Arquivo VARI validado com rasterio:
 ---
 
 
-*Relatorio gerado automaticamente em 2026-03-26 19:42:29 por `test_ui_completo.py`*
+*Relatorio gerado automaticamente em 2026-09-14 13:28:55 por `test_ui_completo.py`*

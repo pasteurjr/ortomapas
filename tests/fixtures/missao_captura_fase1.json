@@ -1,0 +1,42 @@
+{
+  "nome": "Missao Grid Demo Mini 3",
+  "descricao": "Fixture deterministico da Fase 1",
+  "drone_perfil": {
+    "modelo": "DJI Mini 3",
+    "controle": "DJI RC-N1"
+  },
+  "camera_perfil": {
+    "resolucao_px": [8064, 6048],
+    "formato": "JPEG",
+    "focal_real_mm": 6.7
+  },
+  "crs": "EPSG:4326",
+  "takeoff": {
+    "lat": -15.7801,
+    "lon": -47.9292,
+    "amsl_m": 1000
+  },
+  "capture": {
+    "gsd_cm_px": 1.5,
+    "front_overlap": 0.8,
+    "side_overlap": 0.7,
+    "altitude_m": 50,
+    "altitude_referencia": "AGL",
+    "velocidade_ms": 4,
+    "gimbal_graus": -90,
+    "reserva_bateria_pct": 25
+  },
+  "aoi": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [-47.9300, -15.7800],
+        [-47.9285, -15.7800],
+        [-47.9285, -15.7810],
+        [-47.9300, -15.7810],
+        [-47.9300, -15.7800]
+      ]
+    ]
+  },
+  "zonas_exclusao": []
+}

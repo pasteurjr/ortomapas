@@ -25,6 +25,15 @@
       </div>
       <div class="toolbar-right">
         <Button
+          icon="pi pi-send"
+          label="Planejar missao"
+          severity="success"
+          size="small"
+          :disabled="!projectStore.activeProject"
+          title="Abrir planejador de missao de captura"
+          @click="showMissionPlanner = true"
+        />
+        <Button
           icon="pi pi-bell"
           severity="secondary"
           text
@@ -36,6 +45,12 @@
       </div>
     </header>
 
+    <nav class="workspace-nav" aria-label="Navegacao principal">
+      <button v-for="item in workspaceItems" :key="item.id" type="button" :class="{ active: activeWorkspace === item.id }" @click="selectWorkspace(item.id)">
+        <i :class="item.icon"></i><span>{{ item.label }}</span>
+      </button>
+    </nav>
+
     <!-- Main Content -->
     <div class="main-content">
       <!-- Left Sidebar -->
@@ -44,8 +59,10 @@
           <i :class="leftCollapsed ? 'pi pi-angle-right' : 'pi pi-angle-left'"></i>
         </div>
         <div v-if="!leftCollapsed" class="sidebar-content">
-          <ProjectList />
-          <div class="sidebar-section">
+          <template v-if="activeWorkspace === 'dados'">
+            <ProjectList />
+            <LayerPanel />
+            <div class="sidebar-section">
             <h3 class="section-title">
               <i class="pi pi-image"></i> Ortomapas
               <Badge :value="projectStore.ortomapas.length" severity="info" />
@@ -58,10 +75,23 @@
             <div v-if="projectStore.ortomapas.length === 0" class="empty-state">
               Nenhum ortomapa carregado
             </div>
-          </div>
-          <VoosList />
-          <OdmTasks />
-          <AnalysisResults />
+            </div>
+          </template>
+          <template v-else-if="activeWorkspace === 'odm'">
+            <VoosList />
+            <OdmTasks />
+          </template>
+          <template v-else-if="activeWorkspace === 'analises'">
+            <ToolsPanel />
+            <AnalysisResults />
+          </template>
+          <template v-else-if="activeWorkspace === 'copiloto'">
+            <CopilotChat />
+          </template>
+          <template v-else>
+            <ProjectList />
+            <div class="workspace-empty"><i class="pi pi-send"></i><strong>Missões de captura</strong><span>Use o botão Planejar missão para criar, validar e exportar uma rota.</span><Button icon="pi pi-plus" label="Nova missão" size="small" severity="success" :disabled="!projectStore.activeProject" @click="showMissionPlanner = true" /></div>
+          </template>
         </div>
       </aside>
 
@@ -78,9 +108,11 @@
           <i :class="rightCollapsed ? 'pi pi-angle-left' : 'pi pi-angle-right'"></i>
         </div>
         <div v-if="!rightCollapsed" class="sidebar-content">
-          <ToolsPanel />
-          <DrawTools />
-          <CopilotChat />
+          <DrawTools v-if="activeWorkspace === 'dados' || activeWorkspace === 'analises'" />
+          <MeasureTools v-if="activeWorkspace === 'dados'" />
+          <CopilotChat v-if="activeWorkspace === 'copiloto'" />
+          <div v-if="activeWorkspace === 'odm'" class="workspace-help"><i class="pi pi-cog"></i><strong>Pipeline ODM</strong><span>Envie fotos, acompanhe o processamento, importe produtos e abra as visualizações 3D.</span></div>
+          <div v-if="activeWorkspace === 'missoes'" class="workspace-help"><i class="pi pi-send"></i><strong>Planejamento de voo</strong><span>Crie AOI, exclusões, takeoff, waypoints, grid e exportação para o aplicativo de voo.</span></div>
         </div>
       </aside>
     </div>
@@ -110,6 +142,7 @@
       :visible="showExportDialog"
       @close="showExportDialog = false"
     />
+    <MissionPlanner v-if="showMissionPlanner" @close="showMissionPlanner = false" />
   </div>
 </template>
 
@@ -136,6 +169,8 @@ import AnalysisForm from './components/AnalysisForm.vue'
 import ExportDialog from './components/ExportDialog.vue'
 import LoginView from './components/LoginView.vue'
 import OdmTasks from './components/OdmTasks.vue'
+import MissionPlanner from './components/MissionPlanner.vue'
+import LayerPanel from './components/LayerPanel.vue'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
@@ -146,7 +181,16 @@ const searchQuery = ref('')
 const selectedProjectId = ref(null)
 const showAnalysisForm = ref(false)
 const showExportDialog = ref(false)
+const showMissionPlanner = ref(false)
 const authenticated = ref(Boolean(localStorage.getItem('ortomapas_token')))
+const activeWorkspace = ref('dados')
+const workspaceItems = [
+  { id: 'dados', label: 'Dados e mapa', icon: 'pi pi-map' },
+  { id: 'odm', label: 'Voos e ODM', icon: 'pi pi-cog' },
+  { id: 'analises', label: 'Análises', icon: 'pi pi-chart-bar' },
+  { id: 'missoes', label: 'Missões', icon: 'pi pi-send' },
+  { id: 'copiloto', label: 'Copiloto', icon: 'pi pi-sparkles' },
+]
 
 function onAuthenticated() { authenticated.value = true; projectStore.fetchProjects() }
 
@@ -161,6 +205,11 @@ function onProjectChange(event) {
   if (project) {
     projectStore.setActiveProject(project)
   }
+}
+
+function selectWorkspace(id) {
+  activeWorkspace.value = id
+  if (id === 'missoes') showMissionPlanner.value = true
 }
 
 provide('showAnalysisForm', showAnalysisForm)

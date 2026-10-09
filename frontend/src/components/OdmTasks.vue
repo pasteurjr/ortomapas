@@ -34,7 +34,12 @@ watch(() => projectStore.activeProject, () => { refresh(); clearInterval(timer);
 onUnmounted(() => clearInterval(timer))
 async function importProducts(task) { importing.value = task.id; try { await importOdmProducts(task.id); await refresh() } finally { importing.value = null } }
 function pointCloudFor(task) { return products.value.find((p) => p.processamento_id === task.id && p.tipo === 'nuvem_pontos') }
-function surfaceFor(task) { return products.value.find((p) => p.processamento_id === task.id && ['dsm', 'dtm'].includes(p.tipo)) }
+function surfaceFor(task) {
+  // Prefer the DSM when both elevation products are available; DTM remains a
+  // fallback for processing runs that did not generate a DSM.
+  return products.value.find((p) => p.processamento_id === task.id && p.tipo === 'dsm')
+    || products.value.find((p) => p.processamento_id === task.id && p.tipo === 'dtm')
+}
 function hasComparison(task) { return products.value.some((p) => p.processamento_id === task.id && p.tipo === 'dsm') && products.value.some((p) => p.processamento_id === task.id && p.tipo === 'dtm') }
 function reportFor(task) { return products.value.find((p) => p.processamento_id === task.id && p.tipo === 'relatorio') }
 async function downloadReport(product) { const { data } = await downloadOdmProduct(product.id); const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = product.caminho?.split('/').pop() || 'relatorio-odm.pdf'; link.click(); URL.revokeObjectURL(url) }
