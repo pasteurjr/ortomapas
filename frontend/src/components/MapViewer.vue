@@ -281,6 +281,19 @@ watch(
   { immediate: true }
 )
 
+// Exibe o ortomosaico do projeto assim que os produtos chegam, evitando uma
+// tela vazia quando o usuário abre um projeto com dados disponíveis.
+watch(
+  () => projectStore.ortomapas,
+  (ortomapas) => {
+    const first = ortomapas?.find((o) => o.tipo === 'ortomosaico' || o.tipo === 'RGB' || o.tipo === 'rgb')
+    if (first && !mapStore.activeLayers.some((layer) => layer.id === `orto-${first.id}`)) {
+      mapStore.addLayer({ id: `orto-${first.id}`, name: first.nome, type: 'ortomapa', sourceId: first.id })
+    }
+  },
+  { immediate: true }
+)
+
 // Enquadra automaticamente a camada espacial mais recente retornada pelo Copiloto.
 watch(
   () => mapStore.activeLayers.map((layer) => layer.id).join('|'),

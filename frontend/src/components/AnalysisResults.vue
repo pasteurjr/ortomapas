@@ -101,6 +101,14 @@ const selectedAnalise = computed(() =>
 function selectAnalise(analise) {
   selectedId.value = analise.id
 
+  // Resultados seed e análises persistidas podem apontar para o ortomapa de
+  // origem mesmo quando ainda não possuem GeoJSON próprio. Nesse caso, abrir
+  // o resultado também torna o raster de origem visível no mapa.
+  const source = projectStore.ortomapas.find((item) => item.id === analise.ortomapa_id)
+  if (source && !mapStore.activeLayers.some((layer) => layer.id === `orto-${source.id}`)) {
+    mapStore.addLayer({ id: `orto-${source.id}`, name: `${source.nome} · resultado ${analise.tipo_analise}`, type: 'ortomapa', sourceId: source.id })
+  }
+
   // Show result on map if available
   if (analise.resultado?.geojson) {
     mapStore.addLayer({

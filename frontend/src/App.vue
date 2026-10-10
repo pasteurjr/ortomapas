@@ -84,6 +84,7 @@
             <OdmTasks />
           </template>
           <template v-else-if="activeWorkspace === 'analises'">
+            <LayerPanel />
             <ToolsPanel />
             <AnalysisResults />
           </template>

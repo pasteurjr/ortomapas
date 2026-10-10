@@ -356,7 +356,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
 import { runTool, exportLayer } from '../api/client'
@@ -379,7 +379,7 @@ const ortoOptions = computed(() =>
 
 const dsmDtmOptions = computed(() =>
   projectStore.ortomapas
-    .filter((o) => ['DSM', 'DTM'].includes(o.tipo))
+    .filter((o) => ['dsm', 'dtm', 'DSM', 'DTM'].includes(o.tipo))
     .map((o) => ({ label: `${o.nome} (${o.tipo})`, value: o.id }))
 )
 
@@ -442,6 +442,23 @@ const volume = reactive({ ortomapaId: null, refElevation: 0, loading: false, res
 const recorte = reactive({ ortomapaId: null, polygon: null, loading: false })
 const exportar = reactive({ layerId: null, format: 'geotiff', crs: 'EPSG:4326', loading: false })
 
+function ortoPath(id) {
+  return projectStore.ortomapas.find((item) => item.id === id)?.caminho_arquivo || ''
+}
+
+watch(() => projectStore.ortomapas, (items) => {
+  if (!items?.length) return
+  const rgb = items.find((item) => item.tipo === 'ortomosaico' || item.tipo === 'RGB' || item.tipo === 'rgb') || items[0]
+  const elevation = items.find((item) => ['dsm', 'dtm', 'DSM', 'DTM'].includes(item.tipo))
+  if (!veg.ortomapaId) veg.ortomapaId = rgb.id
+  if (!mudanca.antesId) mudanca.antesId = rgb.id
+  if (!mudanca.depoisId) mudanca.depoisId = rgb.id
+  if (!terreno.ortomapaId && elevation) terreno.ortomapaId = elevation.id
+  if (!hidro.ortomapaId && elevation) hidro.ortomapaId = elevation.id
+  if (!volume.ortomapaId && elevation) volume.ortomapaId = elevation.id
+  if (!recorte.ortomapaId) recorte.ortomapaId = rgb.id
+}, { immediate: true })
+
 function addResultLayer(name, data) {
   const layerId = `analysis-${Date.now()}`
   mapStore.addLayer({
@@ -466,8 +483,9 @@ async function runVegetacao() {
   veg.loading = true
   try {
     const res = await runTool('vegetacao', {
-      ortomapa_id: veg.ortomapaId,
-      indice: veg.index,
+      input_path: ortoPath(veg.ortomapaId),
+      output_name: `vegetacao_${veg.index.toLowerCase()}_${Date.now()}`,
+      index_name: veg.index,
     })
     veg.result = res.data.stats || res.data
     addResultLayer(`${veg.index}`, res.data)
@@ -483,10 +501,11 @@ async function runTerreno() {
   if (!terreno.ortomapaId) return
   terreno.loading = true
   try {
-    const res = await runTool('terreno', {
-      ortomapa_id: terreno.ortomapaId,
-      tipo: terreno.tipo,
-      intervalo: terreno.interval,
+    const terrainEndpoint = { slope: 'slope', aspect: 'aspect', contours: 'contours', hillshade: 'hillshade' }[terreno.tipo] || 'slope'
+    const res = await runTool(terrainEndpoint, {
+      input_path: ortoPath(terreno.ortomapaId),
+      output_name: `terreno_${terreno.tipo}_${Date.now()}`,
+      interval: terreno.interval,
     })
     addResultLayer(terreno.tipo, res.data)
     projectStore.fetchAnalises()

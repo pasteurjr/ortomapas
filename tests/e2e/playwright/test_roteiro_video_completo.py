@@ -71,6 +71,20 @@ def main() -> int:
                 wait()
                 shot(scene_id, title, narration, f"Abrir a aba {title}", page.locator(".tools-panel"))
 
+            # Resultados seed: cada item precisa deixar uma camada visível no mapa,
+            # e não apenas mostrar estatísticas em uma lista.
+            result_titles = [
+                ("05a_mapa_ndvi", "Mapa NDVI", "Selecionar o resultado de vegetação e verificar o raster no mapa"),
+                ("05b_mapa_dsm", "Mapa de terreno", "Selecionar o resultado de terreno e verificar a camada de elevação"),
+                ("05c_mapa_mudancas", "Mapa de mudanças", "Selecionar o resultado DSM-DTM e verificar a camada comparativa"),
+                ("05d_mapa_volume", "Mapa de volume", "Selecionar o resultado de volume e verificar a área de análise"),
+            ]
+            results = page.locator(".analysis-results .result-item")
+            results.first.wait_for(timeout=10000)
+            for idx, (scene_id, title, action) in enumerate(result_titles):
+                if idx < results.count():
+                    results.nth(idx).click(); wait(); shot(scene_id, title, "O resultado selecionado aparece no mapa como camada ativa, com controles de visibilidade e opacidade.", action)
+
             # Desenho espacial e anotação.
             page.get_by_title("Poligono").click()
             map_box = page.locator(".map-container").bounding_box()
