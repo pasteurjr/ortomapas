@@ -43,7 +43,7 @@ def terrain_source(request):
     return source
 
 
-def publish_terrain(source, operation, output, statistics, parameters):
+def publish_terrain(source, operation, output, statistics, parameters, aoi=None):
     path=data_path(output)
     with rasterio.open(path) as ds:
         west,south,east,north=transform_bounds(ds.crs,4326,*ds.bounds)
@@ -53,11 +53,17 @@ def publish_terrain(source, operation, output, statistics, parameters):
                   'provenance':{'source_ortomapa_id':source['id'],'source_path':source['caminho_arquivo'],
                                 'operation':operation,'vertical_units_assumed':'m','scope':'full raster',
                                 'algorithm':'metric finite differences','created_by':tool_context.get()[0]}}
+        if aoi:
+            metadata['aoi'] = {'geometry':aoi['geometry'], 'crs':'EPSG:4326',
+                               'area_m2':aoi['area_m2'], 'pixel_area_m2':aoi['pixel_area_m2'],
+                               'valid_area_m2':statistics['band_1']['valid_pixels']*aoi['pixel_area_m2'],
+                               'mask_rule':'pixel center', 'derivative_context':'original raster neighborhood'}
+            metadata['provenance']['scope'] = 'aoi'
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True)
         cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
             resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
-            (source['id'],source['projeto_id'],'terreno',NAMES[operation],Json(parameters),str(path),Json(metadata)))
+            (source['id'],source['projeto_id'],'terreno',NAMES[operation]+(' - area selecionada' if aoi else ''),Json(parameters),str(path),Json(metadata)))
         row=dict(cur.fetchone());conn.commit()
     return serialize_analysis(row)
 

@@ -402,3 +402,11 @@ Validacao final real: analises #37/#38/#39 do DSM Aukerman #34 no projeto #62; s
 Somente este lote foi aprovado. Recorte AOI, demais motores, fila, catalogo completo e validacao integrada continuam pendentes. O DSM contem copas e artefatos fotogrametricos; a publicacao correta nao certifica declividade do solo. O endpoint legado de criacao registra pedidos pendentes e recusa `queue_task=true`; excluir registro preserva arquivo. Proximo lote: recorte AOI com referencias conhecidas e dados reais.
 
 Relatorio com cenas, esperado/obtido, provas, limites e reproducao: [MD](../validacao/publicacao_terreno_fase3_2026-10-11.md) e [PDF](../validacao/publicacao_terreno_fase3_2026-10-11.pdf).
+
+## 19. Segundo lote da fase 3: analise por area desenhada
+
+Checkpoint `5162a35` enviado antes das alteracoes. Declividade, aspecto e sombreamento agora aceitam AOI GeoJSON WGS84; a interface desenha poligono com Leaflet Draw e limita a geracao a selecao concluida. Gradientes usam a vizinhanca original; saida e estatisticas sao mascaradas pelo poligono verdadeiro. Geometria, area, regra de inclusao e contexto ficam persistidos no PostgreSQL, com reabertura do contorno e GeoTIFF.
+
+Validacao: 61 testes Python; area conhecida de 600 m², gradiente esperado e poligono com furo; tres derivadas do DSM real Aukerman com mascara integralmente igual a referencia independente e erros inferiores a 0,0001. Area desenhada de 8.697,90 m²; declividade media 7,32 graus versus 26,35 no raster completo. Seis capturas inspecionadas, reabertura sem ortofoto, download com hash identico, limpeza bloqueando geracao e pedido fora do raster recusado. Regressao do fluxo sem recorte executada separadamente.
+
+Lote aprovado nesse escopo, nao fase inteira. AOI nao foi aplicada a volume, vegetacao, hidrologia, curvas de nivel ou todos os tools do Copiloto. Gradiente ainda percorre raster inteiro; otimizacao, fila e limpeza seguem pendentes. Proximo lote: curvas de nivel persistidas e visualizadas com exportacao/reabertura verificadas. Evidencias: [MD](../validacao/aoi_terreno_fase3_2026-10-11.md) e [PDF](../validacao/aoi_terreno_fase3_2026-10-11.pdf).

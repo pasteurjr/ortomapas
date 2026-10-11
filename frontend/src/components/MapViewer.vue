@@ -53,6 +53,7 @@
       />
 
       <!-- Measurement overlay -->
+      <l-geo-json v-if="mapStore.analysisAoi" :key="JSON.stringify(mapStore.analysisAoi)" :geojson="mapStore.analysisAoi" :optionsStyle="{ color: '#eab308', weight: 3, fillOpacity: 0.08 }" />
       <l-polyline
         v-if="measurePoints.length > 1 && mapStore.measureMode === 'distance'"
         :latLngs="measurePoints"
@@ -311,9 +312,11 @@ function setupDrawing(map) {
   map.on(L.Draw.Event.DRAWVERTEX, event => { if(mapStore.drawMode==='profile') mapStore.profileVertexCount=event.layers.getLayers().length })
   map.on(L.Draw.Event.CREATED, (event) => {
     const mode = mapStore.drawMode
-    drawn.clearLayers(); drawn.addLayer(event.layer)
+    drawn.clearLayers()
+    if (mode !== 'analysis-aoi') drawn.addLayer(event.layer)
     const geo = event.layer.toGeoJSON().geometry
-    if (mode === 'profile') mapStore.profileLine = geo
+    if (mode === 'analysis-aoi') mapStore.analysisAoi = geo
+    else if (mode === 'profile') mapStore.profileLine = geo
     else {
       mapStore.setSelectedGeometry(geo)
       if (event.layer.getBounds) {
@@ -327,6 +330,7 @@ function setupDrawing(map) {
     drawHandler?.disable()
     mapStore.profileVertexCount=0; mapStore.finishProfile=null
     if (mode === 'profile') drawHandler = new L.Draw.Polyline(map,{shapeOptions:{color:'#eab308',weight:3}})
+    else if (mode === 'analysis-aoi') drawHandler = new L.Draw.Polygon(map,{allowIntersection:false,shapeOptions:{color:'#eab308',weight:3}})
     else if (mode === 'clip') drawHandler = new L.Draw.Rectangle(map,{shapeOptions:{color:'#f59e0b'}})
     else drawHandler = null
     drawHandler?.enable()

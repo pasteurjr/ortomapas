@@ -85,11 +85,19 @@
               <label>Intervalo (m)</label>
               <InputText v-model.number="terreno.interval" type="number" class="w-full" />
             </div>
+            <div v-if="terreno.tipo !== 'contours'" class="terrain-aoi">
+              <label><input type="checkbox" v-model="useTerrainAoi" :disabled="terreno.loading" /> Limitar a area</label>
+              <div v-if="useTerrainAoi" class="aoi-actions">
+                <button type="button" title="Desenhar area de analise" :disabled="terreno.loading" @click="mapStore.setDrawMode(mapStore.drawMode === 'analysis-aoi' ? null : 'analysis-aoi')"><i class="pi pi-pencil"></i></button>
+                <span>{{ mapStore.drawMode === 'analysis-aoi' ? 'Desenhando' : mapStore.analysisAoi ? 'Area selecionada' : 'Sem area' }}</span>
+                <button type="button" title="Limpar area de analise" :disabled="terreno.loading || !mapStore.analysisAoi" @click="mapStore.analysisAoi = null"><i class="pi pi-trash"></i></button>
+              </div>
+            </div>
             <Button
               label="Gerar Analise"
               icon="pi pi-play"
               :loading="terreno.loading"
-              :disabled="!projectStore.canEdit || !terreno.ortomapaId"
+              :disabled="!projectStore.canEdit || !terreno.ortomapaId || (terreno.tipo !== 'contours' && useTerrainAoi && (!mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'))"
               @click="runTerreno"
               class="w-full"
             />
@@ -382,6 +390,8 @@ import TabPanel from 'primevue/tabpanel'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
+const useTerrainAoi = ref(false)
+watch(() => projectStore.activeProject?.id, () => { useTerrainAoi.value = false; terreno.result = null })
 const activeTab = ref('vegetacao')
 
 const ortoOptions = computed(() =>
@@ -446,7 +456,7 @@ const crsOptions = [
 // Reactive state for each tool
 const veg = reactive({ ortomapaId: null, index: 'VARI', loading: false, result: null })
 const terreno = reactive({ ortomapaId: null, tipo: 'slope', interval: 5, loading: false, result: null, error: '' })
-watch(() => [terreno.tipo, terreno.ortomapaId], () => { terreno.result = null; terreno.error = '' })
+watch(() => [terreno.tipo, terreno.ortomapaId, useTerrainAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { terreno.result = null; terreno.error = '' })
 const classif = reactive({ ortomapaId: null, algorithm: 'KMeans', numClasses: 5, loading: false })
 const hidro = reactive({ ortomapaId: null, tipo: 'watershed', threshold: 500, pourLat: null, pourLon: null, loading: false })
 const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.3, loading: false })
@@ -527,6 +537,7 @@ async function runTerreno() {
       input_path: ortoPath(terreno.ortomapaId),
       ortomapa_id: terreno.ortomapaId,
       projeto_id: projectId,
+      aoi: terreno.tipo !== 'contours' && useTerrainAoi.value ? mapStore.analysisAoi : null,
       output_name: `terreno_${terreno.tipo}_${Date.now()}`,
       interval: terreno.interval,
     })
@@ -676,6 +687,9 @@ async function runExport() {
 .tools-panel {
   margin-bottom: 8px;
 }
+.terrain-aoi label { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
+.aoi-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .78rem; }
+.aoi-actions button { width: 30px; height: 30px; border: 1px solid #aab6b2; background: white; cursor: pointer; }
 
 .section-title {
   contain: paint;

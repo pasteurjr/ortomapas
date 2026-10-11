@@ -81,6 +81,7 @@
         </div>
       </div>
       <small v-if="selectedAnalise.resultado.provenance">Modelo #{{ selectedAnalise.ortomapa_id }} · {{ selectedAnalise.resultado.provenance.operation }} · {{ selectedAnalise.resultado.crs }} · Z assumido em metros</small>
+      <div v-if="selectedAnalise.resultado.aoi" class="stat-row"><span>Area valida (m²)</span><strong>{{ selectedAnalise.resultado.aoi.valid_area_m2.toFixed(2) }}</strong></div>
     </div>
   </div>
 </template>
@@ -120,6 +121,7 @@ function selectAnalise(analise) {
 
   const raster = analysisRasterLayer(analise)
   if (raster) mapStore.addLayer(raster)
+  if (analise.resultado?.aoi) mapStore.analysisAoi = analise.resultado.aoi.geometry
 
   // Show result on map if available
   if (analise.resultado?.geojson) {
