@@ -49,9 +49,9 @@
     <div class="main-content">
       <!-- Left Sidebar -->
       <aside class="sidebar-left" :class="{ collapsed: leftCollapsed }">
-        <div class="sidebar-toggle" @click="leftCollapsed = !leftCollapsed">
+        <button class="sidebar-toggle" :title="leftCollapsed ? 'Expandir navegacao' : 'Recolher navegacao'" :aria-expanded="!leftCollapsed" @click="leftCollapsed = !leftCollapsed">
           <i :class="leftCollapsed ? 'pi pi-angle-right' : 'pi pi-angle-left'"></i>
-        </div>
+        </button>
         <nav class="workspace-sidebar-nav" aria-label="Navegacao principal">
           <button v-for="item in workspaceItems" :key="item.id" type="button" class="workspace-nav-item" :class="{ active: activeWorkspace === item.id }" :title="leftCollapsed ? item.label : undefined" @click="selectWorkspace(item.id)">
             <i :class="item.icon"></i><span v-if="!leftCollapsed">{{ item.label }}</span>
@@ -107,9 +107,9 @@
 
       <!-- Right Sidebar -->
       <aside class="sidebar-right" :class="{ collapsed: rightCollapsed }">
-        <div class="sidebar-toggle" @click="rightCollapsed = !rightCollapsed">
+        <button class="sidebar-toggle" :title="rightCollapsed ? 'Expandir propriedades' : 'Recolher propriedades'" :aria-expanded="!rightCollapsed" @click="rightCollapsed = !rightCollapsed">
           <i :class="rightCollapsed ? 'pi pi-angle-left' : 'pi pi-angle-right'"></i>
-        </div>
+        </button>
         <div v-if="!rightCollapsed" class="sidebar-content">
           <DrawTools v-if="activeWorkspace === 'dados' || activeWorkspace === 'analises'" />
           <MeasureTools v-if="activeWorkspace === 'dados'" />
@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useProjectStore } from './stores/projectStore'
 import { useMapStore } from './stores/mapStore'
 import Select from 'primevue/select'
@@ -178,7 +178,9 @@ const projectStore = useProjectStore()
 const mapStore = useMapStore()
 
 const leftCollapsed = ref(false)
-const rightCollapsed = ref(false)
+const compactViewport = window.matchMedia('(max-width: 1100px)')
+const rightCollapsed = ref(compactViewport.matches)
+function onCompactViewport(event) { rightCollapsed.value=event.matches }
 const searchQuery = ref('')
 const selectedProjectId = ref(null)
 const showAnalysisForm = ref(false)
@@ -194,7 +196,7 @@ const workspaceItems = [
   { id: 'copiloto', label: 'Copiloto', icon: 'pi pi-sparkles' },
 ]
 const workspaceSubitems = {
-  dados: [{ label: 'Camadas e ortomapas', icon: 'pi pi-images' }, { label: 'Importar dados', icon: 'pi pi-upload' }],
+  dados: [{ label: 'Camadas e ortomapas', icon: 'pi pi-images' }, { label: 'Perfil altimetrico', icon: 'pi pi-chart-line', action: () => { mapStore.profileOpen = true } }, { label: 'Importar dados', icon: 'pi pi-upload' }],
   odm: [{ label: 'Voos e fotos', icon: 'pi pi-camera' }, { label: 'Fila de processamento', icon: 'pi pi-clock' }, { label: 'Produtos e qualidade', icon: 'pi pi-check-circle' }],
   analises: [{ label: 'Ferramentas espaciais', icon: 'pi pi-sliders-h' }, { label: 'Resultados', icon: 'pi pi-chart-line' }],
   missoes: [{ label: 'Planejador de captura', icon: 'pi pi-send' }, { label: 'Validação e exportação', icon: 'pi pi-download' }],
@@ -218,11 +220,7 @@ function onProjectChange(event) {
 
 function selectWorkspace(id) {
   activeWorkspace.value = id
-  // O copiloto usa o mapa como contexto de trabalho; esconder rasters
-  // analíticos ao entrar evita que um tile de resultado cubra a conversa.
-  if (id === 'copiloto') {
-    mapStore.activeLayers.forEach((layer) => { layer.visible = false })
-  }
+  if(id==='copiloto') rightCollapsed.value=true
   if (id === 'missoes') showMissionPlanner.value = true
 }
 
@@ -230,8 +228,10 @@ provide('showAnalysisForm', showAnalysisForm)
 provide('showExportDialog', showExportDialog)
 
 onMounted(() => {
+  compactViewport.addEventListener('change',onCompactViewport)
   if (authenticated.value) projectStore.fetchProjects()
 })
+onUnmounted(()=>compactViewport.removeEventListener('change',onCompactViewport))
 </script>
 
 <style>
@@ -356,6 +356,8 @@ body {
 }
 
 .sidebar-toggle {
+  border:0;
+  background:transparent;
   position: absolute;
   top: 8px;
   right: 4px;

@@ -1,11 +1,11 @@
 <template>
-  <div class="map-container" ref="mapContainer">
+  <div class="map-container" :class="{ 'profile-open': mapStore.profileOpen }" ref="mapContainer">
     <l-map
       ref="leafletMap"
       :key="projectStore.activeProject?.id || 'sem-projeto'"
       v-model:zoom="currentZoom"
       v-model:center="currentCenter"
-      :useGlobalLeaflet="false"
+      :useGlobalLeaflet="true"
       @ready="onMapReady"
       @mousemove="onMouseMove"
       @click="onMapClick"
@@ -79,6 +79,7 @@
 
       <l-control-scale position="bottomleft" :imperial="false" />
     </l-map>
+    <ElevationProfile v-if="mapStore.profileOpen" />
 
     <!-- Basemap Switcher -->
     <div class="basemap-switcher">
@@ -123,8 +124,11 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import L from 'leaflet'
 import OrtomapaTiles from './OrtomapaTiles.vue'
+import ElevationProfile from './ElevationProfile.vue'
 import 'leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
+// Leaflet Draw and Vue layers must share one Leaflet instance and renderer types.
+window.L = L
 import { useMapStore } from '../stores/mapStore'
 import { useProjectStore } from '../stores/projectStore'
 import {
@@ -286,9 +290,44 @@ function onMapReady() {
   const newest = visibleOrtoLayers.value.at(-1)
   const resource = projectStore.ortomapas.find((o) => o.id === newest?.sourceId)
   fitResource(resource || projectStore.activeProject)
+  const map = leafletMap.value?.leafletObject
+  if (map) setupDrawing(map)
+}
+
+let drawHandler, stopDrawingWatch
+function setupDrawing(map) {
+  stopDrawingWatch?.()
+  try { drawHandler?.disable() } catch { /* Previous keyed Leaflet map may already be removed. */ }
+  drawHandler = null
+  const drawn = new L.FeatureGroup().addTo(map)
+  map.on(L.Draw.Event.DRAWVERTEX, event => { if(mapStore.drawMode==='profile') mapStore.profileVertexCount=event.layers.getLayers().length })
+  map.on(L.Draw.Event.CREATED, (event) => {
+    const mode = mapStore.drawMode
+    drawn.clearLayers(); drawn.addLayer(event.layer)
+    const geo = event.layer.toGeoJSON().geometry
+    if (mode === 'profile') mapStore.profileLine = geo
+    else {
+      mapStore.setSelectedGeometry(geo)
+      if (event.layer.getBounds) {
+        const b = event.layer.getBounds()
+        mapStore.setClipBbox({ xmin:b.getWest(),ymin:b.getSouth(),xmax:b.getEast(),ymax:b.getNorth() })
+      }
+    }
+    mapStore.setDrawMode(null)
+  })
+  stopDrawingWatch = watch(() => mapStore.drawMode, mode => {
+    drawHandler?.disable()
+    mapStore.profileVertexCount=0; mapStore.finishProfile=null
+    if (mode === 'profile') drawHandler = new L.Draw.Polyline(map,{shapeOptions:{color:'#eab308',weight:3}})
+    else if (mode === 'clip') drawHandler = new L.Draw.Rectangle(map,{shapeOptions:{color:'#f59e0b'}})
+    else drawHandler = null
+    drawHandler?.enable()
+    if(mode==='profile') mapStore.finishProfile=()=>drawHandler?.completeShape()
+  },{immediate:true})
 }
 
 watch(() => projectStore.activeProject, (project) => fitResource(project), { flush: 'post' })
+watch(() => mapStore.profileOpen, () => leafletMap.value?.leafletObject?.invalidateSize({animate:false}), {flush:'post'})
 watch(() => projectStore.ortomapas, (products) => {
   if (visibleOrtoLayers.value.length || resourceBounds(projectStore.activeProject)) return
   const own = products.filter((p) => p.projeto_id === projectStore.activeProject?.id)
@@ -330,16 +369,10 @@ onMounted(() => {
       leafletMap.value.leafletObject.invalidateSize()
     }
   }, 200)
-  setTimeout(() => {
-    const map = leafletMap.value?.leafletObject
-    if (!map) return
-    const drawn = new L.FeatureGroup(); map.addLayer(drawn)
-    map.on(L.Draw.Event.CREATED, (event) => { drawn.clearLayers(); drawn.addLayer(event.layer); const geo = event.layer.toGeoJSON().geometry; mapStore.setSelectedGeometry(geo); const b = event.layer.getBounds(); mapStore.setClipBbox({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth() }); mapStore.setDrawMode(null) })
-    watch(() => mapStore.drawMode, (mode) => { if (mode === 'clip') new L.Draw.Rectangle(map, { shapeOptions: { color: '#f59e0b' } }).enable() })
-  }, 250)
 })
 
 onUnmounted(() => {
+  stopDrawingWatch?.(); drawHandler?.disable()
   resizeObserver?.disconnect()
   cancelAnimationFrame(resizeFrame)
 })
@@ -357,6 +390,7 @@ onUnmounted(() => {
   height: 100%;
   background: #1a1a2e;
 }
+.map-container.profile-open :deep(.leaflet-container){height:calc(100% - 280px) !important}
 
 .basemap-switcher {
   position: absolute;

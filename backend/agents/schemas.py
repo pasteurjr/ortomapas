@@ -18,6 +18,10 @@ class ToolDefinition(BaseModel):
 
 def metric_tool_contracts(catalog):
     for tool in catalog:
+        if tool.name == 'perfil_altimetrico':
+            tool.description = 'Amostra altitudes de DSM/DTM ao longo de uma LineString fornecida. Nao calcula media de colunas.'
+            tool.parameters['properties'].update(geometry={'type':'object','description':'GeoJSON LineString desenhada no mapa'},crs={'type':'string','default':'EPSG:4326'},samples={'type':'integer','minimum':2,'maximum':1000,'default':200})
+            tool.parameters['required'] = ['produto_id','geometry']
         if tool.name in {"medir_geometria", "buffer_geometria", "distancia_geometrias", "intersectar_geometrias"}:
             tool.parameters['properties']['crs'] = {"type": "string", "default": "EPSG:4326", "description": "CRS das coordenadas. GeoJSON do mapa usa EPSG:4326."}
             tool.description += " Distancias em metros e areas em m2; GeoJSON de saida preserva o CRS de entrada."

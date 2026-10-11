@@ -24,6 +24,8 @@
         <input v-model.number="pointSize" type="range" min="0.5" max="8" step="0.5" @input="updateMaterial" />
         <label>Opacidade <output>{{ Math.round(opacity * 100) }}%</output></label>
         <input v-model.number="opacity" type="range" min="0.2" max="1" step="0.05" @input="updateMaterial" />
+        <label>Exagero vertical <output>{{ exaggeration }}x</output></label>
+        <input v-model.number="exaggeration" aria-label="Exagero vertical da nuvem" type="range" min="1" max="5" step=".5" @input="updateVerticalScale" />
         <label>Coloração</label>
         <select v-model="colorMode" @change="updateColors"><option value="elevation">Elevação</option><option value="intensity">Intensidade</option></select>
         <label>Detalhe da amostra</label>
@@ -67,6 +69,7 @@ const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.
 const histogram = ref([])
 const measureEndpoints = ref([])
 const renderedCount = ref(0)
+const exaggeration = ref(1)
 let resizeObserver
 let loadVersion = 0
 onUnmounted(() => { resizeObserver?.disconnect(); controls?.dispose(); grid?.geometry.dispose(); grid?.material.dispose(); axes?.geometry.dispose(); axes?.material.dispose() })
@@ -118,9 +121,19 @@ function rebuildPoints () {
   z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) keep.push(i) })
   renderedCount.value = keep.length
   const pos = new Float32Array(keep.length * 3); const elevations = []; const intensities = []
-  keep.forEach((source, i) => { pos.set(cloudPosition([x[source], y[source], z[source]], cloudData.transform), i * 3); elevations.push(z[source]); intensities.push(intensity.length ? intensity[source] : z[source]) })
+  keep.forEach((source, i) => { pos.set(cloudPosition([x[source], y[source], z[source]], cloudData.transform, exaggeration.value), i * 3); elevations.push(z[source]); intensities.push(intensity.length ? intensity[source] : z[source]) })
   if (points) { points.geometry.dispose(); points.geometry = new THREE.BufferGeometry() } else { points = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ size: pointSize.value / 100, opacity: opacity.value, transparent: opacity.value < 1, vertexColors: true, sizeAttenuation: true })); scene.add(points) }
   points.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3)); points.userData.sourceIndices = keep; points.userData.elevation = elevations; points.userData.intensity = intensities; updateColors()
+}
+function updateVerticalScale () {
+  if (!points || !cloudData) return
+  const attribute=points.geometry.getAttribute('position')
+  points.userData.sourceIndices.forEach((source,i)=>attribute.setXYZ(i,...cloudPosition([cloudData.x[source],cloudData.y[source],cloudData.z[source]],cloudData.transform,exaggeration.value)))
+  attribute.needsUpdate=true; points.geometry.computeBoundingSphere()
+  measurePoints=measureEndpoints.value.map(p=>new THREE.Vector3(...cloudPosition(p,cloudData.transform,exaggeration.value)))
+  measureMarkers.forEach((marker,i)=>marker.position.copy(measurePoints[i]))
+  if(measureLine) { measureLine.geometry.dispose(); measureLine.geometry=new THREE.BufferGeometry().setFromPoints(measurePoints) }
+  fitView()
 }
 async function loadCloud () {
   const version = ++loadVersion

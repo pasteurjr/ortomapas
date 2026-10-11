@@ -1,12 +1,12 @@
 <template>
   <div class="surface-view">
-    <header><strong>{{ product.tipo === 'dtm' ? 'Terreno DTM 3D' : 'Superficie DSM 3D' }}</strong><div>
+    <header><strong>{{ product.tipo === 'dtm' ? 'Terreno DTM 3D' : 'Superficie DSM 3D' }}</strong><label>Exagero vertical <input v-model.number="exaggeration" type="range" min="1" max="5" step=".5" aria-label="Exagero vertical do terreno" @input="updateScale" /><output>{{ exaggeration }}x</output></label><div>
       <button title="Alternar wireframe" :aria-pressed="wireframe" @click="wireframe = !wireframe; updateMaterial()"><i class="pi pi-th-large"></i></button>
       <button title="Enquadrar" @click="fit"><i class="pi pi-expand"></i></button>
       <button title="Fechar" @click="$emit('close')"><i class="pi pi-times"></i></button>
     </div></header>
     <div ref="host" class="host"><div v-if="loading" class="overlay">Carregando DSM...</div><div v-else-if="error" class="overlay error" role="alert">{{ error }}</div></div>
-    <footer><span class="legend"><i style="background:hsl(245,65%,50%)"></i>{{ min.toFixed(1) }} m <i style="background:hsl(122,65%,50%)"></i>{{ ((min + max) / 2).toFixed(1) }} m <i style="background:hsl(0,65%,50%)"></i>{{ max.toFixed(1) }} m</span><span>Escala XYZ 1:1 · {{ metricCrs }} · {{ triangles }} triangulos</span></footer>
+    <footer><span class="legend"><i style="background:hsl(245,65%,50%)"></i>{{ min.toFixed(1) }} m <i style="background:hsl(122,65%,50%)"></i>{{ ((min + max) / 2).toFixed(1) }} m <i style="background:hsl(0,65%,50%)"></i>{{ max.toFixed(1) }} m</span><span>Escala horizontal 1:1 · Vertical {{ exaggeration }}x · {{ metricCrs }} · {{ triangles }} triangulos</span></footer>
   </div>
 </template>
 
@@ -21,6 +21,7 @@ const props = defineProps({ product: { type: Object, required: true } })
 defineEmits(['close'])
 const host = ref(null), loading = ref(true), error = ref(''), wireframe = ref(false)
 const min = ref(0), max = ref(0), metricCrs = ref(''), triangles = ref(0)
+const exaggeration = ref(1)
 let renderer, scene, camera, controls, mesh, frame, observer, disposed = false
 function fit() {
   if (!mesh) return
@@ -40,6 +41,7 @@ function fit() {
   controls.target.copy(s.center); controls.update()
 }
 function updateMaterial() { if (mesh) mesh.material.wireframe = wireframe.value }
+function updateScale() { if (mesh) { mesh.scale.y=exaggeration.value; fit() } }
 async function load() {
   try {
     const { data } = await getSurfaceGrid(props.product.id)
@@ -73,7 +75,7 @@ onUnmounted(() => {
 
 <style scoped>
 .surface-view{position:fixed;inset:4vh 4vw;background:#101820;color:#e8f0f2;z-index:2100;display:flex;flex-direction:column;border:1px solid #40515c}
-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#17242c}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;background:#17242c}header label{display:flex;align-items:center;gap:8px;font-size:.75rem}header input{width:100px;accent-color:#35c5a7}header output{min-width:24px}
 button{background:transparent;border:1px solid #52616b;color:#dce7eb;width:34px;height:32px;margin-left:5px;cursor:pointer}
 button[aria-pressed=true]{background:#276653}.host{position:relative;flex:1;min-height:0}.host :deep(canvas){display:block;width:100%;height:100%}
 .overlay{position:absolute;inset:0;display:grid;place-items:center;background:#101820aa}.error{color:#ffb4a9}

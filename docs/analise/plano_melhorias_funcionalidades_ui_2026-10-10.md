@@ -378,3 +378,11 @@ O lote seguinte corrigiu calculos de geometria em graus, resolucao de declividad
 Nao encerrar a fase 2 ainda: perfil por linha, exagero vertical explicito com comparacao 1/3, alinhamento DSM/DTM e abrangencia dos demais motores continuam pendentes. Declividade/volume neste lote abrangem todo o raster, nao uma AOI. A integracao completa de resultados e respostas do chat sera validada separadamente.
 
 Evidencias e limites: [MD](../validacao/medidas_espaciais_fase2_2026-10-10.md) e [PDF](../validacao/medidas_espaciais_fase2_2026-10-10.pdf).
+
+## 16. Terceiro lote da fase 2 e usabilidade GIS
+
+Checkpoint `662437d` enviado antes das alteracoes. Em 11/10/2026 foram implementados perfil por linha desenhada com CSV, exagero vertical explicito nos dois visualizadores, medidas preservadas no fator 3x e alinhamento DSM/DTM com mascara. O painel de perfil segue o fluxo GIS de selecionar produto, desenhar, concluir, inspecionar resultado e exportar; o painel direito recolhe em tablet e no Copiloto. A navegacao pode ser recolhida por teclado sem ocultar a ortofoto.
+
+Validacao: 34 testes Python, testes Node, build e dois roteiros Playwright reais, sem erros JavaScript na rodada final. Perfil de 224,48 m/200 amostras; DSM e DTM conferidos contra os arquivos; medicao LAZ de 82,31 m inalterada em 1x/3x. Diferenca real mostra valores negativos, alerta de qualidade dos dados e nao erro a esconder na visualizacao. QGIS Server confirmado instalado, nao iniciado porque nao era necessario ao lote.
+
+Fase 2 ainda tem revisao dos demais motores de aspecto/hillshade/corte-aterro. Recorte AOI, resultado persistido e catalogo/menus completos continuam pendentes dos lotes correspondentes. Relatorio com analise de usabilidade, telas e esperado/obtido: [MD](../validacao/usabilidade_gis_fase2_2026-10-11.md) e [PDF](../validacao/usabilidade_gis_fase2_2026-10-11.pdf).

@@ -296,14 +296,10 @@ async def elevation_difference(processing_id: int, max_size: int = Query(128, ge
     if not job or not {'dsm', 'dtm'}.issubset(products): raise HTTPException(status_code=404, detail="DSM e DTM nao encontrados")
     require_project_role(job['projeto_id'], user, {'proprietario', 'editor', 'visualizador'})
     try:
-        with rasterio.open(Path(DATA_DIR) / products['dsm']['caminho']) as dsm, rasterio.open(Path(DATA_DIR) / products['dtm']['caminho']) as dtm:
-            height = min(max_size, dsm.height, dtm.height); width = min(max_size, dsm.width, dtm.width)
-            a = dsm.read(1, out_shape=(height, width), resampling=rasterio.enums.Resampling.bilinear, masked=True).filled(np.nan)
-            b = dtm.read(1, out_shape=(height, width), resampling=rasterio.enums.Resampling.bilinear, masked=True).filled(np.nan)
-            diff = np.asarray(a - b, dtype=float); valid = diff[np.isfinite(diff)]
-            if not valid.size: raise HTTPException(status_code=422, detail="Produtos sem dados validos")
-            diff[~np.isfinite(diff)] = 0
-            return {'width': width, 'height': height, 'min': float(valid.min()), 'max': float(valid.max()), 'mean': float(valid.mean()), 'bounds': [dsm.bounds.left, dsm.bounds.bottom, dsm.bounds.right, dsm.bounds.top], 'differences': diff.tolist()}
+        from backend.utils.elevation_analysis import aligned_difference
+        return aligned_difference(Path(DATA_DIR)/products['dsm']['caminho'],Path(DATA_DIR)/products['dtm']['caminho'],max_size)
+    except ValueError as exc:
+        raise HTTPException(status_code=422,detail=str(exc))
     except HTTPException: raise
     except Exception as exc:
         logger.exception("Elevation comparison failed"); raise HTTPException(status_code=500, detail=f"Falha ao comparar DSM e DTM: {exc}")

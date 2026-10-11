@@ -4,9 +4,9 @@ export function cloudTransform (bounds) {
   return { origin, scale }
 }
 
-export function cloudPosition (point, transform) {
+export function cloudPosition (point, transform, exaggeration = 1) {
   const { origin, scale } = transform
-  return [(point[0] - origin[0]) * scale, (point[2] - origin[2]) * scale, -(point[1] - origin[1]) * scale]
+  return [(point[0] - origin[0]) * scale, (point[2] - origin[2]) * scale * exaggeration, -(point[1] - origin[1]) * scale]
 }
 
 export function sourceDistance (a, b) {

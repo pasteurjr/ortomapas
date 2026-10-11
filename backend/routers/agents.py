@@ -131,8 +131,12 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE p.id=%s AND p.tipo IN ('dsm','dtm')",(product_id,)); product=cur.fetchone()
         if not product: raise HTTPException(status_code=404, detail='DSM/DTM nao encontrado')
         require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'})
-        with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds: arr=ds.read(1,out_shape=(min(512,ds.height),min(512,ds.width)),resampling=rasterio.enums.Resampling.bilinear)
-        profile=np.nanmean(arr,axis=0); return {'status':'ok','dados':{'produto_id':product_id,'elevacoes':profile.tolist(),'pontos':len(profile)}}
+        from backend.utils.elevation_analysis import line_profile
+        try:
+            result = line_profile(Path(DATA_DIR)/product['caminho'],args['geometry'],args.get('crs','EPSG:4326'),args.get('samples',200))
+        except (ValueError, KeyError, TypeError) as exc:
+            raise HTTPException(status_code=422,detail=f'Perfil invalido: {exc}')
+        return {'status':'ok','dados':{'produto_id':product_id,**result}}
     if name == 'calcular_volume':
         product_id=args.get('produto_id')
         try: cota=float(args.get('cota'))
@@ -170,9 +174,10 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
             cur=conn.cursor(dictionary=True); cur.execute("SELECT * FROM processamentos_odm WHERE id=%s",(processing_id,)); job=cur.fetchone(); cur.execute("SELECT * FROM produtos_processamento WHERE processamento_id=%s AND tipo IN ('dsm','dtm')",(processing_id,)); products={r['tipo']:r for r in cur.fetchall()}
         if not job or len(products)<2: raise HTTPException(status_code=404, detail='DSM e DTM nao encontrados')
         require_project_role(job['projeto_id'], user, {'proprietario','editor','visualizador'})
-        with rasterio.open(Path(DATA_DIR)/products['dsm']['caminho']) as dsm, rasterio.open(Path(DATA_DIR)/products['dtm']['caminho']) as dtm:
-            a=dsm.read(1,out_shape=(64,64),resampling=rasterio.enums.Resampling.bilinear); b=dtm.read(1,out_shape=(64,64),resampling=rasterio.enums.Resampling.bilinear); diff=np.asarray(a-b,dtype=float)
-        return {'status':'ok','dados':{'processamento_id':processing_id,'min':float(diff.min()),'max':float(diff.max()),'media':float(diff.mean()),'grade':[64,64]}}
+        from backend.utils.elevation_analysis import aligned_difference
+        try: result=aligned_difference(Path(DATA_DIR)/products['dsm']['caminho'],Path(DATA_DIR)/products['dtm']['caminho'],64)
+        except ValueError as exc: raise HTTPException(status_code=422,detail=str(exc))
+        return {'status':'ok','dados':{'processamento_id':processing_id,'min':result['min'],'max':result['max'],'media':result['mean'],'grade':[result['height'],result['width']],'alignment':result['alignment'],'valid_pixels':result['valid_pixels'],'units':'m'}}
     product_id = args.get('produto_id')
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE p.id=%s",(product_id,)); product=cur.fetchone()

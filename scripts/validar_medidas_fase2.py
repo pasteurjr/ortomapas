@@ -2,6 +2,7 @@
 import base64
 import io
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -11,7 +12,7 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'docs/validacao/medidas_fase2_2026-10-10'
+OUT = Path(sys.argv[1]).resolve() if len(sys.argv)>1 else ROOT / 'docs/validacao/medidas_fase2_2026-10-10'
 API = 'http://127.0.0.1:5018/api'
 
 
@@ -126,6 +127,10 @@ def main():
         assert all(np.min(np.linalg.norm(coords-endpoint,axis=1)) < .02 for endpoint in endpoints)
         result['measurement'] = {'source':'real LAZ API sample','endpoints_rounded_m':endpoints,'expected_from_displayed_endpoints_m':expected,'displayed_m':measured,'tolerance_m':.03}
         capture('03_medicao_metros')
+        page.get_by_label('Exagero vertical da nuvem',exact=True).fill('3')
+        assert page.locator('.measure-result b').inner_text() == displayed
+        assert page.locator('.endpoint-result span').all_text_contents() == [ ' / '.join(f'{v:.2f}' for v in endpoint)+' m' for endpoint in endpoints ]
+        capture('06_exagero_3x_medida_preservada')
         with page.expect_download() as download:
             page.get_by_title('Exportar imagem PNG',exact=True).click()
         download.value.save_as('/tmp/nuvem_fase2_exportada.png')
@@ -138,7 +143,7 @@ def main():
         result['exports'] = {'png':True,'csv_rows':len(lines)-1}
         lo, hi = cloud[-1]['bounds']['min'][2], cloud[-1]['bounds']['max'][2]
         threshold = round(lo + int((hi-lo)/.2)*.1, 2)
-        page.locator('.viewer-shell input[type=range]').nth(2).fill(str(threshold))
+        page.locator('.viewer-shell input[type=range]').nth(3).fill(str(threshold))
         assert page.locator('.measure-result').count() == 0
         assert page.locator('.point-result').count() == 0
         stats = page.locator('.stats b').all_text_contents()
