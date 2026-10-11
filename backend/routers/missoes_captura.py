@@ -123,9 +123,13 @@ def _validate_mission_geometry(aoi_geometry, exclusions, waypoint_rows):
     forbidden = unary_union(exclusions) if exclusions else None
     outside = 0
     in_exclusion = 0
+    # A conversao do grid metrico local para WGS84 e a amostragem da linha
+    # podem deixar um ponto na borda alguns centimetros fora do poligono.
+    # A tolerancia de 2 m evita falso bloqueio sem aceitar uma rota deslocada.
+    aoi_tolerant = aoi_geometry.buffer(2e-5)
     for row in waypoint_rows:
         point = Point(float(row["longitude"]), float(row["latitude"]))
-        if not aoi_geometry.covers(point):
+        if not aoi_tolerant.covers(point):
             outside += 1
         if forbidden and forbidden.covers(point):
             in_exclusion += 1

@@ -18,7 +18,7 @@
       <div v-if="loading" class="overlay"><i class="pi pi-spin pi-spinner"></i> Carregando amostra...</div>
       <div v-if="error" class="overlay error">{{ error }}</div>
       <div v-if="colorMode === 'elevation'" class="legend"><span>{{ meta.maxZ.toFixed(1) }} m</span><i></i><span>{{ meta.minZ.toFixed(1) }} m</span></div>
-      <div v-if="histogram.length" class="histogram"><span class="histogram-title">Distribuição de elevação</span><div class="bars"><i v-for="(bin, i) in histogram" :key="i" :style="{ height: `${bin * 100}%` }" /></div></div>
+      <div v-if="histogram.length" class="histogram"><span class="histogram-title">Elevação da amostra original</span><div class="bars"><i v-for="(bin, i) in histogram" :key="i" :style="{ height: `${bin * 100}%` }" /></div></div>
       <aside class="tools-panel">
         <label>Tamanho dos pontos <output>{{ pointSize.toFixed(1) }}</output></label>
         <input v-model.number="pointSize" type="range" min="0.5" max="8" step="0.5" @input="updateMaterial" />
@@ -34,15 +34,16 @@
         <input v-model.number="heightMax" type="range" :min="meta.minZ" :max="meta.maxZ" step="0.1" @input="rebuildPoints" />
         <label class="check"><input v-model="showGrid" type="checkbox" @change="renderScene" /> Grade</label>
         <label class="check"><input v-model="showAxes" type="checkbox" @change="renderScene" /> Eixos</label>
-        <button class="measure-button" :class="{ active: measuring }" @click="toggleMeasure"><i class="pi pi-arrows-h"></i> {{ measuring ? 'Clique em dois pontos' : 'Medir distância' }}</button>
-        <button class="measure-button" :class="{ active: inspecting }" @click="inspecting = !inspecting"><i class="pi pi-info-circle"></i> {{ inspecting ? 'Clique para inspecionar' : 'Inspecionar ponto' }}</button>
+        <button class="measure-button" :aria-label="measuring ? 'Clique em dois pontos' : 'Medir distância'" :aria-pressed="measuring" :class="{ active: measuring }" @click="toggleMeasure"><i aria-hidden="true" class="pi pi-arrows-h"></i> {{ measuring ? 'Clique em dois pontos' : 'Medir distância' }}</button>
+        <button class="measure-button" :aria-label="inspecting ? 'Clique para inspecionar' : 'Inspecionar ponto'" :aria-pressed="inspecting" :class="{ active: inspecting }" @click="inspecting = !inspecting; measuring = false"><i aria-hidden="true" class="pi pi-info-circle"></i> {{ inspecting ? 'Clique para inspecionar' : 'Inspecionar ponto' }}</button>
         <button v-if="measureDistance !== null" class="clear-button" @click="clearMeasure"><i class="pi pi-eraser"></i> Limpar medição</button>
         <div v-if="measureDistance !== null" class="measure-result"><span>Distância</span><b>{{ measureDistance.toFixed(2) }} m</b></div>
+        <div v-if="measureEndpoints.length" class="endpoint-result"><div v-for="(point, index) in measureEndpoints" :key="index"><strong>{{ index ? 'B' : 'A' }}</strong><span>{{ point.map(v => v.toFixed(2)).join(' / ') }} m</span></div></div>
         <div v-if="selectedPoint" class="point-result"><span>X</span><b>{{ selectedPoint.x.toFixed(2) }} m</b><span>Y</span><b>{{ selectedPoint.y.toFixed(2) }} m</b><span>Z</span><b>{{ selectedPoint.z.toFixed(2) }} m</b><span>Intensidade</span><b>{{ selectedPoint.intensity }}</b></div>
-        <div class="stats"><span>Amostra</span><b>{{ formatNumber(meta.sampled) }}</b><span>Elevação</span><b>{{ elevationRange }}</b></div>
+        <div class="stats"><span>Amostra recebida</span><b>{{ formatNumber(meta.sampled) }}</b><span>Pontos visíveis</span><b>{{ formatNumber(renderedCount) }}</b><span>Elevação original</span><b>{{ elevationRange }}</b></div>
       </aside>
     </div>
-    <footer>Arraste para orbitar · Shift + arraste para deslocar · roda para zoom · F enquadra · M mede · I inspeciona · C limpa</footer>
+    <footer>{{ meta.crs }} · Coordenadas em metros · Distância 3D entre pontos da amostra</footer>
   </div>
 </template>
 
@@ -52,6 +53,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { getPointCloud } from '../api/client'
 import { useMapStore } from '../stores/mapStore'
+import { cloudTransform, cloudPosition, sourceDistance } from '../utils/cloudGeometry'
 
 const props = defineProps({ product: { type: Object, required: true } })
 const emit = defineEmits(['close'])
@@ -63,6 +65,11 @@ const sampleLimit = ref(120000)
 const meta = ref({ total: 0, sampled: 0, minZ: 0, maxZ: 0 }); const heightMin = ref(0); const heightMax = ref(0); let cloudData; let renderer; let scene; let camera; let controls; let points; let grid; let axes; let frame; let raycaster; let pointer
 const elevationRange = computed(() => `${meta.value.minZ.toFixed(1)} – ${meta.value.maxZ.toFixed(1)} m`)
 const histogram = ref([])
+const measureEndpoints = ref([])
+const renderedCount = ref(0)
+let resizeObserver
+let loadVersion = 0
+onUnmounted(() => { resizeObserver?.disconnect(); controls?.dispose(); grid?.geometry.dispose(); grid?.material.dispose(); axes?.geometry.dispose(); axes?.material.dispose() })
 const formatNumber = (n) => Number(n || 0).toLocaleString('pt-BR')
 const settingsKey = 'ortomapas.viewer3d.settings'
 function saveSettings () { localStorage.setItem(settingsKey, JSON.stringify({ pointSize: pointSize.value, opacity: opacity.value, colorMode: colorMode.value, showGrid: showGrid.value, showAxes: showAxes.value, sampleLimit: sampleLimit.value })) }
@@ -75,47 +82,61 @@ async function progressiveLoad () { sampleLimit.value = 25000; await loadCloud()
 function initScene () {
   scene = new THREE.Scene(); scene.background = new THREE.Color('#101820')
   camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100000); camera.position.set(0, -1.6, 1.2)
-  renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); canvasHost.value.appendChild(renderer.domElement)
+  renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); canvasHost.value.appendChild(renderer.domElement)
   controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.target.set(0, 0, 0)
   raycaster = new THREE.Raycaster(); pointer = new THREE.Vector2(); renderer.domElement.addEventListener('pointerdown', pickPoint)
   grid = new THREE.GridHelper(10, 20, '#52616b', '#263640'); grid.rotation.x = 0; scene.add(grid)
   axes = new THREE.AxesHelper(5); scene.add(axes)
-  resize(); window.addEventListener('resize', resize); frame = requestAnimationFrame(animate)
+  resize(); resizeObserver = new ResizeObserver(resize); resizeObserver.observe(canvasHost.value); window.addEventListener('resize', resize); frame = requestAnimationFrame(animate)
 }
 function resize () { if (!renderer || !canvasHost.value) return; const w = canvasHost.value.clientWidth; const h = canvasHost.value.clientHeight; camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix(); renderer.setSize(w, h, false) }
 function animate () { controls?.update(); renderer?.render(scene, camera); frame = requestAnimationFrame(animate) }
 function renderScene () { if (grid) grid.visible = showGrid.value; if (axes) axes.visible = showAxes.value }
 function updateMaterial () { if (points) { points.material.size = pointSize.value / 100; points.material.opacity = opacity.value; points.material.transparent = opacity.value < 1; points.material.needsUpdate = true } }
-function updateColors () { if (!points) return; const mode = colorMode.value; const values = points.userData[mode] || points.userData.elevation; const colors = new Float32Array(values.length * 3); const min = Math.min(...values); const max = Math.max(...values); values.forEach((v, i) => { const t = (v - min) / Math.max(max - min, 1e-9); const c = new THREE.Color(); c.setHSL((mode === 'intensity' ? 0.65 - t * 0.65 : 0.68 - t * 0.68), 0.85, 0.54); colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b }); points.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); points.geometry.attributes.color.needsUpdate = true }
-function fitView () { if (!points) return; const sphere = new THREE.Box3().setFromObject(points).getBoundingSphere(new THREE.Sphere()); const distance = sphere.radius / Math.sin(camera.fov * Math.PI / 360); camera.position.copy(sphere.center).add(new THREE.Vector3(distance * .8, -distance * .8, distance * .55)); controls.target.copy(sphere.center); camera.near = Math.max(sphere.radius / 1000, .01); camera.far = sphere.radius * 20; camera.updateProjectionMatrix(); controls.update() }
+function updateColors () { if (!points) return; const mode = colorMode.value; const values = points.userData[mode] || points.userData.elevation; const colors = new Float32Array(values.length * 3); const min = mode === 'elevation' ? meta.value.minZ : Math.min(...values); const max = mode === 'elevation' ? meta.value.maxZ : Math.max(...values); values.forEach((v, i) => { const t = (v - min) / Math.max(max - min, 1e-9); const c = new THREE.Color(); c.setHSL((mode === 'intensity' ? 0.65 - t * 0.65 : 0.68 - t * 0.68), 0.85, 0.54); colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b }); points.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); points.geometry.attributes.color.needsUpdate = true }
+function fitView () { if (!points) return; const sphere = new THREE.Box3().setFromObject(points).getBoundingSphere(new THREE.Sphere()); const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect)); const distance = Math.max(sphere.radius, .01) / Math.sin(angle); camera.position.copy(sphere.center).add(new THREE.Vector3(.8, .8, .55).normalize().multiplyScalar(distance * 1.1)); controls.target.copy(sphere.center); camera.near = Math.max(sphere.radius / 1000, .001); camera.far = Math.max(sphere.radius * 30, 100); camera.updateProjectionMatrix(); controls.update() }
 function fullscreen () { shell.value?.requestFullscreen?.() }
 function handleKey (event) { if (event.key === 'Escape') { emit('close'); return }; if (event.target?.tagName === 'INPUT' || event.target?.tagName === 'SELECT') return; const key = event.key.toLowerCase(); if (key === 'f') fitView(); if (key === 'm') toggleMeasure(); if (key === 'i') inspecting.value = !inspecting.value; if (key === 'c') clearMeasure() }
-function toggleMeasure () { measuring.value = !measuring.value; if (!measuring.value) clearMeasure() }
-function clearMeasure () { measurePoints = []; measureDistance.value = null; if (measureLine) { measureLine.geometry.dispose(); measureLine.material.dispose(); scene.remove(measureLine); measureLine = null }; measureMarkers.forEach((m) => { m.geometry.dispose(); m.material.dispose(); scene.remove(m) }); measureMarkers = [] }
+function toggleMeasure () { const enabled = !measuring.value; clearMeasure(); selectedPoint.value = null; measuring.value = enabled; inspecting.value = false }
+function clearMeasure () { measurePoints = []; measureEndpoints.value = []; measureDistance.value = null; if (measureLine) { measureLine.geometry.dispose(); measureLine.material.dispose(); scene.remove(measureLine); measureLine = null }; measureMarkers.forEach((m) => { m.geometry.dispose(); m.material.dispose(); scene.remove(m) }); measureMarkers = [] }
 function pickPoint (event) {
   if ((!measuring.value && !inspecting.value) || !points) return
   const rect = renderer.domElement.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.params.Points.threshold = Math.max(pointSize.value / 80, .04); raycaster.setFromCamera(pointer, camera)
   const hit = raycaster.intersectObject(points)[0]; if (!hit) return
-  if (inspecting.value && !measuring.value) { const index = hit.index ?? 0; selectedPoint.value = { x: hit.point.x / cloudData.scale + cloudData.cx, y: hit.point.z / cloudData.scale + cloudData.cy, z: hit.point.y / cloudData.scale + cloudData.cz, intensity: Math.round(points.userData.intensity[index] || 0) }; return }
+  hit.point = new THREE.Vector3().fromBufferAttribute(points.geometry.getAttribute('position'), hit.index)
+  const source = points.userData.sourceIndices[hit.index]
+  const coordinate = [cloudData.x[source], cloudData.y[source], cloudData.z[source]]
+  if (inspecting.value && !measuring.value) { selectedPoint.value = { x: coordinate[0], y: coordinate[1], z: coordinate[2], intensity: Math.round(cloudData.intensity[source] || 0) }; return }
+  measureEndpoints.value.push(coordinate)
   measurePoints.push(hit.point.clone()); const marker = new THREE.Mesh(new THREE.SphereGeometry(.08, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffcf56' })); marker.position.copy(hit.point); scene.add(marker); measureMarkers.push(marker)
-  if (measurePoints.length === 2) { const geometry = new THREE.BufferGeometry().setFromPoints(measurePoints); measureLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#ffcf56' })); scene.add(measureLine); measureDistance.value = measurePoints[0].distanceTo(measurePoints[1]); measuring.value = false }
+  if (measurePoints.length === 2) { const geometry = new THREE.BufferGeometry().setFromPoints(measurePoints); measureLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#ffcf56' })); scene.add(measureLine); measureDistance.value = sourceDistance(...measureEndpoints.value); measuring.value = false }
 }
 function rebuildPoints () {
   if (!cloudData || !scene) return
-  const { x, y, z, intensity, cx, cy, cz, scale } = cloudData; const keep = []
+  clearMeasure(); selectedPoint.value = null; measuring.value = false
+  const { x, y, z, intensity, cx, cy, cz, horizontalScale, verticalScale } = cloudData; const keep = []
   z.forEach((value, i) => { if (value >= heightMin.value && value <= heightMax.value) keep.push(i) })
+  renderedCount.value = keep.length
   const pos = new Float32Array(keep.length * 3); const elevations = []; const intensities = []
-  keep.forEach((source, i) => { pos[i * 3] = (x[source] - cx) * scale; pos[i * 3 + 1] = (z[source] - cz) * scale; pos[i * 3 + 2] = (y[source] - cy) * scale; elevations.push(z[source]); intensities.push(intensity.length ? intensity[source] : z[source]) })
+  keep.forEach((source, i) => { pos.set(cloudPosition([x[source], y[source], z[source]], cloudData.transform), i * 3); elevations.push(z[source]); intensities.push(intensity.length ? intensity[source] : z[source]) })
   if (points) { points.geometry.dispose(); points.geometry = new THREE.BufferGeometry() } else { points = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ size: pointSize.value / 100, opacity: opacity.value, transparent: opacity.value < 1, vertexColors: true, sizeAttenuation: true })); scene.add(points) }
-  points.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3)); points.userData.elevation = elevations; points.userData.intensity = intensities; updateColors()
+  points.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3)); points.userData.sourceIndices = keep; points.userData.elevation = elevations; points.userData.intensity = intensities; updateColors()
 }
 async function loadCloud () {
+  const version = ++loadVersion
+  clearMeasure(); selectedPoint.value = null; measuring.value = false
+  if (points) points.visible = false
   loading.value = true; error.value = ''
   try {
-    const { data } = await getPointCloud(props.product.id, sampleLimit.value, mapStore.clipBbox || {}); const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
-    const maxExtent = Math.max(Math.max(...x) - Math.min(...x), Math.max(...y) - Math.min(...y), Math.max(...z) - Math.min(...z), 1); const scale = 10 / maxExtent
-    cloudData = { x, y, z, intensity, cx, cy, cz, scale }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; const bins = Array(24).fill(0); z.forEach((value) => { const index = Math.min(23, Math.floor((value - meta.value.minZ) / Math.max(meta.value.maxZ - meta.value.minZ, 1e-9) * 24)); bins[index]++ }); const peak = Math.max(...bins, 1); histogram.value = bins.map((value) => value / peak); rebuildPoints(); fitView()
-  } catch (e) { error.value = e.response?.data?.detail || 'Nao foi possivel carregar a nuvem de pontos.' } finally { loading.value = false }
+    const { data } = await getPointCloud(props.product.id, sampleLimit.value, mapStore.clipBbox || {})
+    if (version !== loadVersion) return
+    const { x, y, z, intensity } = data.points; const cx = (Math.min(...x) + Math.max(...x)) / 2; const cy = (Math.min(...y) + Math.max(...y)) / 2; const cz = (Math.min(...z) + Math.max(...z)) / 2
+    if (data.units !== 'm') throw new Error('Nuvem sem coordenadas metricas')
+    const horizontalExtent = Math.max(Math.max(...x) - Math.min(...x), Math.max(...y) - Math.min(...y), Math.max(...z) - Math.min(...z), 1e-9); const horizontalScale = 10 / horizontalExtent; const verticalScale = horizontalScale
+    cloudData = { x, y, z, intensity, cx, cy, cz, horizontalScale, verticalScale, transform: cloudTransform(data.bounds) }; meta.value = { total: data.total, sampled: data.sampled, minZ: Math.min(...z), maxZ: Math.max(...z) }; heightMin.value = meta.value.minZ; heightMax.value = meta.value.maxZ; const bins = Array(24).fill(0); z.forEach((value) => { const index = Math.min(23, Math.floor((value - meta.value.minZ) / Math.max(meta.value.maxZ - meta.value.minZ, 1e-9) * 24)); bins[index]++ }); const peak = Math.max(...bins, 1); histogram.value = bins.map((value) => value / peak); rebuildPoints(); fitView()
+    meta.value.crs = data.source_crs
+    points.visible = true
+  } catch (e) { if (version === loadVersion) error.value = e.response?.data?.detail || e.message || 'Nao foi possivel carregar a nuvem de pontos.' } finally { if (version === loadVersion) loading.value = false }
 }
 onMounted(() => { restoreSettings(); initScene(); loadCloud(); window.addEventListener('keydown', handleKey) }); watch([pointSize, opacity, colorMode, showGrid, showAxes, sampleLimit], saveSettings); watch(() => props.product?.id, loadCloud); watch(() => mapStore.clipBbox, loadCloud, { deep: true }); onUnmounted(() => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize); window.removeEventListener('keydown', handleKey); renderer?.domElement.removeEventListener('pointerdown', pickPoint); clearMeasure(); renderer?.dispose(); points?.geometry.dispose(); points?.material.dispose() })
 </script>
@@ -126,4 +147,5 @@ onMounted(() => { restoreSettings(); initScene(); loadCloud(); window.addEventLi
 .point-result{display:grid;grid-template-columns:1fr auto;gap:3px;border-top:1px solid #40515c;padding-top:8px;color:#9db0ba}.point-result b{color:#e8f0f2;font-weight:500}
 .legend{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:7px;color:#dce7eb;font-size:.7rem;background:#17242ce8;border:1px solid #52616b;padding:7px}.legend i{display:block;width:110px;height:10px;background:linear-gradient(90deg,#f33d65,#f2c94c,#29d3a2,#397cf6)}
 .histogram{position:absolute;left:16px;bottom:54px;width:180px;padding:8px;background:#17242ce8;border:1px solid #52616b}.histogram-title{display:block;color:#c9d6dc;font-size:.68rem;margin-bottom:5px}.bars{height:42px;display:flex;align-items:end;gap:2px}.bars i{flex:1;min-height:2px;background:#56b4d3}
+.canvas-host{right:230px}.tools-panel{bottom:14px;overflow-y:auto;gap:6px}.endpoint-result{font-size:.68rem;overflow-wrap:anywhere}.endpoint-result div{display:grid;grid-template-columns:14px 1fr;gap:4px}.overlay{right:230px;z-index:1}.viewer-header{gap:10px;flex-wrap:wrap}@media(max-width:700px){.viewer-shell{inset:0}.canvas-host{right:180px}.tools-panel{width:150px;right:8px;padding:8px}.overlay{right:180px}.viewer-actions{gap:3px}.icon-button{width:30px}}
 </style>

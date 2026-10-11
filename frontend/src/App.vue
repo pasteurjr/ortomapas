@@ -218,6 +218,11 @@ function onProjectChange(event) {
 
 function selectWorkspace(id) {
   activeWorkspace.value = id
+  // O copiloto usa o mapa como contexto de trabalho; esconder rasters
+  // analíticos ao entrar evita que um tile de resultado cubra a conversa.
+  if (id === 'copiloto') {
+    mapStore.activeLayers.forEach((layer) => { layer.visible = false })
+  }
   if (id === 'missoes') showMissionPlanner.value = true
 }
 
@@ -495,4 +500,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
 }
+
+/* Dialogs must remain opaque over the map; transparent panels make form data
+   unreadable and look like a rendering failure in screenshots. */
+.p-dialog {
+  background: #17242c !important;
+  background-color: #17242c !important;
+  opacity: 1 !important;
+  isolation: isolate;
+  color: #e8f0f2 !important;
+  border: 1px solid #52616b !important;
+  box-shadow: 0 18px 48px #000b !important;
+}
+.p-dialog .p-dialog-header,
+.p-dialog .p-dialog-content,
+.p-dialog .p-dialog-footer {
+  background: #17242c !important;
+  color: #e8f0f2 !important;
+}
+.p-dialog .p-dialog-content label { color: #c9d6dc; }
 </style>

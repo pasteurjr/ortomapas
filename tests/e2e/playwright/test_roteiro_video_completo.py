@@ -29,10 +29,10 @@ def main() -> int:
 
         def shot(scene_id: str, title: str, narration: str, action: str, target=None) -> None:
             path = OUTPUT / f"{scene_id}.png"
-            if target is not None:
-                target.screenshot(path=str(path), timeout=30000)
-            else:
-                page.screenshot(path=str(path), full_page=False, timeout=30000)
+            # Cada cena deve documentar o estado completo da aplicação. Capturar
+            # somente o painel de ferramentas produzia imagens estreitas e sem
+            # contexto do mapa, inadequadas para revisão visual e narração.
+            page.screenshot(path=str(path), full_page=False, timeout=30000)
             result["scenes"].append({"id": scene_id, "title": title, "action": action, "narration": narration, "screenshot": path.name, "status": "passed"})
 
         def wait():
@@ -83,7 +83,7 @@ def main() -> int:
             results.first.wait_for(timeout=10000)
             for idx, (scene_id, title, action) in enumerate(result_titles):
                 if idx < results.count():
-                    results.nth(idx).click(); wait(); shot(scene_id, title, "O resultado selecionado aparece no mapa como camada ativa, com controles de visibilidade e opacidade.", action)
+                    results.nth(idx).click(); page.wait_for_timeout(1800); shot(scene_id, title, "O resultado selecionado aparece no mapa como camada ativa, com controles de visibilidade e opacidade.", action)
 
             # Desenho espacial e anotação.
             page.get_by_title("Poligono").click()
@@ -120,12 +120,21 @@ def main() -> int:
             page.locator(".grid-options input").nth(0).fill("0")
             page.locator(".grid-options input").nth(1).fill("180")
             page.locator(".grid-options input").nth(2).fill("180")
+            # A rota de demonstração tem 3,93 km; 8 m/s mantém a estimativa
+            # dentro da autonomia útil configurada (25% de reserva).
+            page.locator("label:has-text('Velocidade (m/s)') input").fill("8")
             page.get_by_role("button", name="Salvar missao").click(); page.get_by_text("Missao salva no projeto").wait_for(timeout=10000)
             page.get_by_role("button", name="Gerar grid fotogrametrica").click(); wait(); page.wait_for_timeout(1400)
             shot("16_grid_fotogrametrico", "Grid fotogramétrico", "O grid calcula linhas, espaçamento, fotos e distância da missão para cobrir a área com sobreposição controlada.", "Gerar a cobertura fotogramétrica")
             page.get_by_role("button", name="Simular rota").click(); wait(); page.wait_for_timeout(700); page.get_by_role("button", name="Pausar simulacao").click()
             page.get_by_role("button", name="Validar missao").click(); page.locator(".validation-report").wait_for(timeout=10000)
+            validation_text = page.locator(".validation-report").inner_text()
+            result["validation_report"] = validation_text
+            result["validation_rules"] = page.locator(".validation-rule").evaluate_all("els => els.map(el => el.innerText)")
+            page.locator(".planner-panel").evaluate("el => el.scrollTop = el.scrollHeight")
+            page.wait_for_timeout(300)
             shot("17_validacao_missao", "Validação e simulação", "Antes de exportar, o sistema simula a rota e avalia geometria, altitude, velocidade, gimbal, sobreposição, imagem e autonomia.", "Simular, pausar e validar a missão")
+            page.locator(".planner-panel").evaluate("el => el.scrollTop = 0")
             page.get_by_role("button", name="Exportar Litchi").click(); wait()
             shot("18_exportacao_litchi", "Exportação Litchi", "A missão validada pode ser exportada para CSV compatível com o Mission Hub, além de KML e GeoJSON para interoperabilidade.", "Baixar o CSV Litchi")
         except Exception as exc:

@@ -2,8 +2,8 @@
   <div class="ortomapa-card" @click="$emit('select', ortomapa)">
     <div class="card-thumbnail">
       <img
-        v-if="ortomapa.caminho_thumbnail || ortomapa.thumbnail"
-        :src="ortomapa.caminho_thumbnail ? `/data/${ortomapa.caminho_thumbnail}` : `/api/ortomapas/${ortomapa.id}/thumbnail`"
+        v-if="thumbnailUrl"
+        :src="thumbnailUrl"
         alt="thumbnail"
       />
       <div v-else class="no-thumb">
@@ -43,7 +43,8 @@
 </template>
 
 <script setup>
-import { computed, inject } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
+import api from '../api/client'
 import { useMapStore } from '../stores/mapStore'
 import Badge from 'primevue/badge'
 
@@ -54,6 +55,15 @@ const props = defineProps({
 defineEmits(['select', 'export', 'delete'])
 
 const mapStore = useMapStore()
+const thumbnailUrl = ref('')
+watch(() => props.ortomapa.caminho_thumbnail, async (path) => {
+  thumbnailUrl.value = ''
+  if (!path) return
+  try {
+    const { data } = await api.post('/media/access', { path })
+    if (path === props.ortomapa.caminho_thumbnail) thumbnailUrl.value = data.url
+  } catch { thumbnailUrl.value = '' }
+}, { immediate: true })
 const showAnalysisForm = inject('showAnalysisForm')
 
 const isVisible = computed(() => mapStore.isLayerVisible(`orto-${props.ortomapa.id}`))

@@ -6,6 +6,7 @@
       v-model:zoom="currentZoom"
       v-model:center="currentCenter"
       :useGlobalLeaflet="false"
+      @ready="onMapReady"
       @mousemove="onMouseMove"
       @click="onMapClick"
       @update:zoom="onZoomUpdate"
@@ -27,12 +28,11 @@
       />
 
       <!-- Ortomapa Tile Layers -->
-      <l-tile-layer
+      <OrtomapaTiles
         v-for="layer in visibleOrtoLayers"
         :key="'orto-' + layer.id"
-        :url="`/api/ortomapas/${layer.sourceId}/tile/{z}/{x}/{y}.png`"
+        :sourceId="layer.sourceId"
         :opacity="layer.opacity"
-        :maxZoom="22"
       />
 
       <!-- Analysis Result Layers (GeoJSON) -->
@@ -120,8 +120,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import L from 'leaflet'
+import OrtomapaTiles from './OrtomapaTiles.vue'
 import 'leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import { useMapStore } from '../stores/mapStore'
@@ -144,6 +145,8 @@ const mapContainer = ref(null)
 const currentZoom = ref(mapStore.zoom)
 const currentCenter = ref(mapStore.center)
 const measurePoints = ref([])
+let resizeObserver
+let resizeFrame
 
 const visibleOrtoLayers = computed(() =>
   mapStore.activeLayers.filter((l) => l.type === 'ortomapa' && l.visible)
@@ -261,37 +264,43 @@ function exportLayer(layer, format) {
   const url = URL.createObjectURL(new Blob([content], { type: mime })); const link = document.createElement('a'); link.href = url; link.download = `${(layer.name || 'analise').replace(/[^a-z0-9_-]+/gi, '_')}.${extension}`; link.click(); URL.revokeObjectURL(url)
 }
 
-// Watch for project change to zoom to bbox
-watch(
-  () => projectStore.activeProject,
-  (project) => {
-    const bbox = project?.bbox || (project?.bbox_oeste != null && project?.bbox_sul != null && project?.bbox_leste != null && project?.bbox_norte != null
-      ? [project.bbox_oeste, project.bbox_sul, project.bbox_leste, project.bbox_norte]
-      : null)
-    if (bbox) {
-      currentCenter.value = [
-        (bbox[1] + bbox[3]) / 2,
-        (bbox[0] + bbox[2]) / 2,
-      ]
-      currentZoom.value = 14
-      mapStore.setView(currentCenter.value, 14)
-      setTimeout(() => leafletMap.value?.leafletObject?.setView(currentCenter.value, 14), 0)
-    }
-  },
-  { immediate: true }
-)
+function resourceBounds(resource) {
+  if (!resource) return null
+  const bbox = resource.bbox || [resource.bbox_oeste, resource.bbox_sul, resource.bbox_leste, resource.bbox_norte]
+  if (bbox.length !== 4 || bbox.some((v) => v == null || !Number.isFinite(Number(v)))) return null
+  const [west, south, east, north] = bbox.map(Number)
+  if (west >= east || south >= north) return null
+  return [[south, west], [north, east]]
+}
 
-// Exibe o ortomosaico do projeto assim que os produtos chegam, evitando uma
-// tela vazia quando o usuário abre um projeto com dados disponíveis.
+function fitResource(resource) {
+  const map = leafletMap.value?.leafletObject
+  const bounds = resourceBounds(resource)
+  if (!map || !bounds) return
+  map.invalidateSize()
+  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20, animate: false })
+  mapStore.setView([map.getCenter().lat, map.getCenter().lng], map.getZoom())
+}
+
+function onMapReady() {
+  const newest = visibleOrtoLayers.value.at(-1)
+  const resource = projectStore.ortomapas.find((o) => o.id === newest?.sourceId)
+  fitResource(resource || projectStore.activeProject)
+}
+
+watch(() => projectStore.activeProject, (project) => fitResource(project), { flush: 'post' })
+watch(() => projectStore.ortomapas, (products) => {
+  if (visibleOrtoLayers.value.length || resourceBounds(projectStore.activeProject)) return
+  const own = products.filter((p) => p.projeto_id === projectStore.activeProject?.id)
+  fitResource(own.find((p) => p.tipo === 'ortomosaico') || own[0])
+}, { flush: 'post' })
 watch(
-  () => projectStore.ortomapas,
-  (ortomapas) => {
-    const first = ortomapas?.find((o) => o.tipo === 'ortomosaico' || o.tipo === 'RGB' || o.tipo === 'rgb')
-    if (first && !mapStore.activeLayers.some((layer) => layer.id === `orto-${first.id}`)) {
-      mapStore.addLayer({ id: `orto-${first.id}`, name: first.nome, type: 'ortomapa', sourceId: first.id })
-    }
+  () => visibleOrtoLayers.value.map((layer) => layer.sourceId).join('|'),
+  () => {
+    const newest = visibleOrtoLayers.value.at(-1)
+    fitResource(projectStore.ortomapas.find((o) => o.id === newest?.sourceId))
   },
-  { immediate: true }
+  { flush: 'post' }
 )
 
 // Enquadra automaticamente a camada espacial mais recente retornada pelo Copiloto.
@@ -310,6 +319,11 @@ watch(
 defineExpose({ measurePoints })
 
 onMounted(() => {
+  resizeObserver = new ResizeObserver(() => {
+    cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(() => leafletMap.value?.leafletObject?.invalidateSize({ animate: false }))
+  })
+  resizeObserver.observe(mapContainer.value)
   // Fix Leaflet icon issue
   setTimeout(() => {
     if (leafletMap.value?.leafletObject) {
@@ -323,6 +337,11 @@ onMounted(() => {
     map.on(L.Draw.Event.CREATED, (event) => { drawn.clearLayers(); drawn.addLayer(event.layer); const geo = event.layer.toGeoJSON().geometry; mapStore.setSelectedGeometry(geo); const b = event.layer.getBounds(); mapStore.setClipBbox({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth() }); mapStore.setDrawMode(null) })
     watch(() => mapStore.drawMode, (mode) => { if (mode === 'clip') new L.Draw.Rectangle(map, { shapeOptions: { color: '#f59e0b' } }).enable() })
   }, 250)
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+  cancelAnimationFrame(resizeFrame)
 })
 </script>
 

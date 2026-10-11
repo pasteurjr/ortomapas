@@ -57,10 +57,9 @@
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             :maxZoom="19"
           />
-          <l-tile-layer
+          <OrtomapaTiles
             v-if="leftId"
-            :url="`/api/ortomapas/${leftId}/tile/{z}/{x}/{y}.png`"
-            :maxZoom="22"
+            :sourceId="leftId"
           />
         </l-map>
       </div>
@@ -75,10 +74,9 @@
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             :maxZoom="19"
           />
-          <l-tile-layer
+          <OrtomapaTiles
             v-if="rightId"
-            :url="`/api/ortomapas/${rightId}/tile/{z}/{x}/{y}.png`"
-            :maxZoom="22"
+            :sourceId="rightId"
           />
         </l-map>
       </div>
@@ -107,10 +105,9 @@
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             :maxZoom="19"
           />
-          <l-tile-layer
+          <OrtomapaTiles
             v-if="leftId"
-            :url="`/api/ortomapas/${leftId}/tile/{z}/{x}/{y}.png`"
-            :maxZoom="22"
+            :sourceId="leftId"
           />
         </l-map>
         <div class="panel-label">Antes</div>
@@ -125,10 +122,9 @@
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             :maxZoom="19"
           />
-          <l-tile-layer
+          <OrtomapaTiles
             v-if="rightId"
-            :url="`/api/ortomapas/${rightId}/tile/{z}/{x}/{y}.png`"
-            :maxZoom="22"
+            :sourceId="rightId"
           />
         </l-map>
         <div class="panel-label">Depois</div>
@@ -138,6 +134,7 @@
 </template>
 
 <script setup>
+import OrtomapaTiles from './OrtomapaTiles.vue'
 import { ref, computed } from 'vue'
 import { useMapStore } from '../stores/mapStore'
 import { useProjectStore } from '../stores/projectStore'

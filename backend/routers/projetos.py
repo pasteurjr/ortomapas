@@ -91,9 +91,13 @@ async def get_projeto(projeto_id: int, user: dict = Depends(current_user)):
             if not projeto:
                 raise HTTPException(status_code=404, detail="Projeto nao encontrado")
             if user["perfil"] != "admin":
-                cursor.execute("SELECT 1 FROM projeto_usuarios WHERE projeto_id = %s AND usuario_id = %s", (projeto_id, user["id"]))
-                if not cursor.fetchone():
+                cursor.execute("SELECT papel FROM projeto_usuarios WHERE projeto_id = %s AND usuario_id = %s", (projeto_id, user["id"]))
+                membership = cursor.fetchone()
+                if not membership:
                     raise HTTPException(status_code=403, detail="Usuario sem acesso ao projeto")
+                projeto["pode_editar"] = membership["papel"] in {"proprietario", "editor"}
+            else:
+                projeto["pode_editar"] = True
 
             # Related counts
             cursor.execute(

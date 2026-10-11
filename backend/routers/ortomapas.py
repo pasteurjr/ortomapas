@@ -8,23 +8,31 @@ import os
 from datetime import datetime
 from typing import Optional
 
-import numpy as np
-import rasterio
-from rasterio.enums import Resampling
-from rasterio.vrt import WarpedVRT
-from rasterio.windows import from_bounds
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Depends
+from backend.routers.auth import current_user, require_project_role
+from backend.utils.resource_access import media_user, media_ticket, data_path, file_projects, READ_ROLES
 from fastapi.responses import StreamingResponse
-from PIL import Image
 
 from backend.config import DATA_DIR, ORTOMAPAS_DIR, THUMBNAILS_DIR
 from backend.database.connection import get_connection
 from backend.utils.file_manager import save_upload, get_file_size_mb
 from backend.utils.geo_utils import get_raster_info, get_raster_bounds
 from backend.utils.thumbnail import generate_thumbnail
+from backend.utils.raster_tiles import render_xyz_tile, tile_bounds
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def validate_flight(project_id, flight_id, user):
+    require_project_role(project_id, user, {"proprietario", "editor"})
+    if not flight_id:
+        raise HTTPException(status_code=400, detail="Campo 'voo_id' e obrigatorio")
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT id FROM voos WHERE id=%s AND projeto_id=%s", (flight_id, project_id))
+        if not cur.fetchone():
+            raise HTTPException(status_code=400, detail="Voo nao pertence ao projeto")
 
 
 @router.get("/ortomapas/spatial")
@@ -33,6 +41,7 @@ async def spatial_query(
     sul: float = Query(..., description="South latitude"),
     leste: float = Query(..., description="East longitude"),
     oeste: float = Query(..., description="West longitude"),
+    user: dict = Depends(current_user),
 ):
     """Query ortomapas that intersect the given bounding box."""
     try:
@@ -44,9 +53,10 @@ async def spatial_query(
                 SELECT * FROM ortomapas
                 WHERE bbox_norte >= %s AND bbox_sul <= %s
                   AND bbox_leste >= %s AND bbox_oeste <= %s
+                  AND (%s='admin' OR projeto_id IN (SELECT projeto_id FROM projeto_usuarios WHERE usuario_id=%s))
                 ORDER BY criado_em DESC
                 """,
-                (sul, norte, oeste, leste),
+                (sul, norte, oeste, leste, user["perfil"], user["id"]),
             )
             rows = cursor.fetchall()
             return {"total": len(rows), "ortomapas": rows}
@@ -60,14 +70,17 @@ async def list_ortomapas(
     projeto_id: Optional[int] = Query(None, description="Filter by projeto_id"),
     tipo: Optional[str] = Query(None, description="Filter by tipo"),
     status: Optional[str] = Query(None, description="Filter by status"),
+    user: dict = Depends(current_user),
 ):
     """List all ortomapas with optional filters."""
     try:
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
 
-            query = "SELECT * FROM ortomapas WHERE 1=1"
-            params = []
+            if projeto_id is not None:
+                require_project_role(projeto_id, user, READ_ROLES)
+            query = "SELECT * FROM ortomapas WHERE (%s='admin' OR projeto_id IN (SELECT projeto_id FROM projeto_usuarios WHERE usuario_id=%s))"
+            params = [user["perfil"], user["id"]]
 
             if projeto_id is not None:
                 query += " AND projeto_id = %s"
@@ -84,13 +97,15 @@ async def list_ortomapas(
             cursor.execute(query, params)
             rows = cursor.fetchall()
             return {"total": len(rows), "ortomapas": rows}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error listing ortomapas: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/ortomapas/{ortomapa_id}")
-async def get_ortomapa(ortomapa_id: int):
+async def get_ortomapa(ortomapa_id: int, user: dict = Depends(current_user)):
     """Get a single ortomapa by ID."""
     try:
         with get_connection() as conn:
@@ -100,6 +115,7 @@ async def get_ortomapa(ortomapa_id: int):
             ortomapa = cursor.fetchone()
             if not ortomapa:
                 raise HTTPException(status_code=404, detail="Ortomapa nao encontrado")
+            require_project_role(ortomapa["projeto_id"], user, READ_ROLES)
             return ortomapa
     except HTTPException:
         raise
@@ -109,7 +125,7 @@ async def get_ortomapa(ortomapa_id: int):
 
 
 @router.post("/ortomapas", status_code=201)
-async def create_ortomapa(data: dict):
+async def create_ortomapa(data: dict, user: dict = Depends(current_user)):
     """Create ortomapa metadata record."""
     try:
         with get_connection() as conn:
@@ -120,6 +136,9 @@ async def create_ortomapa(data: dict):
                 raise HTTPException(
                     status_code=400, detail="Campo 'projeto_id' e obrigatorio"
                 )
+            validate_flight(projeto_id, data.get("voo_id"), user)
+            if data.get("caminho_arquivo"):
+                file_projects(data["caminho_arquivo"], user)
 
             cursor.execute("SELECT id FROM projetos WHERE id = %s", (projeto_id,))
             if not cursor.fetchone():
@@ -134,6 +153,7 @@ async def create_ortomapa(data: dict):
                     largura_px, altura_px, tamanho_arquivo_mb,
                     sistema_coordenadas, status, observacoes, criado_em
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
                 """,
                 (
                     projeto_id,
@@ -158,8 +178,8 @@ async def create_ortomapa(data: dict):
                     datetime.utcnow(),
                 ),
             )
+            new_id = cursor.fetchone()["id"]
             conn.commit()
-            new_id = cursor.lastrowid
 
             cursor.execute("SELECT * FROM ortomapas WHERE id = %s", (new_id,))
             return cursor.fetchone()
@@ -177,23 +197,37 @@ async def upload_ortomapa(
     nome: Optional[str] = Query(None),
     voo_id: Optional[int] = Query(None),
     tipo: str = Query("ortomosaico"),
+    user: dict = Depends(current_user),
 ):
     """
     Upload a GeoTIFF file and auto-extract metadata (bbox, resolution, size)
     using rasterio.
     """
+    validate_flight(projeto_id, voo_id, user)
     filepath = None
+    thumb_path = None
     try:
         # Save uploaded file
         filepath = await save_upload(file, ORTOMAPAS_DIR)
 
         # Extract raster metadata
         info = get_raster_info(filepath)
+        if not info["crs"]:
+            raise HTTPException(status_code=400, detail="GeoTIFF sem sistema de coordenadas")
         north, south, east, west = get_raster_bounds(filepath)
         size_mb = get_file_size_mb(filepath)
 
         # Calculate resolution in cm (approximate)
-        res_cm = info["resolution"]["x"] * 100  # metres to cm if metric CRS
+        import rasterio
+        from pyproj import CRS, Geod
+        with rasterio.open(filepath) as ds:
+            crs = CRS.from_user_input(ds.crs)
+            if crs.is_projected:
+                res_cm = abs(ds.res[0]) * crs.axis_info[0].unit_conversion_factor * 100
+            else:
+                cx, cy = ds.xy(ds.height // 2, ds.width // 2)
+                nx, ny = ds.xy(ds.height // 2, ds.width // 2 + 1)
+                res_cm = Geod(ellps="WGS84").inv(cx, cy, nx, ny)[2] * 100
 
         # Generate thumbnail
         thumb_filename = os.path.splitext(os.path.basename(filepath))[0] + "_thumb.png"
@@ -222,6 +256,7 @@ async def upload_ortomapa(
                     largura_px, altura_px, tamanho_arquivo_mb,
                     sistema_coordenadas, caminho_thumbnail, status, criado_em
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
                 """,
                 (
                     projeto_id,
@@ -244,8 +279,8 @@ async def upload_ortomapa(
                     datetime.utcnow(),
                 ),
             )
+            new_id = cursor.fetchone()["id"]
             conn.commit()
-            new_id = cursor.lastrowid
 
             cursor.execute("SELECT * FROM ortomapas WHERE id = %s", (new_id,))
             ortomapa = cursor.fetchone()
@@ -256,22 +291,32 @@ async def upload_ortomapa(
             "file_size_mb": round(size_mb, 2),
         }
     except HTTPException:
+        for path in (filepath, thumb_path):
+            if path and os.path.isfile(path):
+                os.remove(path)
         raise
     except Exception as e:
+        for path in (filepath, thumb_path):
+            if path and os.path.isfile(path):
+                os.remove(path)
         logger.error(f"Error uploading ortomapa: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/ortomapas/{ortomapa_id}")
-async def update_ortomapa(ortomapa_id: int, data: dict):
+async def update_ortomapa(ortomapa_id: int, data: dict, user: dict = Depends(current_user)):
     """Update an existing ortomapa."""
     try:
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
 
             cursor.execute("SELECT * FROM ortomapas WHERE id = %s", (ortomapa_id,))
-            if not cursor.fetchone():
+            existing = cursor.fetchone()
+            if not existing:
                 raise HTTPException(status_code=404, detail="Ortomapa nao encontrado")
+            require_project_role(existing["projeto_id"], user, {"proprietario", "editor"})
+            if data.get("caminho_arquivo"):
+                file_projects(data["caminho_arquivo"], user)
 
             updatable = [
                 "nome", "tipo", "caminho_arquivo", "resolucao_cm",
@@ -309,7 +354,7 @@ async def update_ortomapa(ortomapa_id: int, data: dict):
 
 
 @router.delete("/ortomapas/{ortomapa_id}")
-async def delete_ortomapa(ortomapa_id: int):
+async def delete_ortomapa(ortomapa_id: int, user: dict = Depends(current_user)):
     """Delete an ortomapa and optionally its file."""
     try:
         with get_connection() as conn:
@@ -321,15 +366,12 @@ async def delete_ortomapa(ortomapa_id: int):
             ortomapa = cursor.fetchone()
             if not ortomapa:
                 raise HTTPException(status_code=404, detail="Ortomapa nao encontrado")
+            require_project_role(ortomapa["projeto_id"], user, {"proprietario", "editor"})
 
             cursor.execute("DELETE FROM ortomapas WHERE id = %s", (ortomapa_id,))
             conn.commit()
 
-        # Optionally remove the file
-        arquivo = ortomapa.get("caminho_arquivo")
-        if arquivo and os.path.exists(arquivo):
-            os.remove(arquivo)
-            logger.info(f"Removed file: {arquivo}")
+        # Files can be shared by imported products; deletion here removes metadata only.
 
         return {"message": "Ortomapa deletado com sucesso", "id": ortomapa_id}
     except HTTPException:
@@ -340,132 +382,44 @@ async def delete_ortomapa(ortomapa_id: int):
 
 
 @router.get("/ortomapas/{ortomapa_id}/tile/{z}/{x}/{y}.png")
-async def get_tile(ortomapa_id: int, z: int, x: int, y: int):
-    """
-    Serve a 256x256 raster tile from the ortomapa GeoTIFF using rasterio.
-    Uses TMS tiling scheme.
-    """
-    import math
+async def get_tile(ortomapa_id: int, z: int, x: int, y: int, user: dict = Depends(media_user)):
+    """Serve a georeferenced 256x256 XYZ tile, preserving source alpha/nodata."""
 
     try:
+        try:
+            tile_bounds(z, x, y)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
 
             cursor.execute(
-                "SELECT caminho_arquivo FROM ortomapas WHERE id = %s", (ortomapa_id,)
+                "SELECT caminho_arquivo, projeto_id FROM ortomapas WHERE id = %s", (ortomapa_id,)
             )
             ortomapa = cursor.fetchone()
             if not ortomapa:
                 raise HTTPException(status_code=404, detail="Ortomapa nao encontrado")
+            require_project_role(ortomapa["projeto_id"], user, READ_ROLES)
 
             filepath = ortomapa.get("caminho_arquivo")
+            if filepath:
+                filepath = str(data_path(filepath))
             if filepath and not os.path.isabs(filepath):
                 filepath = os.path.join(DATA_DIR, filepath)
             if not filepath or not os.path.exists(filepath):
                 raise HTTPException(status_code=404, detail="Arquivo GeoTIFF nao encontrado")
 
-        # Calculate XYZ tile bounds directly in Web Mercator (EPSG:3857).
-        n = 2 ** z
-        world = 20037508.342789244
-        tile_span = (2 * world) / n
-        tile_left = -world + x * tile_span
-        tile_right = tile_left + tile_span
-        tile_top = world - y * tile_span
-        tile_bottom = tile_top - tile_span
-
-        tile_size = 256
-
-        with rasterio.open(filepath) as source:
-          with WarpedVRT(source, crs="EPSG:3857", resampling=Resampling.bilinear) as dataset:
-            # Check if tile intersects raster bounds
-            raster_bounds = dataset.bounds
-            if (
-                tile_right < raster_bounds.left
-                or tile_left > raster_bounds.right
-                or tile_top < raster_bounds.bottom
-                or tile_bottom > raster_bounds.top
-            ):
-                # Return transparent tile
-                img = Image.new("RGBA", (tile_size, tile_size), (0, 0, 0, 0))
-                buf = io.BytesIO()
-                img.save(buf, format="PNG")
-                buf.seek(0)
-                return StreamingResponse(buf, media_type="image/png")
-
-            # Clamp window to raster bounds
-            win_left = max(tile_left, raster_bounds.left)
-            win_bottom = max(tile_bottom, raster_bounds.bottom)
-            win_right = min(tile_right, raster_bounds.right)
-            win_top = min(tile_top, raster_bounds.top)
-
-            window = from_bounds(
-                win_left, win_bottom, win_right, win_top, dataset.transform
-            )
-
-            # Read the window
-            out_width = max(1, int(window.width))
-            out_height = max(1, int(window.height))
-            # Limit to reasonable sizes to avoid OOM
-            out_width = min(out_width, tile_size * 4)
-            out_height = min(out_height, tile_size * 4)
-
-            band_count = dataset.count
-            if band_count >= 3:
-                data = dataset.read(
-                    [1, 2, 3],
-                    window=window,
-                    out_shape=(3, out_height, out_width),
-                )
-                img_array = np.transpose(data, (1, 2, 0))
-            else:
-                data = dataset.read(
-                    1,
-                    window=window,
-                    out_shape=(out_height, out_width),
-                )
-                img_array = np.stack([data, data, data], axis=-1)
-
-            # Handle nodata
-            nodata = dataset.nodata
-            if nodata is not None:
-                mask = np.all(img_array == nodata, axis=-1) if img_array.ndim == 3 else (img_array == nodata)
-            else:
-                mask = None
-
-            # Normalize to uint8
-            if img_array.dtype != np.uint8:
-                arr_min = np.nanmin(img_array)
-                arr_max = np.nanmax(img_array)
-                if arr_max > arr_min:
-                    img_array = (
-                        (img_array - arr_min) / (arr_max - arr_min) * 255
-                    ).astype(np.uint8)
-                else:
-                    img_array = np.zeros_like(img_array, dtype=np.uint8)
-
-            # Create image with alpha channel
-            if mask is not None:
-                alpha = np.where(mask, 0, 255).astype(np.uint8)
-                if img_array.ndim == 3:
-                    rgba = np.dstack([img_array, np.expand_dims(alpha, -1)])
-                else:
-                    rgba = np.dstack(
-                        [img_array, img_array, img_array, np.expand_dims(alpha, -1)]
-                    )
-                img = Image.fromarray(rgba, mode="RGBA")
-            else:
-                img = Image.fromarray(img_array, mode="RGB")
-
-            # Resize to 256x256
-            img = img.resize((tile_size, tile_size), Image.LANCZOS)
-
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        buf.seek(0)
-        return StreamingResponse(buf, media_type="image/png")
+        return StreamingResponse(io.BytesIO(render_xyz_tile(filepath, z, x, y)), media_type="image/png", headers={"Cache-Control": "private, no-store"})
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error generating tile z={z} x={x} y={y} for ortomapa {ortomapa_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/ortomapas/{ortomapa_id}/tile-access")
+async def tile_access(ortomapa_id: int, user: dict = Depends(current_user)):
+    await get_ortomapa(ortomapa_id, user)
+    scope = f"/api/ortomapas/{ortomapa_id}/tile/"
+    return {"url": scope + "{z}/{x}/{y}.png?ticket=" + media_ticket(user, scope), "expires_in": 300}

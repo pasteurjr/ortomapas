@@ -11,6 +11,7 @@
         text
         size="small"
         title="Enviar fotos para ODM"
+        :disabled="!projectStore.canEdit"
         @click="choosePhotos(voo)"
       />
       <Button
@@ -19,7 +20,7 @@
         size="small"
         severity="success"
         @click="showNewVoo = true"
-        :disabled="!projectStore.activeProject"
+        :disabled="!projectStore.canEdit"
       />
     </div>
 
@@ -73,6 +74,7 @@
         text
         size="small"
         @click="removeVoo(voo)"
+        :disabled="!projectStore.canEdit"
       />
     </div>
 

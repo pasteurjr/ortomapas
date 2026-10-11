@@ -211,22 +211,35 @@ async def sample_point_cloud(product_id: int, max_points: int = Query(100000, ge
     if not path.exists(): raise HTTPException(status_code=404, detail="Arquivo LAZ nao encontrado")
     try:
         cloud = laspy.read(path); total = len(cloud.x); mask = np.ones(total, dtype=bool)
+        crs = cloud.header.parse_crs()
+        if not crs or not crs.is_projected:
+            raise HTTPException(status_code=422, detail="Nuvem sem CRS projetado: medidas metricas indisponiveis")
+        if any(v is not None for v in (xmin, xmax, ymin, ymax)):
+            if any(v is None for v in (xmin, xmax, ymin, ymax)):
+                raise HTTPException(status_code=400, detail="Recorte deve informar todos os limites WGS84")
+            from rasterio.warp import transform_bounds
+            xmin, ymin, xmax, ymax = transform_bounds("EPSG:4326", crs, xmin, ymin, xmax, ymax)
         if xmin is not None: mask &= np.asarray(cloud.x) >= xmin
         if xmax is not None: mask &= np.asarray(cloud.x) <= xmax
         if ymin is not None: mask &= np.asarray(cloud.y) >= ymin
         if ymax is not None: mask &= np.asarray(cloud.y) <= ymax
-        candidates = np.flatnonzero(mask); step = max(1, len(candidates) // max_points); idx = candidates[::step]
+        candidates = np.flatnonzero(mask); step = max(1, int(np.ceil(len(candidates) / max_points))); idx = candidates[::step]
         xs = np.asarray(cloud.x)[idx].astype(float).tolist()
         ys = np.asarray(cloud.y)[idx].astype(float).tolist()
         zs = np.asarray(cloud.z)[idx].astype(float).tolist()
         names = set(cloud.point_format.dimension_names)
         intensity = np.asarray(cloud.intensity)[idx].astype(int).tolist() if "intensity" in names else []
         if not xs: raise HTTPException(status_code=422, detail="Recorte sem pontos")
-        result = {"total": total, "candidates": len(candidates), "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
+        factor = crs.axis_info[0].unit_conversion_factor
+        if abs(factor - 1) > 1e-9:
+            xs = [v * factor for v in xs]; ys = [v * factor for v in ys]; zs = [v * factor for v in zs]
+        result = {"units": "m", "source_crs": crs.to_string(), "total": total, "candidates": len(candidates), "sampled": len(xs), "bounds": {"min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]}, "points": {"x": xs, "y": ys, "z": zs, "intensity": intensity}}
         _POINT_CACHE[cache_key] = (time.time(), result)
         while len(_POINT_CACHE) > _POINT_CACHE_MAX:
             oldest = min(_POINT_CACHE, key=lambda key: _POINT_CACHE[key][0]); _POINT_CACHE.pop(oldest, None)
         return result
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("Point cloud sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler LAZ: {exc}")
 
@@ -242,14 +255,10 @@ async def sample_surface(product_id: int, max_size: int = Query(128, ge=32, le=2
     path = Path(DATA_DIR) / product["caminho"]
     if not path.exists(): raise HTTPException(status_code=404, detail="Arquivo raster nao encontrado")
     try:
-        with rasterio.open(path) as ds:
-            height = min(max_size, ds.height); width = min(max_size, ds.width)
-            grid = ds.read(1, out_shape=(height, width), resampling=rasterio.enums.Resampling.bilinear, masked=True)
-            values = np.asarray(grid.filled(np.nan), dtype=float); valid = values[np.isfinite(values)]
-            if valid.size: values[~np.isfinite(values)] = float(np.min(valid))
-            else: values.fill(0)
-            bounds = ds.bounds
-            return {"width": width, "height": height, "bounds": [bounds.left, bounds.bottom, bounds.right, bounds.top], "crs": str(ds.crs) if ds.crs else None, "min": float(np.min(values)), "max": float(np.max(values)), "elevations": values.tolist()}
+        from backend.utils.surface_grid import metric_surface
+        return metric_surface(path, max_size)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         logger.exception("DSM sampling failed"); raise HTTPException(status_code=500, detail=f"Falha ao ler DSM: {exc}")
 

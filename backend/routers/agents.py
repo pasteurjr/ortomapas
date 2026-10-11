@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from backend.agents.llm_client import LMStudioClient
 from backend.routers.auth import current_user, require_project_role
-from backend.agents.schemas import TOOL_CATALOG
+from backend.agents.schemas import TOOL_CATALOG, metric_tool_contracts
 from backend.database.connection import get_connection
 from backend.config import DATA_DIR
 from pathlib import Path
@@ -9,8 +9,12 @@ import json
 import rasterio, laspy
 import numpy as np
 from shapely.geometry import shape, mapping
+from affine import Affine
+from backend.utils.spatial_metrics import geometry_metrics
+from backend.utils.raster_metrics import metric_jacobian, terrain_gradient, volume_metrics
 from backend.agents.llm_client import LMStudioClient
 
+metric_tool_contracts(TOOL_CATALOG)
 router = APIRouter()
 
 def _audit(user, acao, projeto_id=None, detalhes=None):
@@ -117,18 +121,9 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); return {'status':'ok','dados':[dict(r) for r in cur.fetchall()]}
-    if name == 'medir_geometria':
+    if name in {'medir_geometria','distancia_geometrias','buffer_geometria','intersectar_geometrias'}:
         try:
-            geom=shape(args['geometry']); return {'status':'ok','dados':{'area':geom.area,'perimetro':geom.length,'tipo':geom.geom_type}}
-        except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
-    if name == 'distancia_geometrias':
-        try: return {'status':'ok','dados':{'distancia':shape(args['a']).distance(shape(args['b']))}}
-        except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
-    if name == 'buffer_geometria':
-        try: return {'status':'ok','dados':{'geometry':mapping(shape(args['geometry']).buffer(float(args['distancia']))),'distancia':float(args['distancia'])}}
-        except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
-    if name == 'intersectar_geometrias':
-        try: return {'status':'ok','dados':{'geometry':mapping(shape(args['a']).intersection(shape(args['b'])))}}
+            return {'status':'ok','dados':geometry_metrics(name, args)}
         except Exception as exc: raise HTTPException(status_code=400, detail=f'Geometria invalida: {exc}')
     if name == 'perfil_altimetrico':
         product_id=args.get('produto_id')
@@ -139,14 +134,18 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds: arr=ds.read(1,out_shape=(min(512,ds.height),min(512,ds.width)),resampling=rasterio.enums.Resampling.bilinear)
         profile=np.nanmean(arr,axis=0); return {'status':'ok','dados':{'produto_id':product_id,'elevacoes':profile.tolist(),'pontos':len(profile)}}
     if name == 'calcular_volume':
-        product_id=args.get('produto_id'); cota=float(args.get('cota'))
+        product_id=args.get('produto_id')
+        try: cota=float(args.get('cota'))
+        except (ValueError, TypeError): raise HTTPException(status_code=400, detail='Informe cota numerica em metros')
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT p.*, j.projeto_id FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE p.id=%s AND p.tipo IN ('dsm','dtm')",(product_id,)); product=cur.fetchone()
         if not product: raise HTTPException(status_code=404, detail='DSM/DTM nao encontrado')
         require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'})
-        with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds: arr=ds.read(1, masked=True); pixel_area=abs(ds.transform.a*ds.transform.e)
-        values=np.asarray(arr.compressed(),dtype=float)-cota; volume=float(np.sum(values[values>0])*pixel_area); area=float(np.sum(values>0)*pixel_area)
-        return {'status':'ok','dados':{'produto_id':product_id,'cota':cota,'volume_acima_m3':volume,'area_acima_m2':area}}
+        try:
+            with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds:
+                metrics = volume_metrics(ds.read(1, masked=True), ds.crs, ds.transform, cota)
+        except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc))
+        return {'status':'ok','dados':{'produto_id':product_id,'cota':cota,'volume_acima_m3':metrics['volume_above_m3'],'area_acima_m2':metrics['area_above_m2'], **metrics}}
     if name in {'calcular_declividade','calcular_aspecto','gerar_hillshade'}:
         product_id=args.get('produto_id')
         with get_connection() as conn:
@@ -154,16 +153,17 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         if not product: raise HTTPException(status_code=404, detail='DSM/DTM nao encontrado')
         require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'})
         with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds:
-            sampled=ds.read(1, out_shape=(min(512,ds.height),min(512,ds.width)), resampling=rasterio.enums.Resampling.bilinear, masked=True).astype(float); px=abs(ds.transform.a); py=abs(ds.transform.e)
-        valid=~np.ma.getmaskarray(sampled) & np.isfinite(np.asarray(sampled)); arr=np.asarray(sampled.filled(np.nan),dtype=float)
-        if not valid.any(): raise HTTPException(status_code=422, detail='Raster sem pixels validos')
-        fill=float(np.nanmedian(arr[valid])); arr[~valid]=fill
-        gy,gx=np.gradient(arr,py,px)
+            sampled=ds.read(1, out_shape=(min(512,ds.height),min(512,ds.width)), resampling=rasterio.enums.Resampling.bilinear, masked=True).astype(float)
+            affine = ds.transform * Affine.scale(ds.width / sampled.shape[1], ds.height / sampled.shape[0])
+            try: gx,gy,valid=terrain_gradient(sampled, ds.crs, affine)
+            except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc))
+            resolution = np.linalg.norm(metric_jacobian(ds.crs, affine), axis=0).tolist()
+        if not valid.any(): raise HTTPException(status_code=422, detail='Raster sem vizinhanca valida para calcular gradiente')
         if name == 'calcular_declividade': values=np.degrees(np.arctan(np.hypot(gx,gy)))
-        elif name == 'calcular_aspecto': values=(np.degrees(np.arctan2(-gx,gy))+360)%360
-        else: values=(np.maximum(0, np.cos(np.radians(45))*np.cos(np.arctan(np.hypot(gx,gy))) + np.sin(np.radians(45))*np.sin(np.arctan(np.hypot(gx,gy)))*np.cos(np.radians(315)-np.arctan2(gy,gx))))*255
+        elif name == 'calcular_aspecto': values=(np.degrees(np.arctan2(-gx,-gy))+360)%360
+        else: values=np.maximum(0, (-gx * np.sin(np.radians(315)) * np.cos(np.radians(45)) - gy * np.cos(np.radians(315)) * np.cos(np.radians(45)) + np.sin(np.radians(45))) / np.sqrt(1+gx*gx+gy*gy))*255
         valid_values=np.asarray(values)[valid]
-        return {'status':'ok','dados':{'produto_id':product_id,'operacao':name,'min':float(valid_values.min()),'max':float(valid_values.max()),'media':float(valid_values.mean()),'pixels_validos':int(valid.sum()),'pixels_totais':int(valid.size),'grade':list(values.shape)}}
+        return {'status':'ok','dados':{'produto_id':product_id,'operacao':name,'min':float(valid_values.min()),'max':float(valid_values.max()),'media':float(valid_values.mean()),'pixels_validos':int(valid.sum()),'pixels_totais':int(valid.size),'grade':list(values.shape),'unidade':'graus' if name != 'gerar_hillshade' else 'intensidade_0_255','vertical_units_assumed':'m','resolucao_grade_m':resolution}}
     if name == 'comparar_dsm_dtm':
         processing_id=args.get('processamento_id')
         with get_connection() as conn:

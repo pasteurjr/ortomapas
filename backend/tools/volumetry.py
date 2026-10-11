@@ -8,41 +8,29 @@ logger = logging.getLogger(__name__)
 def calc_volume(dsm_path: str, reference_elevation: float, output_path: str = None) -> dict:
     """Calculate volume above and below a reference elevation plane."""
     with rasterio.open(dsm_path) as src:
-        dsm = src.read(1).astype(float)
+        from backend.utils.raster_metrics import volume_metrics
+        dsm = src.read(1, masked=True).astype(float)
+        metrics = volume_metrics(dsm, src.crs, src.transform, reference_elevation)
         nodata = src.nodata
-        transform = src.transform
 
         if nodata is not None:
-            mask = dsm != nodata
+            mask = (np.asarray(dsm) != nodata) & np.isfinite(np.asarray(dsm)) & ~np.ma.getmaskarray(dsm)
         else:
-            mask = np.isfinite(dsm)
+            mask = np.isfinite(np.asarray(dsm)) & ~np.ma.getmaskarray(dsm)
 
-        pixel_width = abs(transform[0])
-        pixel_height = abs(transform[4])
-        # Convert degrees to meters approximately if CRS is geographic
-        crs = src.crs
-        if crs and crs.is_geographic:
-            center_lat = (src.bounds.top + src.bounds.bottom) / 2
-            meter_per_deg_lon = 111320 * np.cos(np.radians(center_lat))
-            meter_per_deg_lat = 110540
-            pixel_area_m2 = (pixel_width * meter_per_deg_lon) * (pixel_height * meter_per_deg_lat)
-        else:
-            pixel_area_m2 = pixel_width * pixel_height
+        pixel_area_m2 = metrics['pixel_area_m2']
 
         diff = dsm - reference_elevation
         diff_masked = np.where(mask, diff, 0)
 
-        above = np.where(diff_masked > 0, diff_masked, 0)
-        below = np.where(diff_masked < 0, np.abs(diff_masked), 0)
-
-        volume_above = float(np.sum(above) * pixel_area_m2)
-        volume_below = float(np.sum(below) * pixel_area_m2)
+        volume_above = metrics['volume_above_m3']
+        volume_below = metrics['volume_below_m3']
 
         if output_path:
             profile = src.profile.copy()
             profile.update(dtype='float32', count=1, nodata=-9999)
             with rasterio.open(output_path, 'w', **profile) as dst:
-                dst.write(diff_masked.astype('float32'), 1)
+                dst.write(np.where(mask, diff_masked, -9999).astype('float32'), 1)
 
         return {
             "volume_above_m3": round(volume_above, 2),
@@ -50,7 +38,8 @@ def calc_volume(dsm_path: str, reference_elevation: float, output_path: str = No
             "net_volume_m3": round(volume_above - volume_below, 2),
             "reference_elevation_m": reference_elevation,
             "pixel_area_m2": round(pixel_area_m2, 4),
-            "output_path": output_path
+            "output_path": output_path,
+            "vertical_units": "m", "vertical_units_assumed": True
         }
 
 def dsm_difference(dsm1_path: str, dsm2_path: str, output_path: str) -> dict:

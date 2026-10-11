@@ -1,8 +1,82 @@
-<template><div class="surface-view"><header><strong>Superfície DSM 3D</strong><div><button title="Alternar wireframe" @click="wireframe=!wireframe; updateMaterial"><i class="pi pi-th-large"></i></button><button title="Enquadrar" @click="fit"><i class="pi pi-expand"></i></button><button title="Fechar" @click="$emit('close')"><i class="pi pi-times"></i></button></div></header><div ref="host" class="host"><div v-if="loading" class="loading">Carregando DSM...</div></div><footer>{{ min.toFixed(1) }} – {{ max.toFixed(1) }} m · arraste para orbitar · roda para zoom</footer></div></template>
+<template>
+  <div class="surface-view">
+    <header><strong>{{ product.tipo === 'dtm' ? 'Terreno DTM 3D' : 'Superficie DSM 3D' }}</strong><div>
+      <button title="Alternar wireframe" :aria-pressed="wireframe" @click="wireframe = !wireframe; updateMaterial()"><i class="pi pi-th-large"></i></button>
+      <button title="Enquadrar" @click="fit"><i class="pi pi-expand"></i></button>
+      <button title="Fechar" @click="$emit('close')"><i class="pi pi-times"></i></button>
+    </div></header>
+    <div ref="host" class="host"><div v-if="loading" class="overlay">Carregando DSM...</div><div v-else-if="error" class="overlay error" role="alert">{{ error }}</div></div>
+    <footer><span class="legend"><i style="background:hsl(245,65%,50%)"></i>{{ min.toFixed(1) }} m <i style="background:hsl(122,65%,50%)"></i>{{ ((min + max) / 2).toFixed(1) }} m <i style="background:hsl(0,65%,50%)"></i>{{ max.toFixed(1) }} m</span><span>Escala XYZ 1:1 · {{ metricCrs }} · {{ triangles }} triangulos</span></footer>
+  </div>
+</template>
+
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'; import * as THREE from 'three'; import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; import { getSurfaceGrid } from '../api/client'
-const props=defineProps({product:{type:Object,required:true}}); defineEmits(['close']); const host=ref(null),loading=ref(true),wireframe=ref(false),min=ref(0),max=ref(0); let renderer,scene,camera,controls,mesh,frame
-function fit(){if(!mesh)return;const s=new THREE.Box3().setFromObject(mesh).getBoundingSphere(new THREE.Sphere()),d=s.radius/Math.sin(camera.fov*Math.PI/360);camera.position.set(d,-d,d*.7).add(s.center);controls.target.copy(s.center);controls.update()};function updateMaterial(){if(mesh)mesh.material.wireframe=wireframe.value}
-async function load(){try{const {data}=await getSurfaceGrid(props.product.id);min.value=data.min;max.value=data.max;const g=new THREE.BufferGeometry(),v=[],c=[];const w=data.width,h=data.height,vals=data.elevations;for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){const q=[y*w+x,y*w+x+1,(y+1)*w+x+1,(y+1)*w+x];for(const i of [0,1,2,0,2,3]){const k=q[i],z=vals[Math.floor(k/w)][k%w],px=x/(w-1)*10-5,py=y/(h-1)*10-5;v.push(px,z-min.value,py);const t=(z-min.value)/Math.max(max.value-min.value,1e-9),col=new THREE.Color().setHSL(.68-t*.68,.85,.5);c.push(col.r,col.g,col.b)}}g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setAttribute('color',new THREE.Float32BufferAttribute(c,3));mesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,wireframe:false}));scene.add(mesh);fit()}catch(e){console.error(e)}finally{loading.value=false}}
-onMounted(()=>{scene=new THREE.Scene();scene.background=new THREE.Color('#101820');camera=new THREE.PerspectiveCamera(55,1,.1,1000);renderer=new THREE.WebGLRenderer({antialias:true});host.value.appendChild(renderer.domElement);controls=new OrbitControls(camera,renderer.domElement);const grid=new THREE.GridHelper(12,24,'#52616b','#263640');scene.add(grid);const resize=()=>{const w=host.value.clientWidth,h=host.value.clientHeight;camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix();renderer.setSize(w,h,false)};window.addEventListener('resize',resize);resize();const animate=()=>{controls.update();renderer.render(scene,camera);frame=requestAnimationFrame(animate)};animate();load()});onUnmounted(()=>{cancelAnimationFrame(frame);renderer?.dispose();mesh?.geometry.dispose();mesh?.material.dispose()})
-</script><style scoped>.surface-view{position:fixed;inset:5vh 7vw;background:#101820;color:#e8f0f2;z-index:2100;display:flex;flex-direction:column;border:1px solid #40515c}.surface-view header{display:flex;justify-content:space-between;padding:12px 16px;background:#17242c}.surface-view button{background:transparent;border:1px solid #52616b;color:#dce7eb;width:34px;height:30px;margin-left:5px;cursor:pointer}.host{position:relative;flex:1;min-height:360px}.host canvas{display:block;width:100%;height:100%}.loading{position:absolute;inset:0;display:grid;place-items:center;background:#101820aa}.surface-view footer{padding:8px 16px;color:#9db0ba;background:#17242c;font-size:.72rem}</style>
+import { ref, onMounted, onUnmounted } from 'vue'
+import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { getSurfaceGrid } from '../api/client'
+import { terrainGeometry } from '../utils/terrainGeometry'
+
+const props = defineProps({ product: { type: Object, required: true } })
+defineEmits(['close'])
+const host = ref(null), loading = ref(true), error = ref(''), wireframe = ref(false)
+const min = ref(0), max = ref(0), metricCrs = ref(''), triangles = ref(0)
+let renderer, scene, camera, controls, mesh, frame, observer, disposed = false
+function fit() {
+  if (!mesh) return
+  const box = new THREE.Box3().setFromObject(mesh), s = box.getBoundingSphere(new THREE.Sphere())
+  const direction = new THREE.Vector3(.65, .7, 1).normalize()
+  const right = new THREE.Vector3().crossVectors(camera.up, direction).normalize()
+  const up = new THREE.Vector3().crossVectors(direction, right).normalize()
+  const tanV = Math.tan(camera.fov * Math.PI / 360), tanH = tanV * camera.aspect
+  let d = 0
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+    const corner = new THREE.Vector3(x, y, z).sub(s.center)
+    d = Math.max(d, corner.dot(direction) + Math.max(Math.abs(corner.dot(right)) / tanH, Math.abs(corner.dot(up)) / tanV))
+  }
+  d *= 1.12
+  camera.near = Math.max(.01, s.radius / 1000); camera.far = d * 10; camera.updateProjectionMatrix()
+  camera.position.copy(s.center).add(direction.multiplyScalar(d))
+  controls.target.copy(s.center); controls.update()
+}
+function updateMaterial() { if (mesh) mesh.material.wireframe = wireframe.value }
+async function load() {
+  try {
+    const { data } = await getSurfaceGrid(props.product.id)
+    if (disposed) return
+    const geometry = terrainGeometry(data)
+    min.value = data.min; max.value = data.max; metricCrs.value = data.metric_crs; triangles.value = geometry.index.count / 3
+    mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }))
+    scene.add(mesh); fit()
+  } catch (e) { error.value = e.response?.data?.detail || e.message || 'Falha ao carregar superficie' }
+  finally { loading.value = false }
+}
+onMounted(() => {
+  scene = new THREE.Scene(); scene.background = new THREE.Color('#101820')
+  camera = new THREE.PerspectiveCamera(55, 1, .1, 10000)
+  renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+  host.value.appendChild(renderer.domElement); controls = new OrbitControls(camera, renderer.domElement)
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 2))
+  const sun = new THREE.DirectionalLight(0xffffff, 2); sun.position.set(200, 300, 100); scene.add(sun)
+  observer = new ResizeObserver(() => {
+    const w = host.value.clientWidth, h = host.value.clientHeight
+    camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix(); renderer.setSize(w, h, false); fit()
+  }); observer.observe(host.value)
+  const animate = () => { controls.update(); renderer.render(scene, camera); frame = requestAnimationFrame(animate) }
+  animate(); load()
+})
+onUnmounted(() => {
+  disposed = true; cancelAnimationFrame(frame); observer?.disconnect(); controls?.dispose()
+  renderer?.dispose(); mesh?.geometry.dispose(); mesh?.material.dispose()
+})
+</script>
+
+<style scoped>
+.surface-view{position:fixed;inset:4vh 4vw;background:#101820;color:#e8f0f2;z-index:2100;display:flex;flex-direction:column;border:1px solid #40515c}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#17242c}
+button{background:transparent;border:1px solid #52616b;color:#dce7eb;width:34px;height:32px;margin-left:5px;cursor:pointer}
+button[aria-pressed=true]{background:#276653}.host{position:relative;flex:1;min-height:0}.host :deep(canvas){display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#101820aa}.error{color:#ffb4a9}
+footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px 16px;color:#b4c7cd;background:#17242c;font-size:.78rem}
+.legend{display:flex;align-items:center;gap:8px}.legend i{width:10px;height:10px;display:inline-block}
+</style>

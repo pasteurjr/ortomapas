@@ -1,0 +1,21 @@
+{
+  "stage": "antes",
+  "tile": [
+    17,
+    35770,
+    48995
+  ],
+  "mask_iou": 0.648590087890625,
+  "expected_coverage": 0.648590087890625,
+  "actual_coverage": 1.0,
+  "rgb_mean_absolute_error": 33.82069198073997,
+  "screens": [
+    "antes_01_ortofoto_ativada.png",
+    "antes_02_opacidade_50.png",
+    "antes_03_camada_oculta.png",
+    "antes_04_camada_restaurada.png"
+  ],
+  "page_errors": [],
+  "failed_tiles": [],
+  "accepted": false
+}

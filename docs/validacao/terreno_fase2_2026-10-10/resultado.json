@@ -1,0 +1,31 @@
+{
+  "accepted": true,
+  "errors": [],
+  "screens": [
+    "01_produtos_reais.png",
+    "02_dsm_real_3d.png",
+    "03_dsm_orbita.png",
+    "04_dsm_wireframe.png",
+    "05_dsm_tablet.png",
+    "06_dtm_real_3d.png"
+  ],
+  "canvas_checks": [
+    {
+      "state": "DSM",
+      "coverage": 0.10633797062368491
+    },
+    {
+      "state": "wireframe",
+      "coverage": 0.17054605626034197
+    },
+    {
+      "state": "tablet",
+      "coverage": 0.1253119307049806
+    },
+    {
+      "state": "DTM",
+      "coverage": 0.10756777185348614
+    }
+  ],
+  "orbit_pixel_difference": 18.861224830272448
+}

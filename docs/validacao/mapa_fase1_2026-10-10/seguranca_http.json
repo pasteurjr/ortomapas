@@ -1,0 +1,190 @@
+{
+  "accepted": true,
+  "checks": [
+    {
+      "name": "metadados sem login",
+      "expected": 401,
+      "actual": 401,
+      "accepted": true
+    },
+    {
+      "name": "metadados de outro projeto",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "lista de outro projeto",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "metadados do proprietario",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "tile sem login",
+      "expected": 401,
+      "actual": 401,
+      "accepted": true
+    },
+    {
+      "name": "tile de outro projeto",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "tile com ticket restrito",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "ticket usado em outro produto",
+      "expected": 401,
+      "actual": 401,
+      "accepted": true
+    },
+    {
+      "name": "ticket usado como token geral",
+      "expected": 401,
+      "actual": 401,
+      "accepted": true
+    },
+    {
+      "name": "arquivo estatico sem login",
+      "expected": 401,
+      "actual": 401,
+      "accepted": true
+    },
+    {
+      "name": "arquivo de outro projeto",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "estatisticas sem login",
+      "expected": 401,
+      "actual": 401,
+      "accepted": true
+    },
+    {
+      "name": "estatisticas de outro projeto",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "cadastro publico de admin bloqueado",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "metadados sem voo",
+      "expected": 400,
+      "actual": 400,
+      "accepted": true
+    },
+    {
+      "name": "voo de outro projeto recusado",
+      "expected": 400,
+      "actual": 400,
+      "accepted": true
+    },
+    {
+      "name": "upload GeoTIFF com projeto e voo",
+      "expected": 201,
+      "actual": 201,
+      "accepted": true
+    },
+    {
+      "name": "proprietario A nao acessa produto B",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "estatisticas da propria entrada",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "reprojecao em pasta do proprio projeto",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "resultado do projeto B recusado a A",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "link do resultado autorizado",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "download do resultado autorizado",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "saida com traversal recusada",
+      "expected": 422,
+      "actual": 422,
+      "accepted": true
+    },
+    {
+      "name": "entrada fora de data recusada",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "link de miniatura autorizado",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "miniatura com link restrito",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    },
+    {
+      "name": "visualizador nao altera metadados",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "visualizador nao gera arquivos no projeto alheio",
+      "expected": 403,
+      "actual": 403,
+      "accepted": true
+    },
+    {
+      "name": "papel de visualizador consultado",
+      "expected": 200,
+      "actual": 200,
+      "accepted": true
+    }
+  ],
+  "upload": {
+    "id": 33,
+    "project_id": 63,
+    "resolution_cm": 5.0
+  }
+}

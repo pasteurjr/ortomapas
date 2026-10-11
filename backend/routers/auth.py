@@ -23,9 +23,15 @@ def current_user(authorization: Optional[str] = Header(None)) -> dict:
         raise HTTPException(status_code=401, detail="Autenticacao necessaria")
     try:
         payload = jwt.decode(authorization.split(" ", 1)[1], AUTH_SECRET, algorithms=["HS256"])
+        if payload.get("purpose") not in {None, "access"}:
+            raise ValueError("Token restrito a midia")
         user_id = int(payload["sub"])
     except (ValueError, KeyError, jwt.InvalidTokenError):
         raise HTTPException(status_code=401, detail="Token invalido ou expirado")
+    return active_user(user_id)
+
+
+def active_user(user_id: int) -> dict:
     with get_connection() as conn:
         cur = conn.cursor(dictionary=True)
         cur.execute("SELECT id, email, nome, perfil, ativo, ultimo_login, criado_em FROM usuarios WHERE id = %s", (user_id,))
@@ -55,7 +61,9 @@ async def register(data: dict):
     perfil = data.get("perfil", "pesquisador")
     if not email or not nome or len(senha) < 8:
         raise HTTPException(status_code=400, detail="email, nome e senha com no minimo 8 caracteres sao obrigatorios")
-    if perfil not in {"admin", "pesquisador", "leitor"}:
+    if perfil == "admin":
+        raise HTTPException(status_code=403, detail="Cadastro publico nao permite administrador")
+    if perfil not in {"pesquisador", "leitor"}:
         raise HTTPException(status_code=400, detail="perfil invalido")
     with get_connection() as conn:
         cur = conn.cursor(dictionary=True)

@@ -1,5 +1,7 @@
 """Spatial analysis tools router."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from pathlib import Path
+from uuid import uuid4
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import os
@@ -11,9 +13,10 @@ from datetime import datetime
 
 from backend.config import ANALISES_DIR, DATA_DIR
 from backend.tools import gdal_tools, raster_analysis, change_detection, classification, hydrology, volumetry, segmentation
+from backend.utils.resource_access import authorize_tools, data_path, tool_context
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/tools", tags=["tools"])
+router = APIRouter(prefix="/tools", tags=["tools"], dependencies=[Depends(authorize_tools)])
 
 # --- Request Models ---
 
@@ -113,18 +116,20 @@ def _resolve_path(path: str) -> str:
     2. Path with 'data/' prefix (e.g., 'data/ortomapas/file.tif'): strip prefix, join with DATA_DIR
     3. Relative path (e.g., 'ortomapas/file.tif'): join with DATA_DIR
     """
-    if os.path.isabs(path):
-        return path
-    # Strip leading 'data/' prefix if present, since DATA_DIR already points to the data folder
-    if path.startswith("data/") or path.startswith("data\\"):
-        path = path[5:]  # len("data/") == 5
-    return os.path.join(DATA_DIR, path)
+    return str(data_path(path))
 
 def _output_path(name: str, ext: str = ".tif") -> str:
     """Generate output path in analises directory."""
+    context = tool_context.get()
+    if not context:
+        raise HTTPException(status_code=403, detail="Contexto de projeto necessario")
+    if Path(name).name != name or "\\" in name:
+        raise HTTPException(status_code=422, detail="Nome de arquivo invalido")
     if not name.endswith(ext):
         name += ext
-    return os.path.join(ANALISES_DIR, name)
+    folder = Path(ANALISES_DIR) / "projetos" / str(context[1])
+    folder.mkdir(parents=True, exist_ok=True)
+    return str(folder / (uuid4().hex + "_" + name))
 
 # --- Endpoints ---
 
@@ -200,6 +205,8 @@ async def calc_slope(req: SlopeRequest):
         result = raster_analysis.calc_slope(input_path, output)
         stats = raster_analysis.raster_statistics(output)
         return {"status": "success", "output_path": result, "statistics": stats}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -320,6 +327,8 @@ async def calc_volume(req: VolumeRequest):
         output = _output_path(req.output_name) if req.output_name else None
         result = volumetry.calc_volume(dsm, req.reference_elevation, output)
         return {"status": "success", **result}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

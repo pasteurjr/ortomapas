@@ -1,0 +1,23 @@
+{
+  "project_id": 62,
+  "ortomapa_id": 30,
+  "file": "data/ortomapas/odm_2_ortomosaico.tif",
+  "sha256": "4e6d257e1f9c8497153cba49e373096ef5fde06b56f2fcc4c49a5f12b76869cc",
+  "crs": "EPSG:32617",
+  "size": [
+    7449,
+    5906
+  ],
+  "bands": 4,
+  "resolution_m": [
+    0.04999621292439259,
+    0.04999999952847261
+  ],
+  "bounds_wgs84": [
+    -81.75440188300863,
+    41.30285127141428,
+    -81.74992294538883,
+    41.30554010140545
+  ],
+  "provenance": "Produto ODM existente, dados Aukerman; nao sintetico; nao corresponde a Guarajuba."
+}

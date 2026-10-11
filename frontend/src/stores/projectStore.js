@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useMapStore } from './mapStore'
 import {
   getProjects,
   getProject,
@@ -24,6 +25,7 @@ export const useProjectStore = defineStore('project', {
 
   getters: {
     activeProjectId: (state) => state.activeProject?.id,
+    canEdit: (state) => state.activeProject?.pode_editar === true,
     ortomapasForProject: (state) => state.ortomapas,
     completedAnalises: (state) =>
       state.analises.filter((a) => a.status === 'concluida'),
@@ -56,8 +58,18 @@ export const useProjectStore = defineStore('project', {
     },
 
     async setActiveProject(project) {
+      useMapStore().clearAllLayers()
+      this.ortomapas = []; this.analises = []; this.anotacoes = []
       this.activeProject = project
       if (project) {
+        let details
+        try { details = await getProject(project.id) }
+        catch (e) {
+          if (this.activeProject?.id === project.id) { this.activeProject = null; this.error = e.message; this.stopPolling() }
+          return
+        }
+        if (this.activeProject?.id !== project.id) return
+        this.activeProject = details.data
         await Promise.all([
           this.fetchOrtomapas(),
           this.fetchAnalises(),
@@ -75,8 +87,9 @@ export const useProjectStore = defineStore('project', {
     async fetchOrtomapas() {
       if (!this.activeProject) return
       try {
-        const res = await getOrtomapas(this.activeProject.id)
-        this.ortomapas = res.data.ortomapas || res.data
+        const id = this.activeProject.id
+        const res = await getOrtomapas(id)
+        if (this.activeProject?.id === id) this.ortomapas = res.data.ortomapas || res.data
       } catch (e) {
         this.error = e.message
       }
@@ -85,8 +98,9 @@ export const useProjectStore = defineStore('project', {
     async fetchAnalises() {
       if (!this.activeProject) return
       try {
-        const res = await getAnalises(this.activeProject.id)
-        this.analises = res.data.analises || res.data
+        const id = this.activeProject.id
+        const res = await getAnalises(id)
+        if (this.activeProject?.id === id) this.analises = res.data.analises || res.data
       } catch (e) {
         this.error = e.message
       }
@@ -95,8 +109,9 @@ export const useProjectStore = defineStore('project', {
     async fetchAnotacoes() {
       if (!this.activeProject) return
       try {
-        const res = await getAnotacoes(this.activeProject.id)
-        this.anotacoes = res.data.anotacoes || res.data
+        const id = this.activeProject.id
+        const res = await getAnotacoes(id)
+        if (this.activeProject?.id === id) this.anotacoes = res.data.anotacoes || res.data
       } catch (e) {
         this.error = e.message
       }

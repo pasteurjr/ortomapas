@@ -121,10 +121,11 @@ def calc_slope(dsm_path: str, output_path: str) -> str:
     if nodata is not None:
         dem[dem == nodata] = np.nan
 
-    grad_y, grad_x = np.gradient(dem, dy, dx)
+    from backend.utils.raster_metrics import terrain_gradient
+    grad_x, grad_y, valid = terrain_gradient(dem, profile.get('crs'), transform)
     slope_rad = np.arctan(np.sqrt(grad_x ** 2 + grad_y ** 2))
     slope_deg = np.degrees(slope_rad)
-    slope_deg[np.isnan(slope_deg)] = -9999.0
+    slope_deg[~valid] = -9999.0
 
     profile.update(dtype=rasterio.float32, count=1, compress="lzw", nodata=-9999.0)
 

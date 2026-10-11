@@ -15,6 +15,7 @@ from pathlib import Path
 import laspy
 import numpy as np
 import rasterio
+from rasterio.features import rasterize
 from psycopg2.extras import Json
 from rasterio.transform import from_bounds
 
@@ -37,9 +38,24 @@ def write_rasters() -> dict[str, Path]:
     buildings = (((x // 22 + y // 18) % 5) == 0) * 7
     dtm = 18 + undulation
     dsm = dtm + buildings
-    red = np.clip(100 + 40 * np.sin(x / 30), 0, 255).astype("uint8")
-    green = np.clip(125 + 45 * np.cos(y / 27), 0, 255).astype("uint8")
-    blue = np.clip(150 + 35 * np.sin((x + y) / 35), 0, 255).astype("uint8")
+    # Textura cartográfica demonstrativa: vias e edificações do OSM são
+    # rasterizadas para evitar um quadrado abstrato sem referência espacial.
+    red = np.full((height, width), 188, dtype="uint8")
+    green = np.full((height, width), 205, dtype="uint8")
+    blue = np.full((height, width), 164, dtype="uint8")
+    ref = ROOT / "data" / "guarajuba_osm_referencia.geojson"
+    if ref.exists():
+        features = json.loads(ref.read_text(encoding="utf-8")).get("features", [])
+        buildings = [f["geometry"] for f in features if f.get("geometry") and f.get("properties", {}).get("building")]
+        roads = [f["geometry"] for f in features if f.get("geometry") and f.get("properties", {}).get("highway")]
+        for geometries, value in ((buildings, 1), (roads, 2)):
+            if not geometries:
+                continue
+            mask = rasterize([(g, value) for g in geometries], out_shape=(height, width), transform=transform, fill=0, dtype="uint8")
+            if value == 1:
+                red[mask == value], green[mask == value], blue[mask == value] = 222, 192, 154
+            else:
+                red[mask == value], green[mask == value], blue[mask == value] = 94, 101, 91
     green_f = green.astype("float32")
     red_f = red.astype("float32")
     ndvi = np.clip((green_f - red_f) / (green_f + red_f + 1), -1, 1).astype("float32")
@@ -57,6 +73,8 @@ def write_cloud() -> Path:
     path = DATA / "guarajuba_nuvem_demo.laz"
     header = laspy.LasHeader(point_format=3, version="1.2")
     header.add_extra_dim(laspy.ExtraBytesParams(name="classificacao_demo", type=np.uint8))
+    header.offsets = [0, 0, 0]
+    header.scales = [1e-7, 1e-7, 0.01]
     cloud = laspy.LasData(header)
     rng = np.random.default_rng(42)
     count = 120_000
@@ -65,8 +83,6 @@ def write_cloud() -> Path:
     cloud.z = 18 + 4 * np.sin(np.arange(count) / 300) + rng.normal(0, 0.3, count)
     cloud.intensity = rng.integers(0, 255, count, dtype=np.uint16)
     cloud.classificacao_demo = rng.integers(1, 6, count, dtype=np.uint8)
-    cloud.header.offsets = [0, 0, 0]
-    cloud.header.scales = [1e-7, 1e-7, 0.01]
     cloud.write(path)
     return path
 

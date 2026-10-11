@@ -11,7 +11,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi.staticfiles import StaticFiles
+from backend.utils.resource_access import secure_file, file_access
 
 from backend.config import DATA_DIR, API_HOST, API_PORT, OTEL_ENABLED, OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_OTLP_ENABLED
 from backend.routers import projetos, voos, ortomapas, analises, anotacoes, tools, odm, auth, agents, copilot, missoes_captura
@@ -89,7 +89,8 @@ app.add_middleware(
 app.add_middleware(RateLimitMiddleware)
 
 # Mount static files from data/ at /data
-app.mount("/data", StaticFiles(directory=DATA_DIR), name="data")
+app.add_api_route("/data/{path:path}", secure_file, methods=["GET"])
+app.add_api_route("/api/media/access", file_access, methods=["POST"])
 
 # Include routers
 app.include_router(projetos.router, prefix="/api", tags=["Projetos"])

@@ -1,0 +1,24 @@
+{
+  "stage": "depois",
+  "tile": [
+    17,
+    35770,
+    48995
+  ],
+  "mask_iou": 0.9924010727897238,
+  "expected_coverage": 0.648590087890625,
+  "actual_coverage": 0.6436614990234375,
+  "rgb_mean_absolute_error": 0.0,
+  "screens": [
+    "depois_01_ortofoto_ativada.png",
+    "depois_02_opacidade_50.png",
+    "depois_03_camada_oculta.png",
+    "depois_04_camada_restaurada.png",
+    "depois_05_tablet_barra_recolhida.png"
+  ],
+  "page_errors": [],
+  "failed_tiles": [],
+  "raster_pixels_loaded": 110542,
+  "status": "completed",
+  "accepted": true
+}
