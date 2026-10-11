@@ -85,7 +85,7 @@
               <label>Intervalo (m)</label>
               <InputText v-model.number="terreno.interval" type="number" class="w-full" />
             </div>
-            <div v-if="terreno.tipo !== 'contours'" class="terrain-aoi">
+            <div class="terrain-aoi">
               <label><input type="checkbox" v-model="useTerrainAoi" :disabled="terreno.loading" /> Limitar a area</label>
               <div v-if="useTerrainAoi" class="aoi-actions">
                 <button type="button" title="Desenhar area de analise" :disabled="terreno.loading" @click="mapStore.setDrawMode(mapStore.drawMode === 'analysis-aoi' ? null : 'analysis-aoi')"><i class="pi pi-pencil"></i></button>
@@ -97,11 +97,16 @@
               label="Gerar Analise"
               icon="pi pi-play"
               :loading="terreno.loading"
-              :disabled="!projectStore.canEdit || !terreno.ortomapaId || (terreno.tipo !== 'contours' && useTerrainAoi && (!mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'))"
+              :disabled="!projectStore.canEdit || !terreno.ortomapaId || (useTerrainAoi && (!mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'))"
               @click="runTerreno"
               class="w-full"
             />
             <div v-if="terreno.error" class="terrain-error" role="alert">{{ terreno.error }}</div>
+            <div v-if="terreno.result && terreno.tipo === 'contours'" class="result-stats terrain-result">
+              <div class="stat-row"><span>Curvas:</span><strong>{{ terreno.result.statistics.feature_count }}</strong></div>
+              <div class="stat-row"><span>Cotas (m):</span><strong>{{ terreno.result.statistics.min_elevation_m }} - {{ terreno.result.statistics.max_elevation_m }}</strong></div>
+              <div class="stat-row"><span>Intervalo (m):</span><strong>{{ terreno.result.statistics.interval_m }}</strong></div>
+            </div>
             <div v-if="terreno.result && terreno.tipo !== 'contours'" class="result-stats terrain-result">
               <div class="stat-row"><span>Min:</span><strong>{{ terreno.result.statistics?.band_1?.min?.toFixed(2) ?? 'Sem dados' }}</strong></div>
               <div class="stat-row"><span>Max:</span><strong>{{ terreno.result.statistics?.band_1?.max?.toFixed(2) ?? 'Sem dados' }}</strong></div>
@@ -377,7 +382,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
-import { analysisRasterLayer } from '../utils/analysisProducts'
+import { analysisRasterLayer, analysisVectorLayer } from '../utils/analysisProducts'
 import { runTool, exportLayer } from '../api/client'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
@@ -456,7 +461,7 @@ const crsOptions = [
 // Reactive state for each tool
 const veg = reactive({ ortomapaId: null, index: 'VARI', loading: false, result: null })
 const terreno = reactive({ ortomapaId: null, tipo: 'slope', interval: 5, loading: false, result: null, error: '' })
-watch(() => [terreno.tipo, terreno.ortomapaId, useTerrainAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { terreno.result = null; terreno.error = '' })
+watch(() => [terreno.tipo, terreno.ortomapaId, terreno.interval, useTerrainAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { terreno.result = null; terreno.error = '' })
 const classif = reactive({ ortomapaId: null, algorithm: 'KMeans', numClasses: 5, loading: false })
 const hidro = reactive({ ortomapaId: null, tipo: 'watershed', threshold: 500, pourLat: null, pourLon: null, loading: false })
 const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.3, loading: false })
@@ -483,7 +488,7 @@ watch(() => projectStore.ortomapas, (items) => {
 
 function addResultLayer(name, data) {
   if (data.analise) {
-    const layer = analysisRasterLayer(data.analise)
+    const layer = analysisVectorLayer(data.analise) || analysisRasterLayer(data.analise)
     if (layer) mapStore.addLayer(layer)
     return
   }
@@ -537,7 +542,7 @@ async function runTerreno() {
       input_path: ortoPath(terreno.ortomapaId),
       ortomapa_id: terreno.ortomapaId,
       projeto_id: projectId,
-      aoi: terreno.tipo !== 'contours' && useTerrainAoi.value ? mapStore.analysisAoi : null,
+      aoi: useTerrainAoi.value ? mapStore.analysisAoi : null,
       output_name: `terreno_${terreno.tipo}_${Date.now()}`,
       interval: terreno.interval,
     })

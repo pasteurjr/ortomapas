@@ -24,7 +24,7 @@
         :value="statusLabel(analise.status)"
         :severity="statusSeverity(analise.status)"
       />
-      <button v-if="analise.resultado?.style && analise.resultado_path" type="button" class="result-download" title="Baixar resultado GeoTIFF" @click.stop="downloadResult(analise)"><i class="pi pi-download"></i></button>
+      <button v-if="analise.resultado?.style && analise.resultado_path" type="button" class="result-download" :title="analise.resultado.geojson ? 'Baixar resultado GeoJSON' : 'Baixar resultado GeoTIFF'" @click.stop="downloadResult(analise)"><i class="pi pi-download"></i></button>
     </div>
 
     <div v-if="projectStore.analises.length === 0" class="empty-state">
@@ -76,12 +76,14 @@
           :key="key"
           class="stat-row"
         >
-          <span>{{ key }}:</span>
-          <strong>{{ typeof val === 'number' ? val.toFixed(3) : val }}</strong>
+          <span>{{ statLabel(key) }}:</span>
+          <strong>{{ formatStat(key, val) }}</strong>
         </div>
       </div>
       <small v-if="selectedAnalise.resultado.provenance">Modelo #{{ selectedAnalise.ortomapa_id }} · {{ selectedAnalise.resultado.provenance.operation }} · {{ selectedAnalise.resultado.crs }} · Z assumido em metros</small>
-      <div v-if="selectedAnalise.resultado.aoi" class="stat-row"><span>Area valida (m²)</span><strong>{{ selectedAnalise.resultado.aoi.valid_area_m2.toFixed(2) }}</strong></div>
+      <small v-if="selectedAnalise.resultado.source_crs">CRS do modelo: {{ selectedAnalise.resultado.source_crs }}</small>
+      <div v-if="selectedAnalise.resultado.aoi?.area_m2 != null" class="stat-row"><span>Area selecionada (m²)</span><strong>{{ selectedAnalise.resultado.aoi.area_m2.toFixed(2) }}</strong></div>
+      <div v-if="selectedAnalise.resultado.aoi?.valid_area_m2 != null" class="stat-row"><span>Area valida (m²)</span><strong>{{ selectedAnalise.resultado.aoi.valid_area_m2.toFixed(2) }}</strong></div>
     </div>
   </div>
 </template>
@@ -92,7 +94,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
 import Badge from 'primevue/badge'
 import api from '../api/client'
-import { analysisRasterLayer } from '../utils/analysisProducts'
+import { analysisRasterLayer, analysisVectorLayer } from '../utils/analysisProducts'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
@@ -107,11 +109,17 @@ const selectedAnalise = computed(() =>
 )
 const scalarStats = computed(() => Object.fromEntries(Object.entries(selectedAnalise.value?.resultado?.stats || {}).filter(([,value]) => typeof value === 'number')))
 
+const contourStatLabels = { feature_count: 'Curvas', vertex_count: 'Vertices', major_count: 'Curvas mestras', interval_m: 'Intervalo (m)', min_elevation_m: 'Cota minima (m)', max_elevation_m: 'Cota maxima (m)' }
+function statLabel(key) { return contourStatLabels[key] || key }
+function formatStat(key, value) {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: key.endsWith('_count') ? 0 : 3, maximumFractionDigits: key.endsWith('_count') ? 0 : 3 })
+}
+
 async function downloadResult(analysis) {
   resultError.value = ''
   try {
     const { data } = await api.get(`/analises/${analysis.id}/download-access`)
-    const a = document.createElement('a'); a.href = data.url; a.download = `analise_${analysis.id}.tif`
+    const a = document.createElement('a'); a.href = data.url; a.download = `analise_${analysis.id}.${analysis.resultado?.geojson ? 'geojson' : 'tif'}`
     document.body.appendChild(a); a.click(); a.remove()
   } catch { resultError.value = 'Nao foi possivel baixar o resultado' }
 }
@@ -119,12 +127,12 @@ async function downloadResult(analysis) {
 function selectAnalise(analise) {
   selectedId.value = analise.id
 
-  const raster = analysisRasterLayer(analise)
+  const raster = analysisVectorLayer(analise) || analysisRasterLayer(analise)
   if (raster) mapStore.addLayer(raster)
   if (analise.resultado?.aoi) mapStore.analysisAoi = analise.resultado.aoi.geometry
 
   // Show result on map if available
-  if (analise.resultado?.geojson) {
+  if (analise.resultado?.geojson && !raster) {
     mapStore.addLayer({
       id: `result-${analise.id}`,
       name: analise.nome || analise.tipo_analise,
@@ -354,6 +362,12 @@ function formatArea(area) {
 
 .general-stats {
   margin-top: 8px;
+}
+
+.stats-panel small {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
 }
 
 .stat-row {

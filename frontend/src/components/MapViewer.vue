@@ -42,6 +42,7 @@
         :key="'analysis-' + layer.id"
         :geojson="layer.geojson"
         :optionsStyle="getAnalysisStyle(layer)"
+        :options="layer.kind === 'contours' ? { onEachFeature: contourTooltip } : {}"
       />
 
       <!-- Anotacoes GeoJSON -->
@@ -133,6 +134,7 @@ import OrtomapaTiles from './OrtomapaTiles.vue'
 import ElevationProfile from './ElevationProfile.vue'
 import 'leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
+import { asFeatureCollection, vectorKml } from '../utils/vectorExport'
 // Leaflet Draw and Vue layers must share one Leaflet instance and renderer types.
 window.L = L
 import { useMapStore } from '../stores/mapStore'
@@ -224,6 +226,7 @@ function onEachAnotacao(feature, layer) {
 
 function getAnalysisStyle(layer) {
   return function (feature) {
+    if (layer.kind === 'contours') return { color: feature.properties.major ? '#a62626' : '#d96a19', weight: feature.properties.major ? 3 : 1.5, opacity: layer.opacity }
     const classValue = feature.properties?.class || feature.properties?.value || 0
     const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
     return {
@@ -233,6 +236,12 @@ function getAnalysisStyle(layer) {
       fillOpacity: 0.5,
     }
   }
+}
+
+function contourTooltip(feature, layer) {
+  const text = document.createElement('span')
+  text.textContent = `${Number(feature.properties.elevation_m).toFixed(2)} m${feature.properties.major ? ' · Mestra' : ''}`
+  layer.bindTooltip(text, { sticky: true })
 }
 
 function onMouseMove(event) {
@@ -255,26 +264,16 @@ function onZoomUpdate(zoom) {
   mapStore.zoom = zoom
 }
 
-function escapeXml(value) { return String(value).replace(/[<>&'\"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[char])) }
-function geometryToKml(geometry) {
-  const coords = (points) => points.map(([x, y]) => `${x},${y},0`).join(' ')
-  const make = (geom) => {
-    if (!geom) return ''
-    if (geom.type === 'Point') return `<Point><coordinates>${coords([geom.coordinates])}</coordinates></Point>`
-    if (geom.type === 'LineString') return `<LineString><coordinates>${coords(geom.coordinates)}</coordinates></LineString>`
-    if (geom.type === 'Polygon') return `<Polygon><outerBoundaryIs><LinearRing><coordinates>${coords(geom.coordinates[0])}</coordinates></LinearRing></outerBoundaryIs></Polygon>`
-    if (geom.type === 'MultiPolygon') return geom.coordinates.map((polygon) => make({ type: 'Polygon', coordinates: polygon })).join('')
-    if (geom.type === 'MultiLineString') return geom.coordinates.map((line) => make({ type: 'LineString', coordinates: line })).join('')
-    if (geom.type === 'MultiPoint') return geom.coordinates.map((point) => make({ type: 'Point', coordinates: point })).join('')
-    return ''
-  }
-  return make(geometry)
-}
 function exportLayer(layer, format) {
-  const geojson = layer.geojson?.type === 'Feature' ? layer.geojson : { type: 'Feature', properties: {}, geometry: layer.geojson }
-  let content = JSON.stringify(geojson, null, 2); let mime = 'application/geo+json'; let extension = 'geojson'
-  if (format === 'kml') { content = `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${escapeXml(layer.name)}</name><Placemark><name>${escapeXml(layer.name)}</name>${geometryToKml(geojson.geometry)}</Placemark></Document></kml>`; mime = 'application/vnd.google-earth.kml+xml'; extension = 'kml' }
-  const url = URL.createObjectURL(new Blob([content], { type: mime })); const link = document.createElement('a'); link.href = url; link.download = `${(layer.name || 'analise').replace(/[^a-z0-9_-]+/gi, '_')}.${extension}`; link.click(); URL.revokeObjectURL(url)
+  const geojson = asFeatureCollection(layer.geojson)
+  const content = format === 'kml' ? vectorKml(geojson, layer.name) : JSON.stringify(geojson, null, 2)
+  const mime = format === 'kml' ? 'application/vnd.google-earth.kml+xml' : 'application/geo+json'
+  const extension = format === 'kml' ? 'kml' : 'geojson'
+  const url = URL.createObjectURL(new Blob([content], { type: mime }))
+  const link = document.createElement('a'); link.href = url
+  link.download = `${(layer.name || 'analise').replace(/[^a-z0-9_-]+/gi, '_')}.${extension}`
+  document.body.appendChild(link); link.click(); link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function resourceBounds(resource) {

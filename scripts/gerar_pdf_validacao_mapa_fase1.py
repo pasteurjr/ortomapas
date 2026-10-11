@@ -31,6 +31,9 @@ def main():
     elif "aoi_terreno_fase3" in SOURCE.stem:
         css = css.replace("Validacao mapa 2D", "Fase 3 - analise por area")
         css = css.replace("10/10/2026", "11/10/2026")
+    elif "curvas_nivel_fase3" in SOURCE.stem:
+        css = css.replace("Validacao mapa 2D", "Fase 3 - curvas de nivel")
+        css = css.replace("10/10/2026", "11/10/2026")
     # Diagnostic tiles remain readable without being enlarged to a whole page.
     css += "img[src*='tile_'] { width: 66mm; height: 66mm; margin-inline: auto; }"
     css += "pre { white-space: pre-wrap; overflow-wrap: anywhere; } h3[id^='cena-'] { break-before: page; }"

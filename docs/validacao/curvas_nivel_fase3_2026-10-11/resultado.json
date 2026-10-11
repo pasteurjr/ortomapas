@@ -1,0 +1,302 @@
+{
+  "accepted": true,
+  "errors": [],
+  "screens": [
+    "01_area_e_parametros.png",
+    "curvas_2m.png",
+    "curvas_1m.png",
+    "04_inspecao_cota.png",
+    "05_reabertura_catalogo.png",
+    "06_intervalo_sem_curvas.png"
+  ],
+  "analyses": [
+    {
+      "analysis": {
+        "id": 61,
+        "ortomapa_id": 34,
+        "projeto_id": 62,
+        "tipo_analise": "terreno",
+        "nome": "Curvas de nivel - area selecionada",
+        "descricao": null,
+        "parametros": {
+          "aoi": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  -81.752862,
+                  41.304602
+                ],
+                [
+                  -81.75136,
+                  41.304401
+                ],
+                [
+                  -81.751574,
+                  41.303675
+                ],
+                [
+                  -81.752594,
+                  41.303836
+                ],
+                [
+                  -81.752862,
+                  41.304602
+                ]
+              ]
+            ]
+          },
+          "interval": 2.0,
+          "input_path": "ortomapas/odm_2_dsm.tif",
+          "projeto_id": 62,
+          "ortomapa_id": 34,
+          "output_name": "terreno_contours_1791749882725"
+        },
+        "resultado_path": "/mnt/data1/progpython/ortomapas/data/analises/projetos/62/a8a65d3da7d24d32a09bb1cb8ff00c62_terreno_contours_1791749882725.geojson",
+        "resultado_thumbnail": null,
+        "modelo_ia": null,
+        "versao_modelo": null,
+        "metricas": null,
+        "agente_ia": null,
+        "status": "concluida",
+        "tempo_processamento_seg": null,
+        "data_analise": "2026-10-11T20:18:03.413934+00:00",
+        "observacoes": null,
+        "criado_em": "2026-10-11T20:18:03.413934+00:00",
+        "atualizado_em": "2026-10-11T20:18:03.413934+00:00",
+        "resultado": {
+          "aoi": {
+            "crs": "EPSG:4326",
+            "area_m2": 8697.902942806786,
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    -81.752862,
+                    41.304602
+                  ],
+                  [
+                    -81.75136,
+                    41.304401
+                  ],
+                  [
+                    -81.751574,
+                    41.303675
+                  ],
+                  [
+                    -81.752594,
+                    41.303836
+                  ],
+                  [
+                    -81.752862,
+                    41.304602
+                  ]
+                ]
+              ]
+            },
+            "clip_rule": "vector intersection"
+          },
+          "crs": "EPSG:4326",
+          "stats": {
+            "interval_m": 2.0,
+            "major_count": 113,
+            "vertex_count": 29503,
+            "feature_count": 146,
+            "max_elevation_m": 254.0,
+            "min_elevation_m": 240.0
+          },
+          "style": {
+            "kind": "contours",
+            "unit": "m",
+            "legend": [
+              {
+                "color": "#d96a19",
+                "label": "Curva"
+              },
+              {
+                "color": "#a62626",
+                "label": "Mestra"
+              }
+            ]
+          },
+          "bbox_sul": 41.30371480215792,
+          "bbox_leste": -81.7516411113857,
+          "bbox_norte": 41.304588025607075,
+          "bbox_oeste": -81.75285591960228,
+          "provenance": {
+            "scope": "aoi",
+            "algorithm": "GDAL contour + vector intersection",
+            "operation": "contours",
+            "created_by": 42,
+            "source_path": "ortomapas/odm_2_dsm.tif",
+            "source_ortomapa_id": 34,
+            "vertical_units_assumed": "m"
+          },
+          "source_crs": "EPSG:32617"
+        }
+      },
+      "verification": {
+        "features": 146,
+        "checked_vertices": 250,
+        "max_elevation_error_m": 1.0007151445279305e-06,
+        "all_lines_inside_aoi": true,
+        "interval_m": 2.0,
+        "major_count": 113
+      }
+    },
+    {
+      "analysis": {
+        "id": 62,
+        "ortomapa_id": 34,
+        "projeto_id": 62,
+        "tipo_analise": "terreno",
+        "nome": "Curvas de nivel - area selecionada",
+        "descricao": null,
+        "parametros": {
+          "aoi": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  -81.752862,
+                  41.304602
+                ],
+                [
+                  -81.75136,
+                  41.304401
+                ],
+                [
+                  -81.751574,
+                  41.303675
+                ],
+                [
+                  -81.752594,
+                  41.303836
+                ],
+                [
+                  -81.752862,
+                  41.304602
+                ]
+              ]
+            ]
+          },
+          "interval": 1.0,
+          "input_path": "ortomapas/odm_2_dsm.tif",
+          "projeto_id": 62,
+          "ortomapa_id": 34,
+          "output_name": "terreno_contours_1791749884421"
+        },
+        "resultado_path": "/mnt/data1/progpython/ortomapas/data/analises/projetos/62/f58fa15b8bcd460890d38b212e0c6e16_terreno_contours_1791749884421.geojson",
+        "resultado_thumbnail": null,
+        "modelo_ia": null,
+        "versao_modelo": null,
+        "metricas": null,
+        "agente_ia": null,
+        "status": "concluida",
+        "tempo_processamento_seg": null,
+        "data_analise": "2026-10-11T20:18:07.381623+00:00",
+        "observacoes": null,
+        "criado_em": "2026-10-11T20:18:07.381623+00:00",
+        "atualizado_em": "2026-10-11T20:18:07.381623+00:00",
+        "resultado": {
+          "aoi": {
+            "crs": "EPSG:4326",
+            "area_m2": 8697.902942806786,
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    -81.752862,
+                    41.304602
+                  ],
+                  [
+                    -81.75136,
+                    41.304401
+                  ],
+                  [
+                    -81.751574,
+                    41.303675
+                  ],
+                  [
+                    -81.752594,
+                    41.303836
+                  ],
+                  [
+                    -81.752862,
+                    41.304602
+                  ]
+                ]
+              ]
+            },
+            "clip_rule": "vector intersection"
+          },
+          "crs": "EPSG:4326",
+          "stats": {
+            "interval_m": 1.0,
+            "major_count": 120,
+            "vertex_count": 43462,
+            "feature_count": 198,
+            "max_elevation_m": 254.0,
+            "min_elevation_m": 240.0
+          },
+          "style": {
+            "kind": "contours",
+            "unit": "m",
+            "legend": [
+              {
+                "color": "#d96a19",
+                "label": "Curva"
+              },
+              {
+                "color": "#a62626",
+                "label": "Mestra"
+              }
+            ]
+          },
+          "bbox_sul": 41.30371480215792,
+          "bbox_leste": -81.75137112267548,
+          "bbox_norte": 41.304588025607075,
+          "bbox_oeste": -81.75285591960228,
+          "provenance": {
+            "scope": "aoi",
+            "algorithm": "GDAL contour + vector intersection",
+            "operation": "contours",
+            "created_by": 42,
+            "source_path": "ortomapas/odm_2_dsm.tif",
+            "source_ortomapa_id": 34,
+            "vertical_units_assumed": "m"
+          },
+          "source_crs": "EPSG:32617"
+        }
+      },
+      "verification": {
+        "features": 198,
+        "checked_vertices": 250,
+        "max_elevation_error_m": 1.0007151445279305e-06,
+        "all_lines_inside_aoi": true,
+        "interval_m": 1.0,
+        "major_count": 120
+      }
+    }
+  ],
+  "downloads": {
+    "GeoJSON": {
+      "bytes": 3833805,
+      "features": 198
+    },
+    "KML": {
+      "bytes": 1749782,
+      "features": 198
+    },
+    "original": {
+      "bytes": 1815535,
+      "sha256": "9a98f12347372e411a5b5eb70ed3cf315f2e05fb30882fb2a4b4b12d947202ce"
+    }
+  },
+  "tooltip": "240.00 m \u00b7 Mestra",
+  "empty_interval_status": 422,
+  "outsider_result_status": 403,
+  "vector_tile_status": 404
+}

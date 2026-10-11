@@ -74,6 +74,21 @@ def serialize_analysis(row):
     return row
 
 
+def publish_contours(source, output, metadata, parameters):
+    metadata['provenance'] = {'source_ortomapa_id':source['id'], 'source_path':source['caminho_arquivo'],
+                              'operation':'contours','vertical_units_assumed':'m',
+                              'scope':'aoi' if metadata.get('aoi') else 'full raster',
+                              'algorithm':'GDAL contour + vector intersection','created_by':tool_context.get()[0]}
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+            (source['id'],source['projeto_id'],'terreno','Curvas de nivel'+(' - area selecionada' if metadata.get('aoi') else ''),
+             Json(parameters),str(data_path(output)),Json(metadata)))
+        row=dict(cur.fetchone());conn.commit()
+    return serialize_analysis(row)
+
+
 def colorize(values, valid, style):
     values=np.nan_to_num(values)
     if style['kind']=='aspect':

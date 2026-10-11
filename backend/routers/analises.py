@@ -98,7 +98,7 @@ async def download_access(analise_id: int,user: dict=Depends(current_user)):
 @router.get('/analises/{analise_id}/tile-access')
 async def tile_access(analise_id: int,user: dict=Depends(current_user)):
     row=analysis_for_user(analise_id,user)
-    if not row['resultado'].get('style') or not row.get('resultado_path'):
+    if row['resultado'].get('geojson') or not row['resultado'].get('style') or not row.get('resultado_path'):
         raise HTTPException(status_code=404,detail='Analise sem raster publicado')
     scope=f'/api/analises/{analise_id}/tile/'
     return {'url':scope+'{z}/{x}/{y}.png?ticket='+media_ticket(user,scope),'expires_in':300}
@@ -108,7 +108,7 @@ async def tile_access(analise_id: int,user: dict=Depends(current_user)):
 async def tile(analise_id: int,z: int,x: int,y: int,user: dict=Depends(media_user)):
     row=analysis_for_user(analise_id,user)
     style=row['resultado'].get('style')
-    if not style or not row.get('resultado_path'):
+    if row['resultado'].get('geojson') or not style or not row.get('resultado_path'):
         raise HTTPException(status_code=404,detail='Analise sem raster publicado')
     path=data_path(row['resultado_path']);file_projects(str(path),user)
     if not path.is_file():

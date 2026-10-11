@@ -14,8 +14,10 @@ from datetime import datetime
 from backend.config import ANALISES_DIR, DATA_DIR
 from backend.tools import gdal_tools, raster_analysis, change_detection, classification, hydrology, volumetry, segmentation
 from backend.utils.resource_access import authorize_tools, data_path, tool_context
-from backend.utils.analysis_products import terrain_source, publish_terrain
+from backend.utils.analysis_products import terrain_source, publish_terrain, publish_contours
 from backend.utils.terrain_aoi import prepare_aoi, mask_derivative
+from backend.utils.contour_products import contour_result, contour_input
+from backend.utils.raster_metrics import metric_jacobian
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tools", tags=["tools"], dependencies=[Depends(authorize_tools)])
@@ -36,11 +38,6 @@ class ReprojectRequest(BaseModel):
 class MergeRequest(BaseModel):
     input_paths: List[str]
     output_name: str
-
-class ContourRequest(BaseModel):
-    input_path: str
-    output_name: str
-    interval: float = 5.0
 
 class HillshadeRequest(BaseModel):
     input_path: str
@@ -65,6 +62,9 @@ class SlopeRequest(BaseModel):
 
 class AspectRequest(SlopeRequest):
     pass
+
+class ContourRequest(SlopeRequest):
+    interval: float = Field(default=5.0, gt=0, le=10000)
 
 class StatisticsRequest(BaseModel):
     input_path: str
@@ -176,10 +176,23 @@ async def merge_rasters(req: MergeRequest):
 @router.post("/contours")
 async def generate_contours(req: ContourRequest):
     try:
+        source = terrain_source(req)
         input_path = _resolve_path(req.input_path)
+        import rasterio
+        with rasterio.open(input_path) as ds:
+            metric_jacobian(ds.crs, ds.transform)
+            crs = ds.crs
+        aoi = prepare_aoi(input_path, req.aoi)
         output = _output_path(req.output_name, ".geojson")
-        result = gdal_tools.generate_contours(input_path, output, interval=req.interval)
-        return {"status": "success", "output_path": result}
+        with contour_input(input_path,aoi) as model:
+            result = gdal_tools.generate_contours(model, output, interval=req.interval)
+        metadata = contour_result(output, crs, req.interval, aoi)
+        analysis = publish_contours(source, output, metadata, req.model_dump()) if source else None
+        return {"status": "success", "output_path": result, "geojson": metadata['geojson'], "analise": analysis, "statistics": metadata['stats']}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
