@@ -62,6 +62,7 @@
               <label>Modelo (DSM/DTM)</label>
               <Select
                 v-model="terreno.ortomapaId"
+                :disabled="terreno.loading"
                 :options="dsmDtmOptions"
                 optionLabel="label"
                 optionValue="value"
@@ -73,6 +74,7 @@
               <label>Analise</label>
               <Select
                 v-model="terreno.tipo"
+                :disabled="terreno.loading"
                 :options="terrenoTypes"
                 optionLabel="label"
                 optionValue="value"
@@ -90,6 +92,13 @@
               @click="runTerreno"
               class="w-full"
             />
+            <div v-if="terreno.error" class="terrain-error" role="alert">{{ terreno.error }}</div>
+            <div v-if="terreno.result && terreno.tipo !== 'contours'" class="result-stats terrain-result">
+              <div class="stat-row"><span>Min:</span><strong>{{ terreno.result.statistics?.band_1?.min?.toFixed(2) ?? 'Sem dados' }}</strong></div>
+              <div class="stat-row"><span>Max:</span><strong>{{ terreno.result.statistics?.band_1?.max?.toFixed(2) ?? 'Sem dados' }}</strong></div>
+              <div class="stat-row"><span>Media aritmetica:</span><strong>{{ terreno.result.statistics?.band_1?.mean?.toFixed(2) ?? 'Sem dados' }}</strong></div>
+              <small>{{ terreno.tipo === 'hillshade' ? 'Intensidade 0-255' : 'Graus' }}. Raster gerado; camada no mapa pendente.</small>
+            </div>
           </div>
         </TabPanel>
 
@@ -434,7 +443,8 @@ const crsOptions = [
 
 // Reactive state for each tool
 const veg = reactive({ ortomapaId: null, index: 'VARI', loading: false, result: null })
-const terreno = reactive({ ortomapaId: null, tipo: 'slope', interval: 5, loading: false })
+const terreno = reactive({ ortomapaId: null, tipo: 'slope', interval: 5, loading: false, result: null, error: '' })
+watch(() => [terreno.tipo, terreno.ortomapaId], () => { terreno.result = null; terreno.error = '' })
 const classif = reactive({ ortomapaId: null, algorithm: 'KMeans', numClasses: 5, loading: false })
 const hidro = reactive({ ortomapaId: null, tipo: 'watershed', threshold: 500, pourLat: null, pourLon: null, loading: false })
 const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.3, loading: false })
@@ -460,6 +470,7 @@ watch(() => projectStore.ortomapas, (items) => {
 }, { immediate: true })
 
 function addResultLayer(name, data) {
+  if (!data.geojson && !data.tile_url) return
   const layerId = `analysis-${Date.now()}`
   mapStore.addLayer({
     id: layerId,
@@ -500,6 +511,8 @@ async function runVegetacao() {
 async function runTerreno() {
   if (!terreno.ortomapaId) return
   terreno.loading = true
+  terreno.result = null
+  terreno.error = ''
   try {
     const terrainEndpoint = { slope: 'slope', aspect: 'aspect', contours: 'contours', hillshade: 'hillshade' }[terreno.tipo] || 'slope'
     const res = await runTool(terrainEndpoint, {
@@ -507,10 +520,11 @@ async function runTerreno() {
       output_name: `terreno_${terreno.tipo}_${Date.now()}`,
       interval: terreno.interval,
     })
+    terreno.result = res.data
     addResultLayer(terreno.tipo, res.data)
     projectStore.fetchAnalises()
   } catch (e) {
-    console.error(e)
+    terreno.error = e.response?.data?.detail || 'Falha ao calcular terreno'
   } finally {
     terreno.loading = false
   }
@@ -670,6 +684,16 @@ async function runExport() {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.terrain-error {
+  color: #b42318;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+
+.terrain-result strong {
+  color: #173b29;
 }
 
 .form-group {

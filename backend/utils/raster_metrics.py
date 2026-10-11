@@ -30,6 +30,21 @@ def terrain_gradient(values, crs, affine):
     return east, north, valid
 
 
+def terrain_aspect(east, north, valid):
+    """Downhill grid bearing, clockwise from grid north; flats have no bearing."""
+    result = (np.degrees(np.arctan2(-east, -north)) + 360) % 360
+    return np.where(valid & (np.hypot(east, north) > 1e-12), result, np.nan)
+
+
+def terrain_illumination(east, north, valid, azimuth=315, altitude=45):
+    """Lambertian illumination of the metric surface normal, scaled to 0..255."""
+    if not np.isfinite([azimuth, altitude]).all() or not 0 <= azimuth <= 360 or not 0 <= altitude <= 90:
+        raise ValueError("Azimute deve estar entre 0 e 360; altitude solar entre 0 e 90")
+    az, alt = np.radians([azimuth, altitude])
+    light = (-east*np.sin(az)*np.cos(alt) - north*np.cos(az)*np.cos(alt) + np.sin(alt)) / np.sqrt(1+east**2+north**2)
+    return np.where(valid, np.clip(light, 0, 1)*255, np.nan)
+
+
 def volume_metrics(values, crs, affine, reference):
     if not np.isfinite(reference):
         raise ValueError("Cota precisa ser finita e expressa em metros")

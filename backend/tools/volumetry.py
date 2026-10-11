@@ -43,42 +43,34 @@ def calc_volume(dsm_path: str, reference_elevation: float, output_path: str = No
         }
 
 def dsm_difference(dsm1_path: str, dsm2_path: str, output_path: str) -> dict:
-    """Calculate difference between two DSMs (dsm2 - dsm1)."""
+    """Align the after raster to the full before grid; calculate after - before."""
+    from rasterio.warp import reproject, Resampling
+    from backend.utils.raster_metrics import metric_jacobian
     with rasterio.open(dsm1_path) as src1:
-        dsm1 = src1.read(1).astype(float)
+        dsm1 = src1.read(1, masked=True).astype(float).filled(np.nan)
         profile = src1.profile.copy()
         transform = src1.transform
         crs = src1.crs
-        nodata1 = src1.nodata
-
-    with rasterio.open(dsm2_path) as src2:
-        dsm2 = src2.read(1).astype(float)
-        nodata2 = src2.nodata
-
-    mask = np.ones_like(dsm1, dtype=bool)
-    if nodata1 is not None:
-        mask &= dsm1 != nodata1
-    if nodata2 is not None:
-        mask &= dsm2 != nodata2
-
+        pixel_area = abs(float(np.linalg.det(metric_jacobian(crs, transform))))
+        with rasterio.open(dsm2_path) as src2:
+            if not src2.crs:
+                raise ValueError('Raster posterior sem CRS')
+            dsm2 = np.full(dsm1.shape, np.nan)
+            reproject(src2.read(1, masked=True).astype(float).filled(np.nan), dsm2,
+                      src_transform=src2.transform, src_crs=src2.crs, src_nodata=np.nan,
+                      dst_transform=transform, dst_crs=crs, dst_nodata=np.nan,
+                      resampling=Resampling.bilinear)
+    mask = np.isfinite(dsm1) & np.isfinite(dsm2)
+    if not mask.any():
+        raise ValueError('Superficies sem area comum valida')
     diff = np.where(mask, dsm2 - dsm1, -9999)
 
     profile.update(dtype='float32', count=1, nodata=-9999)
     with rasterio.open(output_path, 'w', **profile) as dst:
         dst.write(diff.astype('float32'), 1)
+        dst.update_tags(operation='after - before', vertical_units_assumed='m', alignment='after to before grid')
 
     valid_diff = diff[mask]
-
-    # Calculate pixel area
-    pixel_width = abs(transform[0])
-    pixel_height = abs(transform[4])
-    if crs and crs.is_geographic:
-        center_lat = (rasterio.open(dsm1_path).bounds.top + rasterio.open(dsm1_path).bounds.bottom) / 2
-        meter_per_deg_lon = 111320 * np.cos(np.radians(center_lat))
-        meter_per_deg_lat = 110540
-        pixel_area_m2 = (pixel_width * meter_per_deg_lon) * (pixel_height * meter_per_deg_lat)
-    else:
-        pixel_area_m2 = pixel_width * pixel_height
 
     return {
         "output_path": output_path,
@@ -86,6 +78,9 @@ def dsm_difference(dsm1_path: str, dsm2_path: str, output_path: str) -> dict:
         "max_diff_m": float(np.max(valid_diff)) if len(valid_diff) > 0 else 0,
         "mean_diff_m": float(np.mean(valid_diff)) if len(valid_diff) > 0 else 0,
         "std_diff_m": float(np.std(valid_diff)) if len(valid_diff) > 0 else 0,
+        "pixel_area_m2": pixel_area, "valid_pixels": int(mask.sum()),
+        "alignment": "after reprojected to before grid", "difference": "after - before",
+        "vertical_units_assumed": "m",
     }
 
 def cut_fill_analysis(dsm_before_path: str, dsm_after_path: str, output_path: str) -> dict:
@@ -93,22 +88,9 @@ def cut_fill_analysis(dsm_before_path: str, dsm_after_path: str, output_path: st
     result = dsm_difference(dsm_before_path, dsm_after_path, output_path)
 
     with rasterio.open(output_path) as src:
-        diff = src.read(1)
-        nodata = src.nodata
-        transform = src.transform
-        crs = src.crs
-
-        mask = diff != nodata if nodata else np.isfinite(diff)
-
-        pixel_width = abs(transform[0])
-        pixel_height = abs(transform[4])
-        if crs and crs.is_geographic:
-            center_lat = (src.bounds.top + src.bounds.bottom) / 2
-            meter_per_deg_lon = 111320 * np.cos(np.radians(center_lat))
-            meter_per_deg_lat = 110540
-            pixel_area_m2 = (pixel_width * meter_per_deg_lon) * (pixel_height * meter_per_deg_lat)
-        else:
-            pixel_area_m2 = pixel_width * pixel_height
+        diff = src.read(1, masked=True).astype(float).filled(np.nan)
+        mask = np.isfinite(diff)
+        pixel_area_m2 = result['pixel_area_m2']
 
         cut_mask = mask & (diff < -0.1)
         fill_mask = mask & (diff > 0.1)
@@ -123,6 +105,7 @@ def cut_fill_analysis(dsm_before_path: str, dsm_after_path: str, output_path: st
         "fill_volume_m3": round(fill_volume, 2),
         "cut_area_m2": round(cut_area, 2),
         "fill_area_m2": round(fill_area, 2),
-        "net_volume_m3": round(fill_volume - cut_volume, 2)
+        "net_volume_m3": round(fill_volume - cut_volume, 2),
+        "change_threshold_m": 0.1,
     })
     return result

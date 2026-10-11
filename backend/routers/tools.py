@@ -43,8 +43,8 @@ class ContourRequest(BaseModel):
 class HillshadeRequest(BaseModel):
     input_path: str
     output_name: str
-    azimuth: float = 315
-    altitude: float = 45
+    azimuth: float = Field(default=315, ge=0, le=360)
+    altitude: float = Field(default=45, ge=0, le=90)
 
 class VegetationRequest(BaseModel):
     input_path: str
@@ -182,7 +182,9 @@ async def create_hillshade(req: HillshadeRequest):
         input_path = _resolve_path(req.input_path)
         output = _output_path(req.output_name)
         result = gdal_tools.hillshade(input_path, output, azimuth=req.azimuth, altitude=req.altitude)
-        return {"status": "success", "output_path": result}
+        return {"status": "success", "output_path": result, "statistics": raster_analysis.raster_statistics(output)}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -218,6 +220,8 @@ async def calc_aspect(req: AspectRequest):
         result = raster_analysis.calc_aspect(input_path, output)
         stats = raster_analysis.raster_statistics(output)
         return {"status": "success", "output_path": result, "statistics": stats}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -340,6 +344,8 @@ async def dsm_diff(req: DSMDiffRequest):
         output = _output_path(req.output_name)
         result = volumetry.cut_fill_analysis(d1, d2, output)
         return {"status": "success", **result}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

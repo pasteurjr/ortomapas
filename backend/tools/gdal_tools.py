@@ -225,19 +225,18 @@ def hillshade(
     azimuth: float = 315,
     altitude: float = 45,
 ) -> str:
-    """Generate hillshade raster using gdaldem."""
-    cmd = [
-        "gdaldem",
-        "hillshade",
-        input_path,
-        output_path,
-        "-az",
-        str(azimuth),
-        "-alt",
-        str(altitude),
-        "-compute_edges",
-    ]
-    _run(cmd, "hillshade")
+    """Generate metric hillshade; vertical elevations are assumed metres."""
+    import numpy as np
+    import rasterio
+    from backend.utils.raster_metrics import terrain_gradient, terrain_illumination
+    with rasterio.open(input_path) as src:
+        gx, gy, valid = terrain_gradient(src.read(1, masked=True), src.crs, src.transform)
+        values = terrain_illumination(gx, gy, valid, azimuth, altitude)
+        profile = src.profile.copy()
+    profile.update(dtype='float32', count=1, nodata=-9999, compress='lzw')
+    with rasterio.open(output_path, 'w', **profile) as dst:
+        dst.write(np.where(np.isfinite(values), values, -9999).astype('float32'), 1)
+        dst.update_tags(vertical_units_assumed='m', illumination='Lambertian metric gradient')
     return output_path
 
 

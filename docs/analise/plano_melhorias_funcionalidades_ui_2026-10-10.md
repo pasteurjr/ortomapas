@@ -386,3 +386,9 @@ Checkpoint `662437d` enviado antes das alteracoes. Em 11/10/2026 foram implement
 Validacao: 34 testes Python, testes Node, build e dois roteiros Playwright reais, sem erros JavaScript na rodada final. Perfil de 224,48 m/200 amostras; DSM e DTM conferidos contra os arquivos; medicao LAZ de 82,31 m inalterada em 1x/3x. Diferenca real mostra valores negativos, alerta de qualidade dos dados e nao erro a esconder na visualizacao. QGIS Server confirmado instalado, nao iniciado porque nao era necessario ao lote.
 
 Fase 2 ainda tem revisao dos demais motores de aspecto/hillshade/corte-aterro. Recorte AOI, resultado persistido e catalogo/menus completos continuam pendentes dos lotes correspondentes. Relatorio com analise de usabilidade, telas e esperado/obtido: [MD](../validacao/usabilidade_gis_fase2_2026-10-11.md) e [PDF](../validacao/usabilidade_gis_fase2_2026-10-11.pdf).
+
+## 17. Quarto lote da fase 2: motores de terreno
+
+Em 11/10/2026 foram corrigidos aspecto por vetor de descida, nodata em terrenos planos, iluminacao por gradiente metrico e diferenca/corte-aterro com reprojecao e area de pixel por determinante metrico. Os motores rejeitam unidades geograficas para calculos metricos. O painel mostra estatisticas da banda correta e nao adiciona camadas sem conteudo renderizavel. Sao 43 testes Python, build e execucao visual/API com DSM real Aukerman. As capturas mostram resultados numericos, nao mapas tematicos publicados; esta limitacao permanece explicita.
+
+Ainda faltam resultados persistentes com tiles, legendas e reabertura, recorte AOI e revisao dos demais motores legados. Nao declarar a fase inteira concluida. Evidencias e limites: [MD](../validacao/derivadas_terreno_fase2_2026-10-11.md) e [PDF](../validacao/derivadas_terreno_fase2_2026-10-11.pdf).

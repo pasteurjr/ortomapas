@@ -108,14 +108,10 @@ def calc_slope(dsm_path: str, output_path: str) -> str:
     Calculate slope in degrees from a DSM/DTM raster using numpy gradient.
     """
     with rasterio.open(dsm_path) as src:
-        dem = src.read(1).astype(np.float64)
+        dem = src.read(1, masked=True).astype(np.float64).filled(np.nan)
         transform = src.transform
         profile = src.profile.copy()
         nodata = src.nodata
-
-    # Cell sizes from the affine transform
-    dx = abs(transform.a)
-    dy = abs(transform.e)
 
     # Replace nodata with NaN for gradient computation
     if nodata is not None:
@@ -141,27 +137,17 @@ def calc_aspect(dsm_path: str, output_path: str) -> str:
     Calculate aspect in degrees (0=North, 90=East, 180=South, 270=West).
     """
     with rasterio.open(dsm_path) as src:
-        dem = src.read(1).astype(np.float64)
+        dem = src.read(1, masked=True).astype(np.float64).filled(np.nan)
         transform = src.transform
         profile = src.profile.copy()
         nodata = src.nodata
 
-    dx = abs(transform.a)
-    dy = abs(transform.e)
-
     if nodata is not None:
         dem[dem == nodata] = np.nan
-
-    grad_y, grad_x = np.gradient(dem, dy, dx)
-
-    # arctan2 gives angle from east counterclockwise; convert to compass bearing
-    aspect_rad = np.arctan2(-grad_y, grad_x)
-    aspect_deg = np.degrees(aspect_rad)
-    # Convert from math angle to compass: compass = 90 - math_angle
-    aspect_compass = 90.0 - aspect_deg
-    # Normalize to 0-360
-    aspect_compass = aspect_compass % 360.0
-    aspect_compass[np.isnan(aspect_compass)] = -9999.0
+    from backend.utils.raster_metrics import terrain_gradient, terrain_aspect
+    gx, gy, valid = terrain_gradient(dem, profile.get('crs'), transform)
+    aspect_compass = terrain_aspect(gx, gy, valid)
+    aspect_compass[~np.isfinite(aspect_compass)] = -9999.0
 
     profile.update(dtype=rasterio.float32, count=1, compress="lzw", nodata=-9999.0)
 

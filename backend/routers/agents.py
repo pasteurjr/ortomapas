@@ -11,7 +11,7 @@ import numpy as np
 from shapely.geometry import shape, mapping
 from affine import Affine
 from backend.utils.spatial_metrics import geometry_metrics
-from backend.utils.raster_metrics import metric_jacobian, terrain_gradient, volume_metrics
+from backend.utils.raster_metrics import metric_jacobian, terrain_gradient, terrain_aspect, terrain_illumination, volume_metrics
 from backend.agents.llm_client import LMStudioClient
 
 metric_tool_contracts(TOOL_CATALOG)
@@ -164,8 +164,10 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
             resolution = np.linalg.norm(metric_jacobian(ds.crs, affine), axis=0).tolist()
         if not valid.any(): raise HTTPException(status_code=422, detail='Raster sem vizinhanca valida para calcular gradiente')
         if name == 'calcular_declividade': values=np.degrees(np.arctan(np.hypot(gx,gy)))
-        elif name == 'calcular_aspecto': values=(np.degrees(np.arctan2(-gx,-gy))+360)%360
-        else: values=np.maximum(0, (-gx * np.sin(np.radians(315)) * np.cos(np.radians(45)) - gy * np.cos(np.radians(315)) * np.cos(np.radians(45)) + np.sin(np.radians(45))) / np.sqrt(1+gx*gx+gy*gy))*255
+        elif name == 'calcular_aspecto': values=terrain_aspect(gx,gy,valid)
+        else: values=terrain_illumination(gx,gy,valid)
+        valid &= np.isfinite(values)
+        if not valid.any(): raise HTTPException(status_code=422, detail='Raster sem orientacao definida (plano ou sem vizinhanca valida)')
         valid_values=np.asarray(values)[valid]
         return {'status':'ok','dados':{'produto_id':product_id,'operacao':name,'min':float(valid_values.min()),'max':float(valid_values.max()),'media':float(valid_values.mean()),'pixels_validos':int(valid.sum()),'pixels_totais':int(valid.size),'grade':list(values.shape),'unidade':'graus' if name != 'gerar_hillshade' else 'intensidade_0_255','vertical_units_assumed':'m','resolucao_grade_m':resolution}}
     if name == 'comparar_dsm_dtm':
