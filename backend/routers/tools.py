@@ -14,6 +14,7 @@ from datetime import datetime
 from backend.config import ANALISES_DIR, DATA_DIR
 from backend.tools import gdal_tools, raster_analysis, change_detection, classification, hydrology, volumetry, segmentation
 from backend.utils.resource_access import authorize_tools, data_path, tool_context
+from backend.utils.analysis_products import terrain_source, publish_terrain
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tools", tags=["tools"], dependencies=[Depends(authorize_tools)])
@@ -45,6 +46,8 @@ class HillshadeRequest(BaseModel):
     output_name: str
     azimuth: float = Field(default=315, ge=0, le=360)
     altitude: float = Field(default=45, ge=0, le=90)
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
 
 class VegetationRequest(BaseModel):
     input_path: str
@@ -54,10 +57,11 @@ class VegetationRequest(BaseModel):
 class SlopeRequest(BaseModel):
     input_path: str
     output_name: str
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
 
-class AspectRequest(BaseModel):
-    input_path: str
-    output_name: str
+class AspectRequest(SlopeRequest):
+    pass
 
 class StatisticsRequest(BaseModel):
     input_path: str
@@ -179,10 +183,15 @@ async def generate_contours(req: ContourRequest):
 @router.post("/hillshade")
 async def create_hillshade(req: HillshadeRequest):
     try:
+        source=terrain_source(req)
         input_path = _resolve_path(req.input_path)
         output = _output_path(req.output_name)
         result = gdal_tools.hillshade(input_path, output, azimuth=req.azimuth, altitude=req.altitude)
-        return {"status": "success", "output_path": result, "statistics": raster_analysis.raster_statistics(output)}
+        stats=raster_analysis.raster_statistics(output)
+        analysis=publish_terrain(source,'hillshade',output,stats,req.model_dump()) if source else None
+        return {"status": "success", "output_path": result, "statistics": stats, "analise": analysis}
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
@@ -202,11 +211,15 @@ async def calc_vegetation_index(req: VegetationRequest):
 @router.post("/slope")
 async def calc_slope(req: SlopeRequest):
     try:
+        source=terrain_source(req)
         input_path = _resolve_path(req.input_path)
         output = _output_path(req.output_name)
         result = raster_analysis.calc_slope(input_path, output)
         stats = raster_analysis.raster_statistics(output)
-        return {"status": "success", "output_path": result, "statistics": stats}
+        analysis=publish_terrain(source,'slope',output,stats,req.model_dump()) if source else None
+        return {"status": "success", "output_path": result, "statistics": stats, "analise": analysis}
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
@@ -215,11 +228,15 @@ async def calc_slope(req: SlopeRequest):
 @router.post("/aspect")
 async def calc_aspect(req: AspectRequest):
     try:
+        source=terrain_source(req)
         input_path = _resolve_path(req.input_path)
         output = _output_path(req.output_name)
         result = raster_analysis.calc_aspect(input_path, output)
         stats = raster_analysis.raster_statistics(output)
-        return {"status": "success", "output_path": result, "statistics": stats}
+        analysis=publish_terrain(source,'aspect',output,stats,req.model_dump()) if source else None
+        return {"status": "success", "output_path": result, "statistics": stats, "analise": analysis}
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:

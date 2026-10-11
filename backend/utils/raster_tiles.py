@@ -74,3 +74,20 @@ def render_xyz_tile(path: str, z: int, x: int, y: int) -> bytes:
     output = io.BytesIO()
     Image.fromarray(rgba).save(output, format="PNG")
     return output.getvalue()
+
+
+def render_analysis_tile(path, z, x, y, style):
+    from backend.utils.analysis_products import colorize
+    from rasterio.warp import reproject
+    bounds=tile_bounds(z,x,y)
+    with rasterio.open(path) as source:
+        if not source.crs:
+            raise ValueError('Raster sem CRS')
+        data=np.full((TILE_SIZE,TILE_SIZE),np.nan,dtype='float32')
+        reproject(rasterio.band(source,1),data,src_transform=source.transform,src_crs=source.crs,
+                  src_nodata=source.nodata,dst_transform=from_bounds(*bounds,TILE_SIZE,TILE_SIZE),
+                  dst_crs='EPSG:3857',dst_nodata=np.nan,
+                  resampling=Resampling.nearest if style['method']=='nearest' else Resampling.bilinear)
+    rgba=colorize(data,np.isfinite(data),style)
+    output=io.BytesIO();Image.fromarray(rgba).save(output,format='PNG')
+    return output.getvalue()

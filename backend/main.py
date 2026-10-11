@@ -4,6 +4,7 @@ Main FastAPI application for the Sistema de Ortomapas.
 
 import logging
 import time
+import re
 from threading import Lock
 from collections import defaultdict, deque
 from datetime import datetime
@@ -26,12 +27,16 @@ _metrics = {"requests_total": 0, "errors_total": 0, "latency_ms_total": 0.0, "by
 _metrics_lock = Lock()
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, limit=120, window=60):
-        super().__init__(app); self.limit=limit; self.window=window; self.hits=defaultdict(deque)
+    def __init__(self, app, limit=120, window=60, tile_limit=600):
+        super().__init__(app); self.limit=limit; self.tile_limit=tile_limit; self.window=window; self.hits=defaultdict(deque)
     async def dispatch(self, request, call_next):
-        key=request.client.host if request.client else 'unknown'; now=time.monotonic(); q=self.hits[key]
+        is_tile=bool(re.fullmatch(r'/api/(?:ortomapas|analises)/[0-9]+/tile/[0-9]+/[0-9]+/[0-9]+\.png',request.url.path))
+        # Tile fan-out must not consume the control API budget; both remain bounded.
+        key=(request.client.host if request.client else 'unknown','tiles' if is_tile else 'api')
+        limit=self.tile_limit if is_tile else self.limit
+        now=time.monotonic(); q=self.hits[key]
         while q and now-q[0] > self.window: q.popleft()
-        if len(q) >= self.limit:
+        if len(q) >= limit:
             from fastapi.responses import JSONResponse
             with _metrics_lock:
                 _metrics["requests_total"] += 1

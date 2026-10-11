@@ -8,6 +8,7 @@
     <div
       v-for="analise in projectStore.analises"
       :key="analise.id"
+      :data-analysis-id="analise.id"
       class="result-item"
       :class="{ active: selectedId === analise.id }"
       @click="selectAnalise(analise)"
@@ -23,11 +24,13 @@
         :value="statusLabel(analise.status)"
         :severity="statusSeverity(analise.status)"
       />
+      <button v-if="analise.resultado?.style && analise.resultado_path" type="button" class="result-download" title="Baixar resultado GeoTIFF" @click.stop="downloadResult(analise)"><i class="pi pi-download"></i></button>
     </div>
 
     <div v-if="projectStore.analises.length === 0" class="empty-state">
       Nenhuma analise realizada
     </div>
+    <div v-if="resultError" class="result-error" role="alert">{{ resultError }}</div>
 
     <!-- Statistics Panel -->
     <div v-if="selectedAnalise && selectedAnalise.resultado" class="stats-panel">
@@ -69,7 +72,7 @@
 
       <div v-if="selectedAnalise.resultado.stats" class="general-stats">
         <div
-          v-for="(val, key) in selectedAnalise.resultado.stats"
+          v-for="(val, key) in scalarStats"
           :key="key"
           class="stat-row"
         >
@@ -77,6 +80,7 @@
           <strong>{{ typeof val === 'number' ? val.toFixed(3) : val }}</strong>
         </div>
       </div>
+      <small v-if="selectedAnalise.resultado.provenance">Modelo #{{ selectedAnalise.ortomapa_id }} · {{ selectedAnalise.resultado.provenance.operation }} · {{ selectedAnalise.resultado.crs }} · Z assumido em metros</small>
     </div>
   </div>
 </template>
@@ -86,28 +90,36 @@ import { ref, computed } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
 import Badge from 'primevue/badge'
+import api from '../api/client'
+import { analysisRasterLayer } from '../utils/analysisProducts'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
 
 const selectedId = ref(null)
+const resultError = ref('')
 
 const classColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
 
 const selectedAnalise = computed(() =>
   projectStore.analises.find((a) => a.id === selectedId.value)
 )
+const scalarStats = computed(() => Object.fromEntries(Object.entries(selectedAnalise.value?.resultado?.stats || {}).filter(([,value]) => typeof value === 'number')))
+
+async function downloadResult(analysis) {
+  resultError.value = ''
+  try {
+    const { data } = await api.get(`/analises/${analysis.id}/download-access`)
+    const a = document.createElement('a'); a.href = data.url; a.download = `analise_${analysis.id}.tif`
+    document.body.appendChild(a); a.click(); a.remove()
+  } catch { resultError.value = 'Nao foi possivel baixar o resultado' }
+}
 
 function selectAnalise(analise) {
   selectedId.value = analise.id
 
-  // Resultados seed e análises persistidas podem apontar para o ortomapa de
-  // origem mesmo quando ainda não possuem GeoJSON próprio. Nesse caso, abrir
-  // o resultado também torna o raster de origem visível no mapa.
-  const source = projectStore.ortomapas.find((item) => item.id === analise.ortomapa_id)
-  if (source && !mapStore.activeLayers.some((layer) => layer.id === `orto-${source.id}`)) {
-    mapStore.addLayer({ id: `orto-${source.id}`, name: `${source.nome} · resultado ${analise.tipo_analise}`, type: 'ortomapa', sourceId: source.id })
-  }
+  const raster = analysisRasterLayer(analise)
+  if (raster) mapStore.addLayer(raster)
 
   // Show result on map if available
   if (analise.resultado?.geojson) {
@@ -182,11 +194,14 @@ function formatArea(area) {
 </script>
 
 <style scoped>
+.result-download { border: 0; background: transparent; color: var(--text); cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 28px; height: 28px; }
+.result-error { color: #e46868; font-size: 0.8rem; overflow-wrap: anywhere; }
 .analysis-results {
   margin-bottom: 8px;
 }
 
 .section-title {
+  contain: paint;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -202,6 +217,7 @@ function formatArea(area) {
 
 .result-item {
   display: flex;
+  contain: paint;
   align-items: center;
   gap: 8px;
   padding: 8px;

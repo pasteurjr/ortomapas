@@ -32,6 +32,7 @@
         v-for="layer in visibleOrtoLayers"
         :key="'orto-' + layer.id"
         :sourceId="layer.sourceId"
+        :resourceType="layer.type === 'analysis-raster' ? 'analises' : 'ortomapas'"
         :opacity="layer.opacity"
       />
 
@@ -115,6 +116,10 @@
           :value="layer.opacity"
           @input="mapStore.setLayerOpacity(layer.id, parseFloat($event.target.value))"
         />
+        <div v-if="layer.legend" class="raster-legend" :data-analysis-id="layer.sourceId">
+          <span>{{ layer.legend.unit }}</span>
+          <div class="legend-stops"><span v-for="stop in layer.legend.legend" :key="stop.label"><i :style="{background:stop.color}"></i>{{ stop.label }}</span></div>
+        </div>
       </div>
     </div>
   </div>
@@ -153,8 +158,11 @@ let resizeObserver
 let resizeFrame
 
 const visibleOrtoLayers = computed(() =>
-  mapStore.activeLayers.filter((l) => l.type === 'ortomapa' && l.visible)
+  mapStore.activeLayers.filter((l) => ['ortomapa','analysis-raster'].includes(l.type) && l.visible)
 )
+function rasterResource(layer) {
+  return layer?.type === 'analysis-raster' ? layer.resource : projectStore.ortomapas.find((o) => o.id === layer?.sourceId)
+}
 
 const visibleAnalysisLayers = computed(() =>
   mapStore.activeLayers.filter(
@@ -288,7 +296,7 @@ function fitResource(resource) {
 
 function onMapReady() {
   const newest = visibleOrtoLayers.value.at(-1)
-  const resource = projectStore.ortomapas.find((o) => o.id === newest?.sourceId)
+  const resource = rasterResource(newest)
   fitResource(resource || projectStore.activeProject)
   const map = leafletMap.value?.leafletObject
   if (map) setupDrawing(map)
@@ -334,10 +342,10 @@ watch(() => projectStore.ortomapas, (products) => {
   fitResource(own.find((p) => p.tipo === 'ortomosaico') || own[0])
 }, { flush: 'post' })
 watch(
-  () => visibleOrtoLayers.value.map((layer) => layer.sourceId).join('|'),
+  () => visibleOrtoLayers.value.map((layer) => layer.id).join('|'),
   () => {
     const newest = visibleOrtoLayers.value.at(-1)
-    fitResource(projectStore.ortomapas.find((o) => o.id === newest?.sourceId))
+    fitResource(rasterResource(newest))
   },
   { flush: 'post' }
 )
@@ -379,6 +387,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.raster-legend { font-size: 0.7rem; color: #e4e9ef; padding-top: 4px; }
+.legend-stops { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; }
+.legend-stops span { display: inline-flex; align-items: center; gap: 3px; }
+.legend-stops i { width: 10px; height: 10px; display: inline-block; border: 1px solid #a6adb7; }
 .map-container {
   width: 100%;
   height: 100%;

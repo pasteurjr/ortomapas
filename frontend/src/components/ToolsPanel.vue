@@ -89,6 +89,7 @@
               label="Gerar Analise"
               icon="pi pi-play"
               :loading="terreno.loading"
+              :disabled="!projectStore.canEdit || !terreno.ortomapaId"
               @click="runTerreno"
               class="w-full"
             />
@@ -97,7 +98,7 @@
               <div class="stat-row"><span>Min:</span><strong>{{ terreno.result.statistics?.band_1?.min?.toFixed(2) ?? 'Sem dados' }}</strong></div>
               <div class="stat-row"><span>Max:</span><strong>{{ terreno.result.statistics?.band_1?.max?.toFixed(2) ?? 'Sem dados' }}</strong></div>
               <div class="stat-row"><span>Media aritmetica:</span><strong>{{ terreno.result.statistics?.band_1?.mean?.toFixed(2) ?? 'Sem dados' }}</strong></div>
-              <small>{{ terreno.tipo === 'hillshade' ? 'Intensidade 0-255' : 'Graus' }}. Raster gerado; camada no mapa pendente.</small>
+              <small>{{ terreno.tipo === 'hillshade' ? 'Intensidade 0-255' : 'Graus' }}. {{ terreno.result.analise ? 'Resultado salvo e publicado' : 'Raster gerado' }}.</small>
             </div>
           </div>
         </TabPanel>
@@ -368,6 +369,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
+import { analysisRasterLayer } from '../utils/analysisProducts'
 import { runTool, exportLayer } from '../api/client'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
@@ -457,19 +459,24 @@ function ortoPath(id) {
 }
 
 watch(() => projectStore.ortomapas, (items) => {
-  if (!items?.length) return
+  if (!items?.length) { terreno.ortomapaId = null; return }
   const rgb = items.find((item) => item.tipo === 'ortomosaico' || item.tipo === 'RGB' || item.tipo === 'rgb') || items[0]
   const elevation = items.find((item) => ['dsm', 'dtm', 'DSM', 'DTM'].includes(item.tipo))
   if (!veg.ortomapaId) veg.ortomapaId = rgb.id
   if (!mudanca.antesId) mudanca.antesId = rgb.id
   if (!mudanca.depoisId) mudanca.depoisId = rgb.id
-  if (!terreno.ortomapaId && elevation) terreno.ortomapaId = elevation.id
+  if (!items.some(item => item.id === terreno.ortomapaId)) terreno.ortomapaId = elevation?.id || null
   if (!hidro.ortomapaId && elevation) hidro.ortomapaId = elevation.id
   if (!volume.ortomapaId && elevation) volume.ortomapaId = elevation.id
   if (!recorte.ortomapaId) recorte.ortomapaId = rgb.id
 }, { immediate: true })
 
 function addResultLayer(name, data) {
+  if (data.analise) {
+    const layer = analysisRasterLayer(data.analise)
+    if (layer) mapStore.addLayer(layer)
+    return
+  }
   if (!data.geojson && !data.tile_url) return
   const layerId = `analysis-${Date.now()}`
   mapStore.addLayer({
@@ -510,6 +517,7 @@ async function runVegetacao() {
 
 async function runTerreno() {
   if (!terreno.ortomapaId) return
+  const projectId = projectStore.activeProject?.id
   terreno.loading = true
   terreno.result = null
   terreno.error = ''
@@ -517,14 +525,17 @@ async function runTerreno() {
     const terrainEndpoint = { slope: 'slope', aspect: 'aspect', contours: 'contours', hillshade: 'hillshade' }[terreno.tipo] || 'slope'
     const res = await runTool(terrainEndpoint, {
       input_path: ortoPath(terreno.ortomapaId),
+      ortomapa_id: terreno.ortomapaId,
+      projeto_id: projectId,
       output_name: `terreno_${terreno.tipo}_${Date.now()}`,
       interval: terreno.interval,
     })
+    if (projectStore.activeProject?.id !== projectId) return
     terreno.result = res.data
     addResultLayer(terreno.tipo, res.data)
     projectStore.fetchAnalises()
   } catch (e) {
-    terreno.error = e.response?.data?.detail || 'Falha ao calcular terreno'
+    if (projectStore.activeProject?.id === projectId) terreno.error = e.response?.data?.detail || 'Falha ao calcular terreno'
   } finally {
     terreno.loading = false
   }
@@ -667,6 +678,7 @@ async function runExport() {
 }
 
 .section-title {
+  contain: paint;
   display: flex;
   align-items: center;
   gap: 6px;

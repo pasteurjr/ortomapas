@@ -1,0 +1,65 @@
+{
+  "accepted": true,
+  "screens": [
+    "01_contexto_ortofoto.png",
+    "02_linha_e_perfil_dsm_real.png",
+    "03_inspecao_grafico.png",
+    "09_perfil_dtm_mesma_linha.png",
+    "04_perfil_tablet.png",
+    "05_copiloto_preserva_ortofoto.png",
+    "10_navegacao_icones_teclado.png",
+    "06_terreno_1x.png",
+    "07_terreno_3x.png",
+    "08_diferenca_alinhada_real.png"
+  ],
+  "errors": [],
+  "profile": {
+    "length_m": 224.48152923716447,
+    "samples": 200,
+    "valid_samples": 200,
+    "min": 238.60000610351562,
+    "max": 256.5299987792969,
+    "independent_raster_samples_match": true,
+    "csv_rows": 200,
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          -81.753505,
+          41.304199
+        ],
+        [
+          -81.752164,
+          41.304288
+        ],
+        [
+          -81.750834,
+          41.304199
+        ]
+      ]
+    }
+  },
+  "dtm_profile": {
+    "valid_samples": 200,
+    "min": 238.55853271484375,
+    "max": 243.24688720703125
+  },
+  "difference": {
+    "width": 128,
+    "height": 102,
+    "min": -18.609171649823963,
+    "max": 41.55574705778969,
+    "mean": 3.8148187183350424,
+    "bounds": [
+      436847.28,
+      4572651.715000001,
+      437219.68,
+      4572947.065
+    ],
+    "crs": "EPSG:32617",
+    "units": "m",
+    "vertical_units_assumed": true,
+    "valid_pixels": 10572,
+    "alignment": "DTM reprojected to sampled DSM grid"
+  }
+}

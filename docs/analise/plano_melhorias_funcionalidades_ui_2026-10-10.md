@@ -392,3 +392,13 @@ Fase 2 ainda tem revisao dos demais motores de aspecto/hillshade/corte-aterro. R
 Em 11/10/2026 foram corrigidos aspecto por vetor de descida, nodata em terrenos planos, iluminacao por gradiente metrico e diferenca/corte-aterro com reprojecao e area de pixel por determinante metrico. Os motores rejeitam unidades geograficas para calculos metricos. O painel mostra estatisticas da banda correta e nao adiciona camadas sem conteudo renderizavel. Sao 43 testes Python, build e execucao visual/API com DSM real Aukerman. As capturas mostram resultados numericos, nao mapas tematicos publicados; esta limitacao permanece explicita.
 
 Ainda faltam resultados persistentes com tiles, legendas e reabertura, recorte AOI e revisao dos demais motores legados. Nao declarar a fase inteira concluida. Evidencias e limites: [MD](../validacao/derivadas_terreno_fase2_2026-10-11.md) e [PDF](../validacao/derivadas_terreno_fase2_2026-10-11.pdf).
+
+## 18. Primeiro lote da fase 3: mapas de terreno publicados
+
+Checkpoint anterior `674dc48` enviado antes das alteracoes. Em 11/10/2026, aspecto, hillshade e declividade passaram a publicar arquivos derivados, estatisticas, estilo e proveniencia na tabela PostgreSQL `analises`. Tiles e downloads autenticados usam a analise, nunca a ortofoto de origem como substituta. Foram corrigidos reabertura, sidebar/rodape, pintura dos icones e limites separados de tiles/API para evitar HTTP 429 no download.
+
+Validacao final real: analises #37/#38/#39 do DSM Aukerman #34 no projeto #62; seis capturas inspecionadas; tile de borda de cada operacao com igualdade integral a referencia independente; reabertura sem origem; opacidade 35%; GeoTIFF de 118.191.032 bytes com SHA-256 identico. Doze verificacoes HTTP passaram. Regressao de perfil/3D/tablet repetida sem erros JavaScript; 52 testes Python, tres suites Node e build aprovados.
+
+Somente este lote foi aprovado. Recorte AOI, demais motores, fila, catalogo completo e validacao integrada continuam pendentes. O DSM contem copas e artefatos fotogrametricos; a publicacao correta nao certifica declividade do solo. O endpoint legado de criacao registra pedidos pendentes e recusa `queue_task=true`; excluir registro preserva arquivo. Proximo lote: recorte AOI com referencias conhecidas e dados reais.
+
+Relatorio com cenas, esperado/obtido, provas, limites e reproducao: [MD](../validacao/publicacao_terreno_fase3_2026-10-11.md) e [PDF](../validacao/publicacao_terreno_fase3_2026-10-11.pdf).

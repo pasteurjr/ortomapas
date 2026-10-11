@@ -265,16 +265,20 @@ body {
   overflow: hidden;
 }
 
+html, body, #app { width: 100%; height: 100%; overflow: clip; }
+
 .app-layout {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
 }
 
 /* Toolbar */
 .toolbar {
   display: flex;
+  flex: 0 0 48px;
   align-items: center;
   justify-content: space-between;
   height: 48px;
@@ -321,6 +325,7 @@ body {
 .main-content {
   display: flex;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -335,6 +340,8 @@ body {
   transition: width 0.2s ease;
   overflow: hidden;
 }
+
+.sidebar-left, .sidebar-right { flex-shrink: 0; min-height: 0; }
 
 .sidebar-left {
   width: 292px;
@@ -382,10 +389,13 @@ body {
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   padding: 8px;
   gap: 8px;
 }
+
+.sidebar-content > * { flex-shrink: 0; }
 
 .workspace-sidebar-nav {
   flex: 0 0 auto;
@@ -454,7 +464,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 28px;
+  flex: 0 0 36px;
+  height: 36px;
   padding: 0 12px;
   background: var(--toolbar-bg);
   border-top: 1px solid var(--toolbar-border);

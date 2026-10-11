@@ -1,217 +1,131 @@
-"""
-Router for Analises (analyses) CRUD and result serving.
-"""
+"""Project-scoped analysis catalog, result files and thematic raster tiles."""
+import io
 
-import logging
-import os
-from datetime import datetime
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse, StreamingResponse
+from psycopg2.extras import Json
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
-
-from backend.config import ANALISES_DIR
 from backend.database.connection import get_connection
+from backend.routers.auth import current_user, require_project_role
+from backend.utils.resource_access import READ_ROLES, data_path, file_projects, media_user, media_ticket
+from backend.utils.analysis_products import serialize_analysis
+from backend.utils.raster_tiles import render_analysis_tile, tile_bounds
 
-logger = logging.getLogger(__name__)
-router = APIRouter()
+router=APIRouter()
 
 
-@router.get("/analises")
-async def list_analises(
-    ortomapa_id: Optional[int] = Query(None, description="Filter by ortomapa_id"),
-    projeto_id: Optional[int] = Query(None, description="Filter by projeto_id"),
-    tipo_analise: Optional[str] = Query(None, description="Filter by tipo_analise"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-):
-    """List all analises with optional filters."""
+def analysis_for_user(analysis_id,user,roles=READ_ROLES):
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('SELECT * FROM analises WHERE id=%s',(analysis_id,))
+        row=cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404,detail='Analise nao encontrada')
+    require_project_role(row['projeto_id'],user,roles)
+    return serialize_analysis(row)
+
+
+@router.get('/analises')
+async def list_analises(ortomapa_id: int | None=Query(None), projeto_id: int | None=Query(None),
+                        tipo_analise: str | None=Query(None), status: str | None=Query(None),
+                        user: dict=Depends(current_user)):
+    if projeto_id is not None:
+        require_project_role(projeto_id,user,READ_ROLES)
+    clauses=[];params=[]
+    if user['perfil']!='admin':
+        clauses.append("EXISTS (SELECT 1 FROM projeto_usuarios pu WHERE pu.projeto_id=a.projeto_id AND pu.usuario_id=%s AND pu.papel IN ('proprietario','editor','visualizador'))")
+        params.append(user['id'])
+    for field,value in [('ortomapa_id',ortomapa_id),('projeto_id',projeto_id),('tipo_analise',tipo_analise),('status',status)]:
+        if value is not None:
+            clauses.append(f'a.{field}=%s');params.append(value)
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('SELECT a.* FROM analises a'+(' WHERE '+' AND '.join(clauses) if clauses else '')+' ORDER BY a.criado_em DESC',params)
+        rows=[serialize_analysis(row) for row in cur.fetchall()]
+    return {'total':len(rows),'analises':rows}
+
+
+@router.get('/analises/{analise_id}')
+async def get_analise(analise_id: int,user: dict=Depends(current_user)):
+    return analysis_for_user(analise_id,user)
+
+
+@router.post('/analises',status_code=201)
+async def create_analise(data: dict,user: dict=Depends(current_user)):
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('SELECT * FROM ortomapas WHERE id=%s',(data.get('ortomapa_id'),))
+        source=cur.fetchone()
+        if not source:
+            raise HTTPException(status_code=404,detail='Ortomapa nao encontrado')
+        require_project_role(source['projeto_id'],user,{'proprietario','editor'})
+        if data.get('projeto_id') not in {None,source['projeto_id']}:
+            raise HTTPException(status_code=422,detail='Projeto difere do ortomapa')
+        if not data.get('tipo_analise'):
+            raise HTTPException(status_code=422,detail='Tipo de analise necessario')
+        if data.get('queue_task'):
+            raise HTTPException(status_code=422,detail='Fila de analise nao disponivel neste endpoint')
+        if any(data.get(key) for key in ('arquivo_resultado','resultado_path','resultado_json','resultado')):
+            raise HTTPException(status_code=422,detail='Resultados devem ser publicados pela ferramenta de execucao')
+        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,status,observacoes)
+            VALUES (%s,%s,%s,%s,%s,'pendente',%s) RETURNING *''',
+            (source['id'],source['projeto_id'],data['tipo_analise'],data.get('nome') or data['tipo_analise'],Json(data.get('parametros') or {}),data.get('observacoes')))
+        row=cur.fetchone();conn.commit()
+    return serialize_analysis(row)
+
+
+@router.get('/analises/{analise_id}/resultado')
+async def get_analise_resultado(analise_id: int,user: dict=Depends(media_user)):
+    row=analysis_for_user(analise_id,user)
+    if not row.get('resultado_path'):
+        raise HTTPException(status_code=404,detail='Analise sem arquivo de resultado')
+    path=data_path(row['resultado_path'])
+    file_projects(str(path),user)
+    if not path.is_file():
+        raise HTTPException(status_code=404,detail='Arquivo de resultado nao encontrado')
+    return FileResponse(path,filename=path.name,headers={'Cache-Control':'private, no-store'})
+
+
+@router.get('/analises/{analise_id}/download-access')
+async def download_access(analise_id: int,user: dict=Depends(current_user)):
+    row=analysis_for_user(analise_id,user)
+    if not row.get('resultado_path') or not data_path(row['resultado_path']).is_file():
+        raise HTTPException(status_code=404,detail='Arquivo de resultado nao encontrado')
+    scope=f'/api/analises/{analise_id}/resultado'
+    return {'url':scope+'?ticket='+media_ticket(user,scope),'expires_in':300}
+
+
+@router.get('/analises/{analise_id}/tile-access')
+async def tile_access(analise_id: int,user: dict=Depends(current_user)):
+    row=analysis_for_user(analise_id,user)
+    if not row['resultado'].get('style') or not row.get('resultado_path'):
+        raise HTTPException(status_code=404,detail='Analise sem raster publicado')
+    scope=f'/api/analises/{analise_id}/tile/'
+    return {'url':scope+'{z}/{x}/{y}.png?ticket='+media_ticket(user,scope),'expires_in':300}
+
+
+@router.get('/analises/{analise_id}/tile/{z}/{x}/{y}.png')
+async def tile(analise_id: int,z: int,x: int,y: int,user: dict=Depends(media_user)):
+    row=analysis_for_user(analise_id,user)
+    style=row['resultado'].get('style')
+    if not style or not row.get('resultado_path'):
+        raise HTTPException(status_code=404,detail='Analise sem raster publicado')
+    path=data_path(row['resultado_path']);file_projects(str(path),user)
+    if not path.is_file():
+        raise HTTPException(status_code=404,detail='Raster nao encontrado')
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor(dictionary=True)
-
-            query = "SELECT * FROM analises WHERE 1=1"
-            params = []
-
-            if ortomapa_id is not None:
-                query += " AND ortomapa_id = %s"
-                params.append(ortomapa_id)
-            if projeto_id is not None:
-                query += " AND projeto_id = %s"
-                params.append(projeto_id)
-            if tipo_analise:
-                query += " AND tipo_analise = %s"
-                params.append(tipo_analise)
-            if status:
-                query += " AND status = %s"
-                params.append(status)
-
-            query += " ORDER BY criado_em DESC"
-
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-            return {"total": len(rows), "analises": rows}
-    except Exception as e:
-        logger.error(f"Error listing analises: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        tile_bounds(z,x,y)
+        png=render_analysis_tile(str(path),z,x,y,style)
+    except ValueError as exc:
+        raise HTTPException(status_code=422,detail=str(exc))
+    return StreamingResponse(io.BytesIO(png),media_type='image/png',headers={'Cache-Control':'private, no-store'})
 
 
-@router.get("/analises/{analise_id}")
-async def get_analise(analise_id: int):
-    """Get a single analise by ID."""
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor(dictionary=True)
-
-            cursor.execute("SELECT * FROM analises WHERE id = %s", (analise_id,))
-            analise = cursor.fetchone()
-            if not analise:
-                raise HTTPException(status_code=404, detail="Analise nao encontrada")
-            return analise
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting analise {analise_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/analises", status_code=201)
-async def create_analise(data: dict):
-    """
-    Create a new analise and optionally queue it as an agent task.
-    """
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor(dictionary=True)
-
-            ortomapa_id = data.get("ortomapa_id")
-            if not ortomapa_id:
-                raise HTTPException(
-                    status_code=400, detail="Campo 'ortomapa_id' e obrigatorio"
-                )
-
-            tipo_analise = data.get("tipo_analise")
-            if not tipo_analise:
-                raise HTTPException(
-                    status_code=400, detail="Campo 'tipo_analise' e obrigatorio"
-                )
-
-            # Verify ortomapa exists
-            cursor.execute("SELECT id FROM ortomapas WHERE id = %s", (ortomapa_id,))
-            if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Ortomapa nao encontrado")
-
-            cursor.execute(
-                """
-                INSERT INTO analises (
-                    ortomapa_id, tipo_analise, parametros, status,
-                    arquivo_resultado, observacoes, criado_em
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    ortomapa_id,
-                    tipo_analise,
-                    data.get("parametros", "{}"),
-                    data.get("status", "pendente"),
-                    data.get("arquivo_resultado", ""),
-                    data.get("observacoes", ""),
-                    datetime.utcnow(),
-                ),
-            )
-            conn.commit()
-            new_id = cursor.lastrowid
-
-            # Optionally queue as agent task
-            queue_task = data.get("queue_task", False)
-            if queue_task:
-                try:
-                    cursor.execute(
-                        """
-                        INSERT INTO tarefas_agente (
-                            tipo_tarefa, referencia_id, parametros, status, criado_em
-                        ) VALUES (%s, %s, %s, %s, %s)
-                        """,
-                        (
-                            f"analise_{tipo_analise}",
-                            new_id,
-                            data.get("parametros", "{}"),
-                            "pendente",
-                            datetime.utcnow(),
-                        ),
-                    )
-                    conn.commit()
-                    logger.info(f"Agent task queued for analise {new_id}")
-                except Exception as te:
-                    logger.warning(f"Could not queue agent task: {te}")
-
-            cursor.execute("SELECT * FROM analises WHERE id = %s", (new_id,))
-            analise = cursor.fetchone()
-            return analise
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating analise: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/analises/{analise_id}/resultado")
-async def get_analise_resultado(analise_id: int):
-    """Serve the result file of an analise."""
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor(dictionary=True)
-
-            cursor.execute(
-                "SELECT * FROM analises WHERE id = %s", (analise_id,)
-            )
-            analise = cursor.fetchone()
-            if not analise:
-                raise HTTPException(status_code=404, detail="Analise nao encontrada")
-
-            arquivo = analise.get("arquivo_resultado")
-            if not arquivo or not os.path.exists(arquivo):
-                raise HTTPException(
-                    status_code=404, detail="Arquivo de resultado nao encontrado"
-                )
-
-        filename = os.path.basename(arquivo)
-        return FileResponse(
-            path=arquivo,
-            filename=filename,
-            media_type="application/octet-stream",
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error serving resultado for analise {analise_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/analises/{analise_id}")
-async def delete_analise(analise_id: int):
-    """Delete an analise and optionally its result file."""
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor(dictionary=True)
-
-            cursor.execute(
-                "SELECT * FROM analises WHERE id = %s", (analise_id,)
-            )
-            analise = cursor.fetchone()
-            if not analise:
-                raise HTTPException(status_code=404, detail="Analise nao encontrada")
-
-            cursor.execute("DELETE FROM analises WHERE id = %s", (analise_id,))
-            conn.commit()
-
-        # Remove result file if it exists
-        arquivo = analise.get("arquivo_resultado")
-        if arquivo and os.path.exists(arquivo):
-            os.remove(arquivo)
-            logger.info(f"Removed result file: {arquivo}")
-
-        return {"message": "Analise deletada com sucesso", "id": analise_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting analise {analise_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.delete('/analises/{analise_id}')
+async def delete_analise(analise_id: int,user: dict=Depends(current_user)):
+    row=analysis_for_user(analise_id,user,{'proprietario','editor'})
+    # Another recorded analysis may reference a file; retention is separate.
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('DELETE FROM analises WHERE id=%s',(analise_id,));conn.commit()
+    return {'message':'Analise removida do catalogo; arquivo preservado','id':row['id']}

@@ -187,6 +187,9 @@ onUnmounted(() => {
 <style scoped>
 .agent-status {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .agent-status-bar {
@@ -276,7 +279,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
+  margin-top: 0;
+  white-space: nowrap;
   background: none;
   border: none;
   color: #89b4fa;
@@ -291,7 +295,7 @@ onUnmounted(() => {
 
 .tasks-detail {
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 0;
   right: 0;
   min-width: 380px;
@@ -300,8 +304,9 @@ onUnmounted(() => {
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 900;
-  margin-top: 6px;
-  overflow: hidden;
+  margin-bottom: 6px;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .detail-header {

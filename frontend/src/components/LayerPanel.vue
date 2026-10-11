@@ -100,6 +100,7 @@ const dragOverIndex = ref(null)
 function layerTypeIcon(type) {
   const map = {
     ortomapa: 'pi pi-image',
+    'analysis-raster': 'pi pi-chart-bar',
     analysis: 'pi pi-chart-bar',
     annotation: 'pi pi-pencil',
     basemap: 'pi pi-map',
@@ -110,6 +111,7 @@ function layerTypeIcon(type) {
 function layerTypeLabel(type) {
   const map = {
     ortomapa: 'Ortomapa',
+    'analysis-raster': 'Raster de analise',
     analysis: 'Analise',
     annotation: 'Anotacao',
     basemap: 'Base',
@@ -131,6 +133,10 @@ function setOpacity(layer, opacity) {
 }
 
 function zoomToLayer(layer) {
+  if (layer.resource) {
+    const r = layer.resource
+    mapStore.setView([(r.bbox_sul+r.bbox_norte)/2,(r.bbox_oeste+r.bbox_leste)/2],17)
+  }
   emit('zoom-to', layer)
 }
 
