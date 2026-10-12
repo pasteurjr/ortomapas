@@ -5,12 +5,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def calc_volume(dsm_path: str, reference_elevation: float, output_path: str = None) -> dict:
+def calc_volume(dsm_path: str, reference_elevation: float, output_path: str = None, aoi=None) -> dict:
     """Calculate volume above and below a reference elevation plane."""
     with rasterio.open(dsm_path) as src:
         from backend.utils.raster_metrics import volume_metrics
-        dsm = src.read(1, masked=True).astype(float)
-        metrics = volume_metrics(dsm, src.crs, src.transform, reference_elevation)
+        affine = src.transform
+        if aoi:
+            from rasterio.mask import mask as raster_mask
+            values, affine = raster_mask(src, [aoi['projected']], crop=True, all_touched=False, filled=False, indexes=1)
+            dsm = values.astype(float)
+        else:
+            dsm = src.read(1, masked=True).astype(float)
+        metrics = volume_metrics(dsm, src.crs, affine, reference_elevation)
         nodata = src.nodata
 
         if nodata is not None:
@@ -28,16 +34,22 @@ def calc_volume(dsm_path: str, reference_elevation: float, output_path: str = No
 
         if output_path:
             profile = src.profile.copy()
-            profile.update(dtype='float32', count=1, nodata=-9999)
+            profile.update(dtype='float32', count=1, nodata=np.nan, width=dsm.shape[1], height=dsm.shape[0], transform=affine)
             with rasterio.open(output_path, 'w', **profile) as dst:
-                dst.write(np.where(mask, diff_masked, -9999).astype('float32'), 1)
+                dst.write(np.where(mask, diff_masked, np.nan).astype('float32'), 1)
+                dst.update_tags(operation='model - reference', reference_elevation_m=reference_elevation,
+                                vertical_units_assumed='m', analysis_scope='aoi' if aoi else 'full raster')
 
         return {
             "volume_above_m3": round(volume_above, 2),
             "volume_below_m3": round(volume_below, 2),
             "net_volume_m3": round(volume_above - volume_below, 2),
             "reference_elevation_m": reference_elevation,
-            "pixel_area_m2": round(pixel_area_m2, 4),
+            "pixel_area_m2": pixel_area_m2,
+            "valid_pixels": int(mask.sum()),
+            "valid_area_m2": float(mask.sum()*pixel_area_m2),
+            "cut_area_m2": float(((diff_masked > 0) & mask).sum()*pixel_area_m2),
+            "fill_area_m2": float(((diff_masked < 0) & mask).sum()*pixel_area_m2),
             "output_path": output_path,
             "vertical_units": "m", "vertical_units_assumed": True
         }

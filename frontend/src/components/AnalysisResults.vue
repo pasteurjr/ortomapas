@@ -109,10 +109,14 @@ const selectedAnalise = computed(() =>
 )
 const scalarStats = computed(() => Object.fromEntries(Object.entries(selectedAnalise.value?.resultado?.stats || {}).filter(([,value]) => typeof value === 'number')))
 
-const contourStatLabels = { feature_count: 'Curvas', vertex_count: 'Vertices', major_count: 'Curvas mestras', interval_m: 'Intervalo (m)', min_elevation_m: 'Cota minima (m)', max_elevation_m: 'Cota maxima (m)' }
-function statLabel(key) { return contourStatLabels[key] || key }
+const contourStatLabels = { feature_count: 'Curvas', vertex_count: 'Vertices', major_count: 'Curvas mestras', interval_m: 'Intervalo (m)', min_elevation_m: 'Cota minima (m)', max_elevation_m: 'Cota maxima (m)', volume_above_m3: 'Corte (m3)', volume_below_m3: 'Aterro (m3)', net_volume_m3: 'Saldo corte - aterro (m3)', reference_elevation_m: 'Cota de referencia (m)', pixel_area_m2: 'Area do pixel (m2)', valid_area_m2: 'Area valida (m2)', cut_area_m2: 'Area de corte (m2)', fill_area_m2: 'Area de aterro (m2)', valid_pixels: 'Pixels validos' }
+function statLabel(key) {
+  const volumeLabels={ min:'Diferenca minima (m)', max:'Diferenca maxima (m)', mean:'Diferenca media (m)', std:'Desvio (m)', median:'Mediana (m)', total_pixels:'Pixels da janela' }
+  return (selectedAnalise.value?.resultado?.style?.kind==='volume' ? volumeLabels[key] : null) || contourStatLabels[key] || key
+}
 function formatStat(key, value) {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: key.endsWith('_count') ? 0 : 3, maximumFractionDigits: key.endsWith('_count') ? 0 : 3 })
+  const digits=key.endsWith('_count') || key.endsWith('_pixels') ? 0 : key==='pixel_area_m2' ? 6 : key.endsWith('_m3') || key.endsWith('_m2') ? 2 : 3
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
 async function downloadResult(analysis) {

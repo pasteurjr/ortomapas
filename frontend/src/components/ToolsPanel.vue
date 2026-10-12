@@ -268,9 +268,10 @@
         <TabPanel value="volume">
           <div class="tool-form">
             <div class="form-group">
-              <label>DSM</label>
+              <label>Modelo (DSM/DTM)</label>
               <Select
                 v-model="volume.ortomapaId"
+                :disabled="volume.loading"
                 :options="dsmDtmOptions"
                 optionLabel="label"
                 optionValue="value"
@@ -280,20 +281,31 @@
             </div>
             <div class="form-group">
               <label>Elevacao de Referencia (m)</label>
-              <InputText v-model.number="volume.refElevation" type="number" class="w-full" />
+              <InputText v-model.number="volume.refElevation" type="number" :disabled="volume.loading" class="w-full" />
+            </div>
+            <div class="terrain-aoi">
+              <label><input type="checkbox" v-model="useVolumeAoi" :disabled="volume.loading" /> Limitar a area</label>
+              <div v-if="useVolumeAoi" class="aoi-actions">
+                <button type="button" title="Desenhar area de volume" :disabled="volume.loading" @click="mapStore.setDrawMode(mapStore.drawMode === 'analysis-aoi' ? null : 'analysis-aoi')"><i class="pi pi-pencil"></i></button>
+                <span>{{ mapStore.analysisAoi ? 'Area selecionada' : 'Nenhuma area selecionada' }}</span>
+                <button type="button" title="Limpar area de volume" :disabled="volume.loading" @click="mapStore.analysisAoi = null; mapStore.setDrawMode(null)"><i class="pi pi-trash"></i></button>
+              </div>
             </div>
             <Button
               label="Calcular Volume"
               icon="pi pi-play"
               :loading="volume.loading"
+              :disabled="!projectStore.canEdit || !volume.ortomapaId || !Number.isFinite(volume.refElevation) || (useVolumeAoi && (!mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'))"
               @click="runVolume"
               class="w-full"
             />
-            <div v-if="volume.result" class="result-stats">
+            <div v-if="volume.error" class="terrain-error" role="alert">{{ volume.error }}</div>
+            <div v-if="volume.result" class="result-stats volume-result">
               <h4>Resultado</h4>
-              <div class="stat-row"><span>Volume Corte:</span> <strong>{{ volume.result.cut?.toFixed(1) }} m3</strong></div>
-              <div class="stat-row"><span>Volume Aterro:</span> <strong>{{ volume.result.fill?.toFixed(1) }} m3</strong></div>
-              <div class="stat-row"><span>Volume Liquido:</span> <strong>{{ volume.result.net?.toFixed(1) }} m3</strong></div>
+              <div class="stat-row"><span>Corte (m3):</span> <strong>{{ volume.result.volume_above_m3.toFixed(2) }}</strong></div>
+              <div class="stat-row"><span>Aterro (m3):</span> <strong>{{ volume.result.volume_below_m3.toFixed(2) }}</strong></div>
+              <div class="stat-row"><span>Saldo corte - aterro:</span> <strong>{{ volume.result.net_volume_m3.toFixed(2) }} m3</strong></div>
+              <div class="stat-row"><span>Area valida (m2):</span> <strong>{{ volume.result.valid_area_m2.toFixed(2) }}</strong></div>
             </div>
           </div>
         </TabPanel>
@@ -465,7 +477,10 @@ watch(() => [terreno.tipo, terreno.ortomapaId, terreno.interval, useTerrainAoi.v
 const classif = reactive({ ortomapaId: null, algorithm: 'KMeans', numClasses: 5, loading: false })
 const hidro = reactive({ ortomapaId: null, tipo: 'watershed', threshold: 500, pourLat: null, pourLon: null, loading: false })
 const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.3, loading: false })
-const volume = reactive({ ortomapaId: null, refElevation: 0, loading: false, result: null })
+const useVolumeAoi = ref(false)
+const volume = reactive({ ortomapaId: null, refElevation: null, loading: false, result: null, error: '' })
+watch(() => [volume.ortomapaId, volume.refElevation, useVolumeAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { volume.result = null; volume.error = '' })
+watch(() => projectStore.activeProject?.id, () => { useVolumeAoi.value = false; volume.result = null; volume.error = '' })
 const recorte = reactive({ ortomapaId: null, polygon: null, loading: false })
 const exportar = reactive({ layerId: null, format: 'geotiff', crs: 'EPSG:4326', loading: false })
 
@@ -630,15 +645,22 @@ async function runMudancas() {
 async function runVolume() {
   if (!volume.ortomapaId) return
   volume.loading = true
+  volume.error = ''
+  volume.result = null
   try {
     const res = await runTool('volume', {
       ortomapa_id: volume.ortomapaId,
-      ref_elevation: volume.refElevation,
+      projeto_id: projectStore.activeProject.id,
+      dsm_path: ortoPath(volume.ortomapaId),
+      reference_elevation: volume.refElevation,
+      aoi: useVolumeAoi.value ? mapStore.analysisAoi : null,
+      output_name: `volume_${Date.now()}`,
     })
     volume.result = res.data
-    projectStore.fetchAnalises()
+    addResultLayer('Corte/aterro por cota', res.data)
+    await projectStore.fetchAnalises()
   } catch (e) {
-    console.error(e)
+    volume.error = e.response?.data?.detail || 'Nao foi possivel calcular o volume'
   } finally {
     volume.loading = false
   }
@@ -723,9 +745,11 @@ async function runExport() {
   font-size: 0.8rem;
 }
 
-.terrain-result strong {
+.terrain-result strong, .volume-result strong {
   color: #173b29;
 }
+
+.volume-result .stat-row { flex-wrap: wrap; gap: 4px; }
 
 .form-group {
   display: flex;

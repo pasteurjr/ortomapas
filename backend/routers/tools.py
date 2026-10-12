@@ -102,8 +102,15 @@ class StreamsRequest(BaseModel):
 
 class VolumeRequest(BaseModel):
     dsm_path: str
-    reference_elevation: float
+    reference_elevation: float = Field(allow_inf_nan=False)
     output_name: Optional[str] = None
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
+    aoi: Optional[dict] = None
+
+    @property
+    def input_path(self):
+        return self.dsm_path
 
 class DSMDiffRequest(BaseModel):
     dsm1_path: str
@@ -366,10 +373,19 @@ async def extract_streams(req: StreamsRequest):
 @router.post("/volume")
 async def calc_volume(req: VolumeRequest):
     try:
+        source = terrain_source(req)
         dsm = _resolve_path(req.dsm_path)
-        output = _output_path(req.output_name) if req.output_name else None
-        result = volumetry.calc_volume(dsm, req.reference_elevation, output)
-        return {"status": "success", **result}
+        aoi = prepare_aoi(dsm, req.aoi)
+        output = _output_path(req.output_name or 'volume') if req.output_name or source else None
+        result = volumetry.calc_volume(dsm, req.reference_elevation, output, aoi)
+        analysis = None
+        if source:
+            stats = raster_analysis.raster_statistics(output)
+            stats['band_1'].update({key:value for key,value in result.items() if isinstance(value,(int,float)) and not isinstance(value,bool)})
+            analysis = publish_terrain(source,'volume',output,stats,req.model_dump(),aoi)
+        return {"status": "success", **result, "analise": analysis}
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:

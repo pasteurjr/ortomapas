@@ -22,7 +22,7 @@ def test_compass_palette_and_nodata():
     assert not rgba.any()
 
 
-@pytest.mark.parametrize('kind,value,expected',[('hillshade',128,[128,128,128]),('slope',30,[223,132,53]),('aspect',90,[215,198,52])])
+@pytest.mark.parametrize('kind,value,expected',[('hillshade',128,[128,128,128]),('slope',30,[223,132,53]),('aspect',90,[215,198,52]),('volume',1,[178,24,43]),('volume',-1,[33,102,172])])
 def test_fixed_style_without_per_tile_stretch(tmp_path,kind,value,expected):
     path=tmp_path/'raster.tif'
     bounds=tile_bounds(10,500,500)

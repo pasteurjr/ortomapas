@@ -17,8 +17,10 @@ STYLES = {
                   'legend':[{'label':'0','color':'#000000'},{'label':'255','color':'#ffffff'}]},
     'slope': {'unit':'graus','method':'bilinear','kind':'slope','min':0,'max':90,
               'legend':[{'label':str(value),'color':color} for value,color in zip([0,10,30,60,90],['#26764a','#d7c634','#df8435','#dc4545','#7352b9'])]},
+    'volume': {'unit':'m (modelo - referencia)','method':'nearest','kind':'volume','min':-1,'max':1,
+               'legend':[{'label':'Aterro','color':'#2166ac'},{'label':'0','color':'#f7f7f7'},{'label':'Corte','color':'#b2182b'}]},
 }
-NAMES = {'aspect':'Orientacao do relevo','hillshade':'Sombreamento','slope':'Declividade'}
+NAMES = {'aspect':'Orientacao do relevo','hillshade':'Sombreamento','slope':'Declividade','volume':'Corte/aterro por cota'}
 
 
 def terrain_source(request):
@@ -45,25 +47,35 @@ def terrain_source(request):
 
 def publish_terrain(source, operation, output, statistics, parameters, aoi=None):
     path=data_path(output)
+    style=STYLES[operation]
+    if operation=='volume':
+        low=min(statistics['band_1']['min'],-0.01)
+        high=max(statistics['band_1']['max'],0.01)
+        style={**style,'min':low,'max':high,'legend':[
+            {'label':f'{low:.2f} Aterro','color':'#2166ac'}, {'label':'0','color':'#f7f7f7'},
+            {'label':f'+{high:.2f} Corte','color':'#b2182b'}]}
     with rasterio.open(path) as ds:
         west,south,east,north=transform_bounds(ds.crs,4326,*ds.bounds)
         metadata={'crs':str(ds.crs),'width':ds.width,'height':ds.height,
                   'bbox_oeste':west,'bbox_sul':south,'bbox_leste':east,'bbox_norte':north,
-                  'style':STYLES[operation],'stats':statistics['band_1'],
+                  'style':style,'stats':statistics['band_1'],
                   'provenance':{'source_ortomapa_id':source['id'],'source_path':source['caminho_arquivo'],
                                 'operation':operation,'vertical_units_assumed':'m','scope':'full raster',
-                                'algorithm':'metric finite differences','created_by':tool_context.get()[0]}}
+                                'algorithm':'model - reference' if operation=='volume' else 'metric finite differences','created_by':tool_context.get()[0]}}
+        if operation=='volume':
+            metadata['provenance'].update(reference_elevation_m=parameters['reference_elevation'],
+                                          sign_convention='positive=cut; negative=fill; net=cut-fill')
         if aoi:
             metadata['aoi'] = {'geometry':aoi['geometry'], 'crs':'EPSG:4326',
                                'area_m2':aoi['area_m2'], 'pixel_area_m2':aoi['pixel_area_m2'],
                                'valid_area_m2':statistics['band_1']['valid_pixels']*aoi['pixel_area_m2'],
-                               'mask_rule':'pixel center', 'derivative_context':'original raster neighborhood'}
+                               'mask_rule':'pixel center', 'derivative_context':'not applicable' if operation=='volume' else 'original raster neighborhood'}
             metadata['provenance']['scope'] = 'aoi'
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True)
         cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
             resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
-            (source['id'],source['projeto_id'],'terreno',NAMES[operation]+(' - area selecionada' if aoi else ''),Json(parameters),str(path),Json(metadata)))
+            (source['id'],source['projeto_id'],'volume' if operation=='volume' else 'terreno',NAMES[operation]+(' - area selecionada' if aoi else ''),Json(parameters),str(path),Json(metadata)))
         row=dict(cur.fetchone());conn.commit()
     return serialize_analysis(row)
 
@@ -96,6 +108,9 @@ def colorize(values, valid, style):
         rgb=palette[(np.floor((values+22.5)/45).astype(int)%8)]
     elif style['kind']=='hillshade':
         rgb=np.repeat(np.clip(values,0,255).astype(np.uint8)[...,None],3,axis=-1)
+    elif style['kind']=='volume':
+        palette=np.array([[33,102,172],[247,247,247],[178,24,43]])
+        rgb=np.stack([np.interp(values,[style['min'],0,style['max']],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)
     else:
         palette=np.array([[int(item['color'][i:i+2],16) for i in (1,3,5)] for item in STYLES['slope']['legend']])
         rgb=np.stack([np.interp(values,[0,10,30,60,90],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)

@@ -63,7 +63,7 @@ def main():
         page.locator('.workspace-sidebar-nav').get_by_text('Análises',exact=True).click()
         page.locator('.tools-panel').get_by_text('Ter',exact=True).click()
         page.locator('.tools-panel .p-select:visible').nth(1).click();page.get_by_role('option',name='Curvas de Nivel (Contours)',exact=True).click()
-        page.locator('.terrain-aoi input').check();page.get_by_title('Desenhar area de analise',exact=True).click()
+        page.locator('.terrain-aoi input:visible').check();page.get_by_title('Desenhar area de analise',exact=True).click()
         page.locator('.leaflet-mouse-marker').wait_for(state='attached')
         box=page.locator('.leaflet-container').bounding_box();cx=box['x']+box['width']/2;cy=box['y']+box['height']/2
         points=[(cx-65,cy-50),(cx+75,cy-25),(cx+55,cy+65),(cx-40,cy+45)]
@@ -129,7 +129,7 @@ def main():
         result['downloads']['original']={'bytes':file.stat().st_size,'sha256':digest(file)}
         page.locator('.tools-panel').get_by_text('Ter',exact=True).click()
         page.locator('.tools-panel .p-select:visible').nth(1).click();page.get_by_role('option',name='Curvas de Nivel (Contours)',exact=True).click()
-        page.locator('.terrain-aoi input').check()
+        page.locator('.terrain-aoi input:visible').check()
         r=generate(1000);assert r.status==422,r.text()
         page.locator('.terrain-error').wait_for();page.locator('.tools-panel .tool-form:visible').scroll_into_view_if_needed();capture('06_intervalo_sem_curvas')
         result['empty_interval_status']=r.status

@@ -75,7 +75,7 @@ def main():
         page.wait_for_function("()=>[...document.querySelectorAll('.leaflet-tile-pane img')].some(i=>i.src.includes('/ortomapas/30/tile/')&&i.complete&&i.naturalWidth===256)")
         page.locator('.workspace-sidebar-nav').get_by_text('Análises',exact=True).click()
         page.locator('.tools-panel').get_by_text('Ter',exact=True).click()
-        page.locator('.terrain-aoi input[type=checkbox]').check()
+        page.locator('.terrain-aoi input[type=checkbox]:visible').check()
         print('AOI habilitada',flush=True)
         assert page.get_by_role('button',name='Gerar Analise',exact=True).is_disabled()
         page.get_by_title('Desenhar area de analise',exact=True).click()
@@ -132,7 +132,7 @@ def main():
         assert digest(path)==digest(last['resultado_path'])
         result['download']={'bytes':path.stat().st_size,'sha256':digest(path)}
         page.locator('.tools-panel').get_by_text('Ter',exact=True).click()
-        page.locator('.terrain-aoi input[type=checkbox]').check()
+        page.locator('.terrain-aoi input[type=checkbox]:visible').check()
         page.get_by_title('Limpar area de analise',exact=True).click()
         assert page.get_by_role('button',name='Gerar Analise',exact=True).is_disabled()
         page.get_by_text('Sem area',exact=True).wait_for()
