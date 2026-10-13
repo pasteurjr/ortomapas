@@ -222,45 +222,66 @@
         <TabPanel value="mudancas">
           <div class="tool-form">
             <div class="form-group">
-              <label>Ortomapa Antes</label>
+              <label>Modelo anterior</label>
               <Select
                 v-model="mudanca.antesId"
-                :options="ortoOptions"
+                :options="dsmDtmOptions"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Selecionar..."
+                placeholder="DSM/DTM de referencia..."
+                :disabled="mudanca.loading"
                 class="w-full"
               />
             </div>
             <div class="form-group">
-              <label>Ortomapa Depois</label>
+              <label>Modelo posterior</label>
               <Select
                 v-model="mudanca.depoisId"
-                :options="ortoOptions"
+                :options="dsmDtmOptions"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Selecionar..."
+                placeholder="DSM/DTM posterior..."
+                :disabled="mudanca.loading"
                 class="w-full"
               />
             </div>
             <div class="form-group">
-              <label>Limiar: {{ mudanca.threshold.toFixed(2) }}</label>
+              <label>Limiar estavel: +/- {{ mudanca.threshold.toFixed(2) }} m</label>
               <input
                 type="range"
                 v-model.number="mudanca.threshold"
                 min="0"
-                max="1"
+                max="5"
                 step="0.01"
+                :disabled="mudanca.loading"
                 class="slider"
               />
             </div>
+            <div class="terrain-aoi">
+              <label><input type="checkbox" v-model="useChangeAoi" :disabled="mudanca.loading" /> Limitar a area</label>
+              <div v-if="useChangeAoi" class="aoi-actions">
+                <button type="button" title="Desenhar area de comparacao" :disabled="mudanca.loading" @click="mapStore.setDrawMode(mapStore.drawMode === 'analysis-aoi' ? null : 'analysis-aoi')"><i class="pi pi-pencil"></i></button>
+                <span>{{ mapStore.drawMode === 'analysis-aoi' ? 'Desenhando' : mapStore.analysisAoi ? 'Area selecionada' : 'Sem area' }}</span>
+                <button type="button" title="Limpar area de comparacao" :disabled="mudanca.loading || !mapStore.analysisAoi" @click="mapStore.analysisAoi = null; mapStore.setDrawMode(null)"><i class="pi pi-trash"></i></button>
+              </div>
+            </div>
             <Button
-              label="Detectar Mudancas"
+              label="Comparar Elevacoes"
               icon="pi pi-play"
               :loading="mudanca.loading"
+              :disabled="!projectStore.canEdit || !mudanca.antesId || !mudanca.depoisId || mudanca.antesId === mudanca.depoisId || (useChangeAoi && (!mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'))"
               @click="runMudancas"
               class="w-full"
             />
+            <div v-if="mudanca.error" class="terrain-error" role="alert">{{ mudanca.error }}</div>
+            <div v-if="mudanca.result" class="result-stats volume-result change-result">
+              <h4>Depois - antes</h4>
+              <div class="stat-row"><span>Remocao (m3):</span><strong>{{ mudanca.result.cut_volume_m3.toFixed(2) }}</strong></div>
+              <div class="stat-row"><span>Deposicao (m3):</span><strong>{{ mudanca.result.fill_volume_m3.toFixed(2) }}</strong></div>
+              <div class="stat-row"><span>Saldo deposicao - remocao:</span><strong>{{ mudanca.result.net_volume_m3.toFixed(2) }} m3</strong></div>
+              <div class="stat-row"><span>Area alterada:</span><strong>{{ (mudanca.result.cut_area_m2 + mudanca.result.fill_area_m2).toFixed(2) }} m2</strong></div>
+              <div class="stat-row"><span>Pixels alterados:</span><strong>{{ mudanca.result.changed_percent.toFixed(2) }}%</strong></div>
+            </div>
           </div>
         </TabPanel>
 
@@ -476,11 +497,16 @@ const terreno = reactive({ ortomapaId: null, tipo: 'slope', interval: 5, loading
 watch(() => [terreno.tipo, terreno.ortomapaId, terreno.interval, useTerrainAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { terreno.result = null; terreno.error = '' })
 const classif = reactive({ ortomapaId: null, algorithm: 'KMeans', numClasses: 5, loading: false })
 const hidro = reactive({ ortomapaId: null, tipo: 'watershed', threshold: 500, pourLat: null, pourLon: null, loading: false })
-const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.3, loading: false })
+const useChangeAoi = ref(false)
+const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.1, loading: false, result: null, error: '' })
+watch(() => [mudanca.antesId, mudanca.depoisId, mudanca.threshold, useChangeAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { mudanca.result = null; mudanca.error = '' })
 const useVolumeAoi = ref(false)
 const volume = reactive({ ortomapaId: null, refElevation: null, loading: false, result: null, error: '' })
 watch(() => [volume.ortomapaId, volume.refElevation, useVolumeAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { volume.result = null; volume.error = '' })
-watch(() => projectStore.activeProject?.id, () => { useVolumeAoi.value = false; volume.result = null; volume.error = '' })
+watch(() => projectStore.activeProject?.id, () => {
+  useVolumeAoi.value = false; volume.result = null; volume.error = ''
+  useChangeAoi.value = false; mudanca.result = null; mudanca.error = ''
+})
 const recorte = reactive({ ortomapaId: null, polygon: null, loading: false })
 const exportar = reactive({ layerId: null, format: 'geotiff', crs: 'EPSG:4326', loading: false })
 
@@ -493,8 +519,11 @@ watch(() => projectStore.ortomapas, (items) => {
   const rgb = items.find((item) => item.tipo === 'ortomosaico' || item.tipo === 'RGB' || item.tipo === 'rgb') || items[0]
   const elevation = items.find((item) => ['dsm', 'dtm', 'DSM', 'DTM'].includes(item.tipo))
   if (!veg.ortomapaId) veg.ortomapaId = rgb.id
-  if (!mudanca.antesId) mudanca.antesId = rgb.id
-  if (!mudanca.depoisId) mudanca.depoisId = rgb.id
+  if (!items.some(item => item.id === mudanca.antesId)) mudanca.antesId = elevation?.id || null
+  if (!items.some(item => item.id === mudanca.depoisId)) {
+    const before = items.find(item => item.id === mudanca.antesId)
+    mudanca.depoisId = items.find(item => item.id !== mudanca.antesId && item.tipo?.toLowerCase() === before?.tipo?.toLowerCase())?.id || null
+  }
   if (!items.some(item => item.id === terreno.ortomapaId)) terreno.ortomapaId = elevation?.id || null
   if (!hidro.ortomapaId && elevation) hidro.ortomapaId = elevation.id
   if (!volume.ortomapaId && elevation) volume.ortomapaId = elevation.id
@@ -627,16 +656,24 @@ async function runHidrologia() {
 async function runMudancas() {
   if (!mudanca.antesId || !mudanca.depoisId) return
   mudanca.loading = true
+  mudanca.result = null
+  mudanca.error = ''
   try {
-    const res = await runTool('mudancas', {
-      antes_id: mudanca.antesId,
-      depois_id: mudanca.depoisId,
+    const res = await runTool('volume/difference', {
+      ortomapa_antes_id: mudanca.antesId,
+      ortomapa_depois_id: mudanca.depoisId,
+      projeto_id: projectStore.activeProject.id,
+      dsm1_path: ortoPath(mudanca.antesId),
+      dsm2_path: ortoPath(mudanca.depoisId),
       threshold: mudanca.threshold,
+      aoi: useChangeAoi.value ? mapStore.analysisAoi : null,
+      output_name: `mudanca_elevacao_${Date.now()}`,
     })
-    addResultLayer('Deteccao de Mudancas', res.data)
-    projectStore.fetchAnalises()
+    mudanca.result = res.data
+    addResultLayer('Mudanca de elevacao', res.data)
+    await projectStore.fetchAnalises()
   } catch (e) {
-    console.error(e)
+    mudanca.error = e.response?.data?.detail || 'Nao foi possivel comparar os modelos'
   } finally {
     mudanca.loading = false
   }

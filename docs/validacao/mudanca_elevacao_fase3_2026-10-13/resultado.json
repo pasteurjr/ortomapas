@@ -1,0 +1,45 @@
+{
+  "accepted": true,
+  "errors": [],
+  "screens": [
+    "01_parametros_e_aoi.png",
+    "02_resultado_mudanca.png",
+    "03_mapa_remocao_deposicao.png",
+    "04_persistencia_e_estatisticas.png"
+  ],
+  "before_id": 34,
+  "after_id": 35,
+  "analysis_id": 81,
+  "comparison_id": 5,
+  "verification": {
+    "cut_volume_m3": 4851.36865234375,
+    "fill_volume_m3": 9536.865234375,
+    "net_volume_m3": 4685.49609375,
+    "cut_area_m2": 4042.817499994522,
+    "fill_area_m2": 6357.909999991385,
+    "stable_area_m2": 38523.329999947804,
+    "valid_area_m2": 48924.05749993371,
+    "changed_percent": 21.258922565856277,
+    "valid_pixels": 19569623,
+    "max_raster_error_m": 0.0,
+    "tile_rgba_exact": true,
+    "transparent_stable_pixels": 35907
+  },
+  "download": {
+    "bytes": 303104,
+    "sha256": "128744cb19b94ccf210b27eb418081b21e6b8d222252023a85bf66b3af55b874"
+  },
+  "reverse": {
+    "cut_volume_m3": 9536.86,
+    "fill_volume_m3": 4851.37,
+    "net_volume_m3": -4685.5
+  },
+  "same_model_status": 422,
+  "outsider_status": 403,
+  "database_record": {
+    "id": 5,
+    "tipo": "elevacao",
+    "antes": 34,
+    "depois": 35
+  }
+}

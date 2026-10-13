@@ -430,3 +430,13 @@ Validacao: 80 testes Python, tres arquivos de testes Node e build aprovados. Pri
 Seis capturas finais inspecionadas, com correcoes de contraste, espera do estado concluido, precisao de area de pixel e leitura da escala. Lote aprovado apenas para comparacao com plano de cota constante. DSM inclui copas e objetos; nao certifica volumes de solo nem datum vertical. Processamento continua sincrono, sem fila, e catalogo completo/retencao permanecem pendentes.
 
 Proximo lote: comparacao entre dois modelos/campanhas por area, com alinhamento, sinal explicito, mapa e resultado persistidos, provas de referencia e demonstracao real. Nao declarar fase 3 ou todos os casos de uso concluidos. Evidencias: [MD](../validacao/volume_aoi_fase3_2026-10-12.md) e [PDF](../validacao/volume_aoi_fase3_2026-10-12.pdf).
+
+## 22. Quinto lote da fase 3: mudanca de elevacao entre campanhas
+
+Em 13/10/2026, a comparacao de dois DSM/DTM passou a aceitar uma ordem temporal explicita, limiar de estabilidade e AOI desenhada. O raster posterior e alinhado na grade do anterior, a saida representa `depois - antes`, e volumes/areas de remocao, deposicao e estabilidade sao calculados em unidades metricas. O GeoTIFF, estilo, proveniencia e estatisticas ficam em `analises`; a relacao entre as duas fontes tambem fica em `comparacoes_temporais`. Pixels estaveis sao transparentes para preservar a ortofoto sob o mapa vermelho/azul.
+
+A prova usou o DSM ODM real Aukerman #34 e uma campanha posterior controlada #35, com alteracoes conhecidas de -1,20 m e +1,50 m. Na AOI, a referencia independente encontrou 4.851,37 m3 removidos, 9.536,87 m3 depositados e saldo +4.685,50 m3; erro maximo da banda foi zero e o tile RGBA foi integralmente igual. Inverter a ordem inverteu volumes e saldo. Download teve hash identico, reabertura funcionou, registro PostgreSQL #5 foi conferido, fonte repetida retornou 422 e usuario externo recebeu 403. Foram 89 testes Python na suíte completa, build aprovado e quatro capturas finais inspecionadas sem erros JavaScript.
+
+Lote aprovado para diferenca altimetrica por AOI, nao para co-registro fino nem certificacao de terraplenagem. DSM pode refletir vegetacao e objetos; datum vertical e compatibilidade entre levantamentos continuam responsabilidade do operador. Processamento permanece sincrono, e retencao/limpeza, fila, catalogo completo e os demais motores da fase 3 continuam pendentes.
+
+Proximo lote: revisar vegetacao e classificacao para remover contratos simulados/legados, publicar resultados proprios por AOI e validar banda por banda. Evidencias: [MD](../validacao/mudanca_elevacao_fase3_2026-10-13.md) e [PDF](../validacao/mudanca_elevacao_fase3_2026-10-13.pdf).

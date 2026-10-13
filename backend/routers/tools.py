@@ -116,6 +116,11 @@ class DSMDiffRequest(BaseModel):
     dsm1_path: str
     dsm2_path: str
     output_name: str
+    ortomapa_antes_id: int
+    ortomapa_depois_id: int
+    projeto_id: int
+    threshold: float = Field(default=0.1, ge=0, allow_inf_nan=False)
+    aoi: Optional[dict] = None
 
 class SegmentRequest(BaseModel):
     input_path: str
@@ -394,11 +399,21 @@ async def calc_volume(req: VolumeRequest):
 @router.post("/volume/difference")
 async def dsm_diff(req: DSMDiffRequest):
     try:
+        from backend.utils.analysis_products import comparison_sources, publish_elevation_change
+        before, after = comparison_sources(req)
         d1 = _resolve_path(req.dsm1_path)
         d2 = _resolve_path(req.dsm2_path)
+        aoi = prepare_aoi(d1, req.aoi)
         output = _output_path(req.output_name)
-        result = volumetry.cut_fill_analysis(d1, d2, output)
-        return {"status": "success", **result}
+        result = volumetry.cut_fill_analysis(d1, d2, output, req.threshold, aoi)
+        stats = raster_analysis.raster_statistics(output)
+        redundant = {'min_diff_m','max_diff_m','mean_diff_m','std_diff_m'}
+        stats['band_1'].update({key:value for key,value in result.items() if key not in redundant
+                                if isinstance(value,(int,float)) and not isinstance(value,bool)})
+        analysis, comparison_id = publish_elevation_change(before, after, output, stats, req.model_dump(), aoi)
+        return {"status": "success", **result, "analise": analysis, "comparacao_id": comparison_id}
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:

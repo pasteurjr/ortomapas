@@ -109,10 +109,10 @@ const selectedAnalise = computed(() =>
 )
 const scalarStats = computed(() => Object.fromEntries(Object.entries(selectedAnalise.value?.resultado?.stats || {}).filter(([,value]) => typeof value === 'number')))
 
-const contourStatLabels = { feature_count: 'Curvas', vertex_count: 'Vertices', major_count: 'Curvas mestras', interval_m: 'Intervalo (m)', min_elevation_m: 'Cota minima (m)', max_elevation_m: 'Cota maxima (m)', volume_above_m3: 'Corte (m3)', volume_below_m3: 'Aterro (m3)', net_volume_m3: 'Saldo corte - aterro (m3)', reference_elevation_m: 'Cota de referencia (m)', pixel_area_m2: 'Area do pixel (m2)', valid_area_m2: 'Area valida (m2)', cut_area_m2: 'Area de corte (m2)', fill_area_m2: 'Area de aterro (m2)', valid_pixels: 'Pixels validos' }
+const contourStatLabels = { feature_count: 'Curvas', vertex_count: 'Vertices', major_count: 'Curvas mestras', interval_m: 'Intervalo (m)', min_elevation_m: 'Cota minima (m)', max_elevation_m: 'Cota maxima (m)', volume_above_m3: 'Corte (m3)', volume_below_m3: 'Aterro (m3)', cut_volume_m3: 'Remocao (m3)', fill_volume_m3: 'Deposicao (m3)', net_volume_m3: 'Saldo volumetrico (m3)', reference_elevation_m: 'Cota de referencia (m)', pixel_area_m2: 'Area do pixel (m2)', valid_area_m2: 'Area valida (m2)', cut_area_m2: 'Area de remocao (m2)', fill_area_m2: 'Area de deposicao (m2)', stable_area_m2: 'Area estavel (m2)', valid_pixels: 'Pixels validos', changed_pixels: 'Pixels alterados', stable_pixels: 'Pixels estaveis', changed_percent: 'Area alterada (%)', change_threshold_m: 'Limiar estavel (m)', min_diff_m: 'Diferenca minima (m)', max_diff_m: 'Diferenca maxima (m)', mean_diff_m: 'Diferenca media (m)', std_diff_m: 'Desvio (m)' }
 function statLabel(key) {
   const volumeLabels={ min:'Diferenca minima (m)', max:'Diferenca maxima (m)', mean:'Diferenca media (m)', std:'Desvio (m)', median:'Mediana (m)', total_pixels:'Pixels da janela' }
-  return (selectedAnalise.value?.resultado?.style?.kind==='volume' ? volumeLabels[key] : null) || contourStatLabels[key] || key
+  return (['volume','elevation_change'].includes(selectedAnalise.value?.resultado?.style?.kind) ? volumeLabels[key] : null) || contourStatLabels[key] || key
 }
 function formatStat(key, value) {
   const digits=key.endsWith('_count') || key.endsWith('_pixels') ? 0 : key==='pixel_area_m2' ? 6 : key.endsWith('_m3') || key.endsWith('_m2') ? 2 : 3
