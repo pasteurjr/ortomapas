@@ -28,6 +28,13 @@ STYLES = {
     'classification': {'unit':'grupo espectral','method':'nearest','kind':'classification','min':1,'max':7,
                        'colors':['#3b82f6','#f59e0b','#22c55e','#ef4444','#8b5cf6','#06b6d4',
                                  '#eab308','#ec4899','#64748b','#14b8a6','#f97316','#84cc16']},
+    'watershed': {'unit':'bacia','method':'nearest','kind':'watershed','min':1,'max':1,
+                  'legend':[{'label':'Area contribuinte','color':'#2563eb'}]},
+    'twi': {'unit':'indice topografico','method':'bilinear','kind':'twi','min':0,'max':20,
+            'legend':[{'label':'Seco','color':'#b45309'},{'label':'Intermediario','color':'#65a30d'},
+                      {'label':'Umido','color':'#0369a1'}]},
+    'streams': {'unit':'rede D8','method':'nearest','kind':'streams','color':'#0284c7','weight':3,
+                'legend':[{'label':'Canal potencial','color':'#0284c7'}]},
 }
 NAMES = {'aspect':'Orientacao do relevo','hillshade':'Sombreamento','slope':'Declividade','volume':'Corte/aterro por cota'}
 
@@ -138,6 +145,48 @@ def publish_image_analysis(source, operation, output, statistics, parameters, ao
              Json(parameters),str(path),Json(metadata)))
         row=dict(cur.fetchone());conn.commit()
     return serialize_analysis(row)
+
+
+def publish_hydrology(source, operation, output, details, parameters):
+    """Publish D8 watershed, stream network or TWI with reproducible provenance."""
+    path=data_path(output);style={**STYLES[operation]}
+    if operation=='streams':
+        metadata={'geojson':details['geojson'],'style':style,
+                  'stats':{key:details[key] for key in ('feature_count','stream_cells','minimum_area_m2','threshold_cells','total_length_m','pixel_area_m2')}}
+        coordinates=[coordinate for feature in details['geojson']['features'] for coordinate in _geometry_coordinates(feature['geometry'])]
+        if coordinates:
+            xs=[item[0] for item in coordinates];ys=[item[1] for item in coordinates]
+            metadata.update(bbox_oeste=min(xs),bbox_sul=min(ys),bbox_leste=max(xs),bbox_norte=max(ys))
+        name='Rede de drenagem potencial D8'
+    else:
+        with rasterio.open(path) as ds:
+            west,south,east,north=transform_bounds(ds.crs,4326,*ds.bounds)
+            metadata={'crs':str(ds.crs),'width':ds.width,'height':ds.height,
+                      'bbox_oeste':west,'bbox_sul':south,'bbox_leste':east,'bbox_norte':north,
+                      'style':style,'stats':details}
+        if operation=='twi':
+            low,high=_raster_percentiles(path);middle=(low+high)/2
+            style.update(min=low,max=high,legend=[{'label':f'{low:.2f} Seco','color':'#b45309'},
+                {'label':f'{middle:.2f}','color':'#65a30d'},{'label':f'{high:.2f} Umido','color':'#0369a1'}])
+            metadata['style']=style;name='Indice topografico de umidade (TWI)'
+        else: name='Bacia contribuinte D8'
+    metadata['provenance']={'source_ortomapa_id':source['id'],'source_path':source['caminho_arquivo'],
+        'source_type':source['tipo'],'algorithm':'priority-flood + D8','working_grid':details.get('working_grid'),
+        'created_by':tool_context.get()[0]}
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,'hidrologia',%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+            (source['id'],source['projeto_id'],name,Json(parameters),str(path),Json(metadata)))
+        row=dict(cur.fetchone());conn.commit()
+    return serialize_analysis(row)
+
+
+def _geometry_coordinates(geometry):
+    coordinates=geometry.get('coordinates',[])
+    if geometry.get('type')=='LineString': return coordinates
+    if geometry.get('type')=='MultiLineString': return [point for line in coordinates for point in line]
+    return []
 
 
 def comparison_sources(request):
@@ -288,6 +337,12 @@ def colorize(values, valid, style):
         palette=np.array([[int(color[i:i+2],16) for i in (1,3,5)] for color in style['colors']],dtype=np.uint8)
         indexes=np.clip(np.rint(values).astype(int)-1,0,len(palette)-1)
         rgb=palette[indexes]
+    elif style['kind']=='watershed':
+        rgb=np.zeros((*values.shape,3),dtype=np.uint8);rgb[:]=[37,99,235]
+    elif style['kind']=='twi':
+        palette=np.array([[180,83,9],[101,163,13],[3,105,161]])
+        middle=(style['min']+style['max'])/2
+        rgb=np.stack([np.interp(values,[style['min'],middle,style['max']],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)
     else:
         palette=np.array([[int(item['color'][i:i+2],16) for i in (1,3,5)] for item in STYLES['slope']['legend']])
         rgb=np.stack([np.interp(values,[0,10,30,60,90],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)

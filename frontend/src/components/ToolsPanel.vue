@@ -191,13 +191,14 @@
         <TabPanel value="hidrologia">
           <div class="tool-form">
             <div class="form-group">
-              <label>DTM</label>
+              <label>Modelo de terreno (DTM recomendado)</label>
               <Select
                 v-model="hidro.ortomapaId"
                 :options="dsmDtmOptions"
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Selecionar..."
+                :disabled="hidro.loading"
                 class="w-full"
               />
             </div>
@@ -208,27 +209,33 @@
                 :options="hidroTypes"
                 optionLabel="label"
                 optionValue="value"
+                :disabled="hidro.loading"
                 class="w-full"
               />
             </div>
-            <div class="form-group">
-              <label>Limiar de Acumulacao</label>
-              <InputText v-model.number="hidro.threshold" type="number" class="w-full" />
+            <div v-if="hidro.tipo === 'streams'" class="form-group">
+              <label>Area contribuinte minima (m2)</label>
+              <InputText v-model.number="hidro.minimumArea" type="number" min="0.01" step="1" :disabled="hidro.loading" class="w-full" />
             </div>
             <template v-if="hidro.tipo === 'watershed'">
               <div class="form-group">
                 <label>Ponto de Exutorio (Latitude)</label>
-                <InputText v-model.number="hidro.pourLat" type="number" step="0.000001" class="w-full" placeholder="Clique no mapa ou digite" />
+                <InputText v-model.number="hidro.pourLat" type="number" step="0.000001" :disabled="hidro.loading" class="w-full" placeholder="Clique no mapa ou digite" />
               </div>
               <div class="form-group">
                 <label>Ponto de Exutorio (Longitude)</label>
-                <InputText v-model.number="hidro.pourLon" type="number" step="0.000001" class="w-full" placeholder="Clique no mapa ou digite" />
+                <InputText v-model.number="hidro.pourLon" type="number" step="0.000001" :disabled="hidro.loading" class="w-full" placeholder="Clique no mapa ou digite" />
+              </div>
+              <div class="form-group">
+                <label>Raio de ajuste ao canal (m)</label>
+                <InputText v-model.number="hidro.snapRadius" type="number" min="0" max="1000" step="1" :disabled="hidro.loading" class="w-full" />
               </div>
               <Button
                 label="Capturar do Mapa"
                 icon="pi pi-map-marker"
                 severity="secondary"
                 size="small"
+                :disabled="hidro.loading"
                 @click="enablePourPointCapture"
                 class="w-full mb-2"
               />
@@ -237,9 +244,27 @@
               label="Executar"
               icon="pi pi-play"
               :loading="hidro.loading"
+              :disabled="!projectStore.canEdit || !hidro.ortomapaId || (hidro.tipo === 'streams' && !(hidro.minimumArea > 0)) || (hidro.tipo === 'watershed' && (hidro.pourLat == null || hidro.pourLon == null))"
               @click="runHidrologia"
               class="w-full"
             />
+            <div v-if="hidro.error" class="terrain-error" role="alert">{{ hidro.error }}</div>
+            <div v-if="hidro.result && hidro.tipo === 'watershed'" class="result-stats">
+              <div class="stat-row"><span>Area contribuinte:</span><strong>{{ hidro.result.area_m2.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) }} m2</strong></div>
+              <div class="stat-row"><span>Celulas:</span><strong>{{ hidro.result.watershed_cells.toLocaleString('pt-BR') }}</strong></div>
+              <div class="stat-row"><span>Ajuste do exutorio:</span><strong>{{ hidro.result.snapped_outlet.distance_m.toFixed(2) }} m</strong></div>
+            </div>
+            <div v-if="hidro.result && hidro.tipo === 'streams'" class="result-stats">
+              <div class="stat-row"><span>Segmentos:</span><strong>{{ hidro.result.feature_count }}</strong></div>
+              <div class="stat-row"><span>Comprimento:</span><strong>{{ hidro.result.total_length_m.toFixed(1) }} m</strong></div>
+              <div class="stat-row"><span>Limiar:</span><strong>{{ hidro.result.minimum_area_m2.toFixed(1) }} m2</strong></div>
+            </div>
+            <div v-if="hidro.result && hidro.tipo === 'twi'" class="result-stats">
+              <div class="stat-row"><span>Min:</span><strong>{{ hidro.result.statistics.band_1.min.toFixed(2) }}</strong></div>
+              <div class="stat-row"><span>Max:</span><strong>{{ hidro.result.statistics.band_1.max.toFixed(2) }}</strong></div>
+              <div class="stat-row"><span>Media:</span><strong>{{ hidro.result.statistics.band_1.mean.toFixed(2) }}</strong></div>
+            </div>
+            <small v-if="hidro.ortomapaId && selectedHydrologySource?.tipo?.toLowerCase() === 'dsm'">DSM inclui vegetacao e edificacoes; use DTM para inferencia hidrologica do terreno.</small>
           </div>
         </TabPanel>
 
@@ -501,7 +526,7 @@ const classifAlgorithms = [
 const hidroTypes = [
   { label: 'Bacias Hidrograficas (Watershed)', value: 'watershed' },
   { label: 'Rede de Drenagem (Streams)', value: 'streams' },
-  { label: 'TWI - Indice Topografico', value: 'TWI' },
+  { label: 'TWI - Indice Topografico', value: 'twi' },
 ]
 
 const exportFormats = [
@@ -530,7 +555,9 @@ watch(() => [terreno.tipo, terreno.ortomapaId, terreno.interval, useTerrainAoi.v
 const useClassAoi = ref(false)
 const classif = reactive({ ortomapaId: null, algorithm: 'kmeans', numClasses: 5, loading: false, result: null, error: '' })
 watch(() => [classif.ortomapaId, classif.algorithm, classif.numClasses, useClassAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { classif.result = null; classif.error = '' })
-const hidro = reactive({ ortomapaId: null, tipo: 'watershed', threshold: 500, pourLat: null, pourLon: null, loading: false })
+const hidro = reactive({ ortomapaId: null, tipo: 'watershed', minimumArea: 50, snapRadius: 5, pourLat: null, pourLon: null, loading: false, result: null, error: '' })
+const selectedHydrologySource = computed(() => projectStore.ortomapas.find(item => item.id === hidro.ortomapaId))
+watch(() => [hidro.ortomapaId, hidro.tipo, hidro.minimumArea, hidro.snapRadius, hidro.pourLat, hidro.pourLon], () => { hidro.result = null; hidro.error = '' })
 const useChangeAoi = ref(false)
 const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.1, loading: false, result: null, error: '' })
 watch(() => [mudanca.antesId, mudanca.depoisId, mudanca.threshold, useChangeAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { mudanca.result = null; mudanca.error = '' })
@@ -542,6 +569,7 @@ watch(() => projectStore.activeProject?.id, () => {
   useChangeAoi.value = false; mudanca.result = null; mudanca.error = ''
   useVegAoi.value = false; veg.result = null; veg.error = ''
   useClassAoi.value = false; classif.result = null; classif.error = ''
+  hidro.result = null; hidro.error = ''; hidro.pourLat = null; hidro.pourLon = null; mapStore.hydrologyOutlet = null
 })
 const recorte = reactive({ ortomapaId: null, polygon: null, loading: false })
 const exportar = reactive({ layerId: null, format: 'geotiff', crs: 'EPSG:4326', loading: false })
@@ -567,7 +595,9 @@ watch(() => projectStore.ortomapas, (items) => {
     mudanca.depoisId = items.find(item => item.id !== mudanca.antesId && item.tipo?.toLowerCase() === before?.tipo?.toLowerCase())?.id || null
   }
   if (!items.some(item => item.id === terreno.ortomapaId)) terreno.ortomapaId = elevation?.id || null
-  if (!hidro.ortomapaId && elevation) hidro.ortomapaId = elevation.id
+  if (!items.some(item => item.id === hidro.ortomapaId && ['dsm', 'dtm'].includes(item.tipo?.toLowerCase()))) {
+    hidro.ortomapaId = items.find(item => item.tipo?.toLowerCase() === 'dtm')?.id || elevation?.id || null
+  }
   if (!volume.ortomapaId && elevation) volume.ortomapaId = elevation.id
   if (!recorte.ortomapaId && rgb) recorte.ortomapaId = rgb.id
 }, { immediate: true })
@@ -674,7 +704,6 @@ async function runClassificacao() {
 }
 
 function enablePourPointCapture() {
-  // Set map to capture next click as pour point
   mapStore.setPourPointCallback((lat, lon) => {
     hidro.pourLat = lat
     hidro.pourLon = lon
@@ -684,20 +713,25 @@ function enablePourPointCapture() {
 async function runHidrologia() {
   if (!hidro.ortomapaId) return
   hidro.loading = true
+  hidro.result = null
+  hidro.error = ''
   try {
-    const params = {
-      ortomapa_id: hidro.ortomapaId,
-      tipo: hidro.tipo,
-      threshold: hidro.threshold,
+    const common = {
+      dtm_path: ortoPath(hidro.ortomapaId), ortomapa_id: hidro.ortomapaId,
+      projeto_id: projectStore.activeProject.id, output_name: `hidrologia_${hidro.tipo}_${Date.now()}`,
     }
-    if (hidro.tipo === 'watershed' && hidro.pourLat != null && hidro.pourLon != null) {
-      params.pour_point = { lat: hidro.pourLat, lon: hidro.pourLon }
-    }
-    const res = await runTool('hidrologia', params)
+    const params = hidro.tipo === 'watershed'
+      ? { ...common, pour_point: { lat: hidro.pourLat, lon: hidro.pourLon }, snap_radius_m: hidro.snapRadius }
+      : hidro.tipo === 'streams'
+        ? { ...common, minimum_area_m2: hidro.minimumArea }
+        : common
+    const endpoint = { watershed: 'hydrology/watershed', streams: 'hydrology/streams', twi: 'hydrology/twi' }[hidro.tipo]
+    const res = await runTool(endpoint, params)
+    hidro.result = res.data
     addResultLayer(hidro.tipo, res.data)
-    projectStore.fetchAnalises()
+    await projectStore.fetchAnalises()
   } catch (e) {
-    console.error(e)
+    hidro.error = e.response?.data?.detail || 'Nao foi possivel executar a analise hidrologica'
   } finally {
     hidro.loading = false
   }

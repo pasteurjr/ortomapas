@@ -55,6 +55,15 @@
 
       <!-- Measurement overlay -->
       <l-geo-json v-if="mapStore.analysisAoi" :key="JSON.stringify(mapStore.analysisAoi)" :geojson="mapStore.analysisAoi" :optionsStyle="{ color: '#eab308', weight: 3, fillOpacity: 0.08 }" />
+      <l-circle-marker
+        v-if="mapStore.hydrologyOutlet"
+        :latLng="[mapStore.hydrologyOutlet.lat, mapStore.hydrologyOutlet.lng]"
+        :radius="7"
+        color="#075985"
+        fillColor="#38bdf8"
+        :fillOpacity="0.9"
+        :weight="3"
+      />
       <l-polyline
         v-if="measurePoints.length > 1 && mapStore.measureMode === 'distance'"
         :latLngs="measurePoints"
@@ -227,6 +236,7 @@ function onEachAnotacao(feature, layer) {
 function getAnalysisStyle(layer) {
   return function (feature) {
     if (layer.kind === 'contours') return { color: feature.properties.major ? '#a62626' : '#d96a19', weight: feature.properties.major ? 3 : 1.5, opacity: layer.opacity }
+    if (layer.kind === 'streams') return { color: layer.legend?.color || '#0284c7', weight: layer.legend?.weight || 3, opacity: layer.opacity }
     const classValue = feature.properties?.class || feature.properties?.value || 0
     const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
     return {

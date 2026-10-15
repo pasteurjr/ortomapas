@@ -1314,22 +1314,22 @@ Agrupar pixels de um ortomapa RGB por similaridade espectral com KMeans, definin
 - **Ator:** Usuario
 
 ### Objetivo
-Extrair a rede de drenagem (streams) a partir de um DTM/DSM utilizando analise hidrologica com limiar de acumulacao configuravel, e visualizar os cursos d'agua como camada vetorial no mapa.
+Extrair canais potenciais a partir de um DTM projetado, com limiar de area contribuinte em m2, e visualizar a rede vetorial persistida sobre a ortofoto. A mesma aba permite delimitar uma bacia por exutorio e calcular TWI.
 
 ### Pre-condicoes
-- Projeto ativo com ortomapa tipo DSM ou DTM
-- Sidebar direita visivel
+- Projeto ativo com DTM georreferenciado em CRS projetado; DSM permitido com aviso sobre sua adequacao
+- Usuario autenticado com permissao de edicao no projeto
 
 ### Pos-condicoes
-- Rede de drenagem extraida como GeoJSON (LineStrings)
+- Rede potencial extraida como GeoJSON (LineStrings) WGS84
 - Camada vetorial adicionada ao mapa
 - Analise registrada
 
 ### Elementos de UI Envolvidos
 - Tab "Hid" (hidrologia) no ToolsPanel
-- Select "DTM"
+- Select "Modelo de terreno (DTM recomendado)"
 - Select "Analise" (Watershed, Streams, TWI)
-- InputText "Limiar de Acumulacao"
+- InputText "Area contribuinte minima (m2)"
 - Button "Executar"
 
 ### Fluxo Principal
@@ -1337,10 +1337,10 @@ Extrair a rede de drenagem (streams) a partir de um DTM/DSM utilizando analise h
 #### Passo 1 - Navegar para aba Hidrologia
 - **Acao do ator:** Clica na aba "Hid"
 - **Contexto visual anterior:** ToolsPanel em outra aba
-- **Elemento de UI utilizado:** Tab com valor `hidrologia`, conteudo `<i class="pi pi-slack"></i> Hid`
+- **Elemento de UI utilizado:** Tab com valor `hidrologia`, rotulo "Hid"
 - **Resposta imediata do sistema:** Formulario de hidrologia
 - **Processamento funcional:** `activeTab = 'hidrologia'`
-- **Efeito observavel na UI:** Campos DTM, analise, limiar e botao "Executar"
+- **Efeito observavel na UI:** Fonte, tipo de analise e botao "Executar"; campo de area apenas para drenagem
 - **Evidencia esperada:** Screenshot aba hidrologia
 - **Criterio de aceitacao:** Formulario visivel
 - **Seletor Playwright:** `page.locator('.tools-panel [data-p-value="hidrologia"]')`
@@ -1353,7 +1353,7 @@ Extrair a rede de drenagem (streams) a partir de um DTM/DSM utilizando analise h
 - **Processamento funcional:** `hidro.ortomapaId` setado
 - **Efeito observavel na UI:** Nome do DTM no dropdown
 - **Evidencia esperada:** Screenshot DTM selecionado
-- **Criterio de aceitacao:** ID valido de DSM/DTM
+- **Criterio de aceitacao:** ID valido do projeto; DTM preferido ao DSM e aviso quando se escolhe DSM
 - **Seletor Playwright:** `page.locator('.tools-panel [value="hidrologia"] .form-group').first().locator('.p-select')`
 
 #### Passo 3 - Selecionar "Rede de Drenagem (Streams)"
@@ -1367,15 +1367,15 @@ Extrair a rede de drenagem (streams) a partir de um DTM/DSM utilizando analise h
 - **Criterio de aceitacao:** Tipo deve ser 'streams'. Campos de pour point nao devem estar visiveis
 - **Seletor Playwright:** `page.locator('.tools-panel [value="hidrologia"] .form-group').nth(1).locator('.p-select')`
 
-#### Passo 4 - Configurar limiar de acumulacao
-- **Acao do ator:** Altera o limiar de acumulacao de 500 para 200
-- **Contexto visual anterior:** Campo "Limiar de Acumulacao" mostrando 500
-- **Elemento de UI utilizado:** InputText com v-model.number `hidro.threshold`, type `number`
-- **Resposta imediata do sistema:** Valor muda para 200
-- **Processamento funcional:** `hidro.threshold = 200`
-- **Efeito observavel na UI:** Campo mostra 200
-- **Evidencia esperada:** Screenshot com limiar configurado
-- **Criterio de aceitacao:** Um limiar menor gera mais tributarios (rede mais densa)
+#### Passo 4 - Configurar area contribuinte
+- **Acao do ator:** Mantem ou ajusta 50 m2 no campo de area contribuinte minima
+- **Contexto visual anterior:** Campo "Area contribuinte minima (m2)" mostrando 50
+- **Elemento de UI utilizado:** InputText com v-model.number `hidro.minimumArea`, type `number`
+- **Resposta imediata do sistema:** Valor e preservado no formulario
+- **Processamento funcional:** `hidro.minimumArea = 50`
+- **Efeito observavel na UI:** Campo mostra 50
+- **Evidencia esperada:** Screenshot com area configurada
+- **Criterio de aceitacao:** Limiar positivo em m2; reduzir o valor aumenta a densidade de canais
 - **Seletor Playwright:** `page.locator('.tools-panel [value="hidrologia"] input[type="number"]')`
 
 #### Passo 5 - Clicar em "Executar"
@@ -1383,21 +1383,21 @@ Extrair a rede de drenagem (streams) a partir de um DTM/DSM utilizando analise h
 - **Contexto visual anterior:** Formulario completo
 - **Elemento de UI utilizado:** Button "Executar" com icon `pi pi-play`
 - **Resposta imediata do sistema:** Botao em loading
-- **Processamento funcional:** POST `/api/tools/hidrologia` com `{ortomapa_id, tipo: 'streams', threshold: 200}`. Backend: (1) Preenche depressoes do DTM. (2) Calcula direcao de fluxo (D8). (3) Calcula acumulacao de fluxo. (4) Aplica limiar: pixels com acumulacao >= 200 sao classificados como cursos d'agua. (5) Vetoriza os cursos em LineStrings GeoJSON
+- **Processamento funcional:** POST `/api/tools/hydrology/streams` com `{dtm_path, ortomapa_id, projeto_id, minimum_area_m2: 50, output_name}`. Backend prepara a grade, preenche depressoes por priority-flood, calcula D8 e acumulacao, converte area em m2 para celulas e vetoriza ligacoes como LineStrings.
 - **Efeito observavel na UI:** Spinner no botao
 - **Evidencia esperada:** Screenshot loading
-- **Criterio de aceitacao:** Requisicao com tipo 'streams' e threshold 200
+- **Criterio de aceitacao:** HTTP 200, GeoJSON LineString, estatisticas e registro no catalogo
 - **Seletor Playwright:** `page.locator('.tools-panel [value="hidrologia"] button').filter({ hasText: 'Executar' })`
 
 #### Passo 6 - Verificar rede de drenagem no mapa
 - **Acao do ator:** Observa o mapa
 - **Contexto visual anterior:** Mapa com camadas anteriores
-- **Elemento de UI utilizado:** MapViewer com `l-geo-json`
+- **Elemento de UI utilizado:** MapViewer com camada GeoJSON
 - **Resposta imediata do sistema:** Linhas de drenagem aparecem no mapa
-- **Processamento funcional:** `addResultLayer('streams', res.data)`. GeoJSON com LineStrings renderizado pelo MapViewer
-- **Efeito observavel na UI:** Linhas azuis representando cursos d'agua desenhadas sobre o mapa, formando uma rede hierarquica de drenagem
+- **Processamento funcional:** Resultado publicado em `analises`, adicionado ao mapa por `analysisVectorLayer`
+- **Efeito observavel na UI:** Linhas azuis representando canais potenciais calculados sobre o DTM
 - **Evidencia esperada:** Screenshot com rede de drenagem
-- **Criterio de aceitacao:** Linhas devem seguir vales naturais do terreno
+- **Criterio de aceitacao:** Feicoes visiveis, contagem e comprimento exibidos; soma dos comprimentos reprojetados compativel com a estatistica publicada
 - **Seletor Playwright:** `page.locator('.map-container')`
 
 ### Fluxos Alternativos
@@ -1405,13 +1405,21 @@ Extrair a rede de drenagem (streams) a partir de um DTM/DSM utilizando analise h
 #### FA-1: Usar Watershed em vez de Streams
 - **Passo divergente:** Passo 3
 - **Acao:** Seleciona "Bacias Hidrograficas (Watershed)"
-- **Efeito:** Campos de ponto de exutorio aparecem (latitude, longitude, botao "Capturar do Mapa"). O resultado sera um poligono da bacia em vez de linhas
+- **Efeito:** Latitude/longitude WGS84 e raio de ajuste em metros aparecem. O usuario captura o ponto no mapa; o resultado e um raster binario persistido da bacia, com area, numero de celulas e distancia de ajuste do exutorio.
+
+#### FA-2: Calcular TWI
+- **Acao:** Seleciona "TWI - Indice Topografico" e executa com o DTM.
+- **Efeito:** Raster colorizado persistido no mapa, com min, max, media e pixels validos. Indica propensao relativa a acumulacao, nao umidade medida.
 
 ### Fluxos de Excecao
 
 #### FE-1: Limiar muito alto (nenhum stream)
-- **Condicao:** Limiar de acumulacao muito alto para a area (ex: 10000)
-- **Efeito:** Resultado GeoJSON com poucos ou nenhum feature
+- **Condicao:** Area contribuinte maior que a acumulacao maxima do levantamento
+- **Efeito:** HTTP 422 com erro visivel; nenhum produto vazio e publicado
+
+#### FE-2: Ponto de exutorio invalido ou usuario externo
+- **Condicao:** Latitude fora de -90 a 90, longitude fora de -180 a 180, ponto fora do DTM ou falta de permissao
+- **Efeito:** HTTP 422 para ponto invalido ou HTTP 403 para usuario sem acesso; nenhum produto publicado
 
 ### Mapeamento Playwright
 - **Acoes:**
@@ -1420,14 +1428,16 @@ Extrair a rede de drenagem (streams) a partir de um DTM/DSM utilizando analise h
   - `page.locator('.p-select-option').first().click()`
   - `page.locator('.tools-panel [value="hidrologia"] .form-group').nth(1).locator('.p-select').click()`
   - `page.locator('.p-select-option').filter({ hasText: 'Rede de Drenagem' }).click()`
-  - `page.locator('.tools-panel [value="hidrologia"] input[type="number"]').fill('200')`
+  - `page.locator('.tools-panel input[type="number"]:visible').fill('50')`
   - `page.locator('.tools-panel [value="hidrologia"] button').filter({ hasText: 'Executar' }).click()`
 - **Asserts:**
-  - `await expect(page.locator('.tools-panel [value="hidrologia"] input[type="number"]')).toHaveValue('200')`
+  - `await expect(page.locator('.tools-panel input[type="number"]:visible')).toHaveValue('50')`
 - **Screenshots:**
   - `screenshot_uc011_01_aba_hidrologia.png`
   - `screenshot_uc011_02_streams_configurado.png`
   - `screenshot_uc011_03_resultado_mapa.png`
+
+**Validacao executada:** `scripts/validar_hidrologia_fase5.py` com o DTM WebODM Aukerman, seis capturas e verificacoes independentes em `docs/validacao/hidrologia_fase5_2026-10-15.md`. O produto e uma estimativa hidrologica, sem calibracao de campo.
 
 ---
 

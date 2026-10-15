@@ -6,13 +6,27 @@ extraction, watershed delineation, and Topographic Wetness Index (TWI).
 """
 
 import json
+import heapq
 import logging
+from collections import deque
 
 import numpy as np
 import rasterio
 from rasterio.features import shapes as rasterio_shapes
+from rasterio.enums import Resampling
+from rasterio.warp import transform_geom
+from shapely.geometry import LineString, mapping, shape
+from shapely.ops import linemerge, unary_union
+from scipy.ndimage import gaussian_filter
+from backend.utils.raster_metrics import metric_jacobian, terrain_gradient
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_block_options(profile):
+    for option in ('blockxsize','blockysize','tiled'):
+        profile.pop(option,None)
+    return profile
 
 # D8 direction encoding (powers of 2, following ESRI convention):
 #   32 64 128
@@ -55,63 +69,43 @@ def fill_sinks(dtm_path: str, output_path: str) -> str:
         output_path on success.
     """
     with rasterio.open(dtm_path) as src:
-        dem = src.read(1).astype(np.float64)
+        dem = src.read(1, masked=True).astype(np.float64)
         profile = src.profile.copy()
         nodata = src.nodata
+    values=np.asarray(dem);valid=~np.ma.getmaskarray(dem)&np.isfinite(values)
+    if not valid.any():
+        raise ValueError('Modelo de terreno sem celulas validas')
+    filled=values.copy();rows,cols=filled.shape;visited=np.zeros((rows,cols),dtype=bool);heap=[]
+    boundary=np.zeros_like(valid)
+    boundary[[0,-1],:]=valid[[0,-1],:];boundary[:,[0,-1]]=valid[:,[0,-1]]
+    padded=np.pad(valid,1,constant_values=False)
+    adjacent_to_nodata=np.zeros_like(valid)
+    for dr,dc in _D8_OFFSETS:
+        adjacent_to_nodata |= valid & ~padded[1+dr:rows+1+dr,1+dc:cols+1+dc]
+    boundary |= adjacent_to_nodata
+    for row,col in np.argwhere(boundary):
+        visited[row,col]=True;heapq.heappush(heap,(float(filled[row,col]),int(row),int(col)))
+    epsilon=max(float(np.nanmax(values[valid])-np.nanmin(values[valid]))*1e-9,1e-6)
+    raised=0
+    while heap:
+        elevation,row,col=heapq.heappop(heap)
+        for dr,dc in _D8_OFFSETS:
+            nr,nc=row+dr,col+dc
+            if not (0<=nr<rows and 0<=nc<cols) or visited[nr,nc] or not valid[nr,nc]:
+                continue
+            visited[nr,nc]=True
+            original=float(filled[nr,nc]);new=max(original,elevation+epsilon)
+            if new>original: raised+=1;filled[nr,nc]=new
+            heapq.heappush(heap,(new,nr,nc))
+    filled[~valid]=nodata if nodata is not None else np.nan
 
-    if nodata is not None:
-        mask = dem == nodata
-    else:
-        mask = ~np.isfinite(dem)
-
-    filled = dem.copy()
-    rows, cols = filled.shape
-
-    max_iterations = 1000
-    for iteration in range(max_iterations):
-        changed = False
-        # Pad with large value for boundary handling
-        padded = np.pad(filled, 1, mode="constant", constant_values=np.inf)
-
-        for dr, dc in _D8_OFFSETS:
-            neighbour = padded[1 + dr: rows + 1 + dr, 1 + dc: cols + 1 + dc]
-            # Where current cell is lower than this neighbour is tracked
-            # We need: for each cell, the minimum neighbour value
-            pass  # handled below
-
-        # Compute min of all 8 neighbours
-        min_neighbour = np.full_like(filled, np.inf)
-        for dr, dc in _D8_OFFSETS:
-            neighbour = padded[1 + dr: rows + 1 + dr, 1 + dc: cols + 1 + dc]
-            min_neighbour = np.minimum(min_neighbour, neighbour)
-
-        # Cells that are sinks: lower than all neighbours (i.e., lower than min_neighbour)
-        # Raise them to min_neighbour + tiny increment
-        sink_mask = (filled < min_neighbour) & (~mask)
-        # Only fill interior sinks, not valid drainage to edges
-        # A true sink is where cell < min_neighbour by more than float precision
-        epsilon = 1e-5
-        to_fill = sink_mask & ((min_neighbour - filled) > epsilon)
-
-        if not np.any(to_fill):
-            break
-
-        filled[to_fill] = min_neighbour[to_fill] + epsilon
-        changed = True
-
-        if not changed:
-            break
-
-    # Restore nodata
-    if nodata is not None:
-        filled[mask] = nodata
-
-    profile.update(dtype=rasterio.float32, count=1, compress="lzw")
+    _strip_block_options(profile).update(dtype=rasterio.float32, count=1, compress="lzw")
 
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(filled.astype(np.float32), 1)
+        dst.update_tags(operation='priority-flood',raised_cells=raised,epsilon=epsilon)
 
-    logger.info("Sink-filled DTM written to %s (iterations=%d)", output_path, iteration + 1)
+    logger.info("Sink-filled DTM written to %s (raised=%d)", output_path, raised)
     return output_path
 
 
@@ -132,16 +126,11 @@ def flow_direction(dtm_path: str, output_path: str) -> str:
         transform = src.transform
         profile = src.profile.copy()
         nodata = src.nodata
+        crs = src.crs
 
     rows, cols = dem.shape
-    dx = abs(transform.a)
-    dy = abs(transform.e)
-
-    # Distance to each neighbour
-    distances = []
-    for dr, dc in _D8_OFFSETS:
-        dist = np.sqrt((dr * dy) ** 2 + (dc * dx) ** 2)
-        distances.append(dist)
+    matrix=metric_jacobian(crs,transform)
+    distances=[float(np.linalg.norm(matrix@np.array([dc,dr]))) for dr,dc in _D8_OFFSETS]
 
     padded = np.pad(dem, 1, mode="constant", constant_values=np.nan)
     flow_dir = np.zeros((rows, cols), dtype=np.int16)
@@ -151,15 +140,15 @@ def flow_direction(dtm_path: str, output_path: str) -> str:
     for i, (dr, dc) in enumerate(_D8_OFFSETS):
         neighbour = padded[1 + dr: rows + 1 + dr, 1 + dc: cols + 1 + dc]
         slope = (dem - neighbour) / distances[i]
-        update_mask = slope > max_slope
+        update_mask = np.isfinite(slope) & (slope > max_slope) & (slope > 0)
         max_slope[update_mask] = slope[update_mask]
         flow_dir[update_mask] = _D8_VALUES[i]
 
     # Flat areas and nodata get direction 0
-    if nodata is not None:
-        flow_dir[dem == nodata] = 0
+    flow_dir[~np.isfinite(dem)]=0
+    if nodata is not None: flow_dir[dem==nodata]=0
 
-    profile.update(dtype=rasterio.int16, count=1, compress="lzw", nodata=0)
+    _strip_block_options(profile).update(dtype=rasterio.int16, count=1, compress="lzw", nodata=0)
 
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(flow_dir, 1)
@@ -201,8 +190,7 @@ def flow_accumulation(flow_dir_path: str, output_path: str) -> str:
         valid = (r_dst >= 0) & (r_dst < rows) & (c_dst >= 0) & (c_dst < cols)
         r_dst = r_dst[valid]
         c_dst = c_dst[valid]
-        for rr, cc in zip(r_dst, c_dst):
-            inflow_count[rr, cc] += 1
+        np.add.at(inflow_count,(r_dst,c_dst),1)
 
     # Topological sort using queue
     from collections import deque
@@ -235,7 +223,7 @@ def flow_accumulation(flow_dir_path: str, output_path: str) -> str:
                 if inflow_count[nr, nc] <= 0:
                     queue.append((nr, nc))
 
-    profile.update(dtype=rasterio.int32, count=1, compress="lzw", nodata=0)
+    _strip_block_options(profile).update(dtype=rasterio.int32, count=1, compress="lzw", nodata=0)
 
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(acc, 1)
@@ -295,6 +283,103 @@ def extract_streams(
 
     logger.info("Extracted %d stream features to %s", len(features), output_geojson_path)
     return output_geojson_path
+
+
+def prepare_dem(dtm_path: str, output_path: str, max_dimension: int = 1024) -> dict:
+    """Create a bounded, metric hydrology grid while preserving the source extent."""
+    if not 128 <= max_dimension <= 4096:
+        raise ValueError('Dimensao de trabalho deve estar entre 128 e 4096 pixels')
+    with rasterio.open(dtm_path) as src:
+        metric_jacobian(src.crs,src.transform)
+        scale=min(1.0,max_dimension/max(src.width,src.height))
+        width=max(1,int(round(src.width*scale)));height=max(1,int(round(src.height*scale)))
+        transform=src.transform*src.transform.scale(src.width/width,src.height/height)
+        values=src.read(1,out_shape=(height,width),masked=True,resampling=Resampling.bilinear)
+        profile=src.profile.copy();source_shape=[src.height,src.width]
+    valid=(~np.ma.getmaskarray(values)).astype(float);raw=np.ma.asarray(values).filled(0).astype(float)
+    weights=gaussian_filter(valid,1,mode='nearest');smoothed=gaussian_filter(raw*valid,1,mode='nearest')/np.maximum(weights,1e-12)
+    values=np.ma.array(smoothed,mask=weights<0.5)
+    for option in ('blockxsize','blockysize','tiled'): profile.pop(option,None)
+    profile.update(width=width,height=height,transform=transform,dtype='float32',count=1,compress='lzw',nodata=-9999)
+    with rasterio.open(output_path,'w',**profile) as dst:
+        dst.write(values.astype('float32').filled(-9999),1)
+        dst.update_tags(operation='hydrology-working-grid',source_shape='x'.join(map(str,source_shape)),scale=scale,smoothing_sigma_cells=1)
+    matrix=metric_jacobian(profile['crs'],transform);pixel_area=abs(float(np.linalg.det(matrix)))
+    return {'source_shape':source_shape,'working_shape':[height,width],
+            'scale':scale,'pixel_area_m2':pixel_area,'cell_size_m':float(np.sqrt(pixel_area)),'smoothing_sigma_cells':1}
+
+
+def extract_stream_lines(flow_acc_path: str, flow_dir_path: str, output_geojson_path: str,
+                         minimum_area_m2: float) -> dict:
+    """Vectorize D8 receiver links whose upstream contributing area passes a metric threshold."""
+    if not np.isfinite(minimum_area_m2) or minimum_area_m2 <= 0:
+        raise ValueError('Area contribuinte minima deve ser positiva')
+    with rasterio.open(flow_acc_path) as acc_src,rasterio.open(flow_dir_path) as dir_src:
+        acc=acc_src.read(1);fdir=dir_src.read(1);transform=acc_src.transform;crs=acc_src.crs
+    matrix=metric_jacobian(crs,transform);pixel_area=abs(float(np.linalg.det(matrix)))
+    threshold=max(1,int(np.ceil(minimum_area_m2/pixel_area)));stream=acc>=threshold
+    segments=[];length=0.0
+    for direction,(dr,dc) in _D8_DIRS.items():
+        rows,cols=np.where(stream&(fdir==direction))
+        targets_r=rows+dr;targets_c=cols+dc
+        keep=(targets_r>=0)&(targets_r<fdir.shape[0])&(targets_c>=0)&(targets_c<fdir.shape[1])
+        rows,cols,targets_r,targets_c=rows[keep],cols[keep],targets_r[keep],targets_c[keep]
+        keep=stream[targets_r,targets_c];rows,cols,targets_r,targets_c=rows[keep],cols[keep],targets_r[keep],targets_c[keep]
+        step=float(np.linalg.norm(matrix@np.array([dc,dr])))
+        for row,col,tr,tc in zip(rows,cols,targets_r,targets_c):
+            x1,y1=rasterio.transform.xy(transform,int(row),int(col));x2,y2=rasterio.transform.xy(transform,int(tr),int(tc))
+            segments.append(LineString([(x1,y1),(x2,y2)]));length+=step
+    if not segments:
+        raise ValueError('Nenhum canal atingiu a area contribuinte minima')
+    merged=linemerge(unary_union(segments));parts=list(merged.geoms) if merged.geom_type=='MultiLineString' else [merged]
+    features=[]
+    for number,line in enumerate(parts,1):
+        geometry=transform_geom(crs,'EPSG:4326',mapping(line),precision=8)
+        features.append({'type':'Feature','geometry':geometry,'properties':{'segmento':number}})
+    geojson={'type':'FeatureCollection','features':features}
+    with open(output_geojson_path,'w',encoding='utf-8') as stream_file: json.dump(geojson,stream_file)
+    return {'output_path':output_geojson_path,'geojson':geojson,'feature_count':len(features),
+            'stream_cells':int(stream.sum()),'minimum_area_m2':minimum_area_m2,
+            'threshold_cells':threshold,'total_length_m':length,'pixel_area_m2':pixel_area}
+
+
+def snap_pour_point(flow_acc_path: str, x: float, y: float, radius_m: float) -> dict:
+    """Snap an outlet to the highest accumulation cell within a metric radius."""
+    if not np.isfinite([x,y,radius_m]).all() or radius_m < 0:
+        raise ValueError('Exutorio ou raio de ajuste invalido')
+    with rasterio.open(flow_acc_path) as src:
+        acc=src.read(1);transform=src.transform;crs=src.crs
+    matrix=metric_jacobian(crs,transform);cell_size=np.sqrt(abs(float(np.linalg.det(matrix))))
+    row,col=rasterio.transform.rowcol(transform,x,y)
+    if not (0<=row<acc.shape[0] and 0<=col<acc.shape[1]): raise ValueError('Ponto de exutorio fora do modelo')
+    radius=int(np.ceil(radius_m/cell_size));r0=max(0,row-radius);r1=min(acc.shape[0],row+radius+1);c0=max(0,col-radius);c1=min(acc.shape[1],col+radius+1)
+    window=acc[r0:r1,c0:c1].astype(float)
+    rr,cc=np.indices(window.shape);distance=np.hypot(rr+(r0-row),cc+(c0-col))*cell_size;window[distance>radius_m]=-np.inf
+    if not np.isfinite(window).any(): raise ValueError('Sem celula valida proxima ao exutorio')
+    local=np.unravel_index(np.nanargmax(window),window.shape);snapped_row=r0+local[0];snapped_col=c0+local[1]
+    sx,sy=rasterio.transform.xy(transform,snapped_row,snapped_col)
+    return {'requested_xy':[x,y],'snapped_xy':[sx,sy],'row':int(snapped_row),'col':int(snapped_col),
+            'snap_distance_m':float(np.hypot(sx-x,sy-y)),'accumulation_cells':int(acc[snapped_row,snapped_col])}
+
+
+def watershed_from_flow(flow_dir_path: str, output_path: str, row: int, col: int) -> dict:
+    """Trace upstream D8 cells without constructing a per-cell adjacency dictionary."""
+    with rasterio.open(flow_dir_path) as src:
+        fdir=src.read(1);profile=src.profile.copy();transform=src.transform;crs=src.crs
+    rows,cols=fdir.shape
+    if not (0<=row<rows and 0<=col<cols): raise ValueError('Celula de exutorio fora do modelo')
+    watershed=np.zeros((rows,cols),dtype='uint8');watershed[row,col]=1;queue=deque([(row,col)])
+    while queue:
+        current_r,current_c=queue.popleft()
+        for direction,(dr,dc) in _D8_DIRS.items():
+            upstream_r,upstream_c=current_r-dr,current_c-dc
+            if 0<=upstream_r<rows and 0<=upstream_c<cols and not watershed[upstream_r,upstream_c] and fdir[upstream_r,upstream_c]==direction:
+                watershed[upstream_r,upstream_c]=1;queue.append((upstream_r,upstream_c))
+    _strip_block_options(profile).update(dtype='uint8',count=1,nodata=0,compress='lzw')
+    with rasterio.open(output_path,'w',**profile) as dst: dst.write(watershed,1);dst.update_tags(operation='D8 watershed')
+    pixel_area=abs(float(np.linalg.det(metric_jacobian(crs,transform))));cells=int(watershed.sum())
+    return {'output_path':output_path,'watershed_cells':cells,'area_m2':cells*pixel_area,'area_ha':cells*pixel_area/10000,
+            'pixel_area_m2':pixel_area}
 
 
 def delineate_watershed(
@@ -404,7 +489,7 @@ def delineate_watershed(
             if os.path.exists(p):
                 os.remove(p)
 
-    profile.update(dtype=rasterio.uint8, count=1, compress="lzw", nodata=0)
+        _strip_block_options(profile).update(dtype=rasterio.uint8, count=1, compress="lzw", nodata=0)
 
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(watershed, 1)
@@ -466,7 +551,7 @@ def calc_twi(
     if nodata_slope is not None:
         twi[slope_deg == nodata_slope] = -9999.0
 
-    profile.update(dtype=rasterio.float32, count=1, compress="lzw", nodata=-9999.0)
+    _strip_block_options(profile).update(dtype=rasterio.float32, count=1, compress="lzw", nodata=-9999.0)
 
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(twi.astype(np.float32), 1)

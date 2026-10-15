@@ -14,6 +14,7 @@ export const useMapStore = defineStore('map', {
     compareLeft: null,
     compareRight: null,
     pourPointCallback: null,
+    hydrologyOutlet: null,
     clipBbox: (() => { try { return JSON.parse(localStorage.getItem('ortomapas.clipBbox') || 'null') } catch { return null } })(),
     selectedGeometry: null,
     analysisAoi: null,
@@ -97,6 +98,7 @@ export const useMapStore = defineStore('map', {
 
     handleMapClick(lat, lng) {
       if (this.pourPointCallback) {
+        this.hydrologyOutlet = { lat, lng }
         this.pourPointCallback(lat, lng)
         this.pourPointCallback = null
       }
@@ -111,6 +113,7 @@ export const useMapStore = defineStore('map', {
       this.profileOpen = false
       this.selectedGeometry = null
       this.analysisAoi = null
+      this.hydrologyOutlet = null
       this.setClipBbox(null)
     },
   },

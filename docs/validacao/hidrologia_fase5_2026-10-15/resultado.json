@@ -1,0 +1,49 @@
+{
+  "accepted": true,
+  "errors": [],
+  "screens": [
+    "01_bacia_exutorio_parametros.png",
+    "02_bacia_resultado.png",
+    "03_drenagem_parametros.png",
+    "04_drenagem_resultado.png",
+    "05_twi_resultado.png",
+    "06_persistencia_hidrologia.png"
+  ],
+  "checks": {
+    "watershed": {
+      "cells": 1192,
+      "area_m2": 157.6497871766099,
+      "snap_distance_m": 41.54422873850124
+    },
+    "watershed_tile": {
+      "rgba_exact": true,
+      "opaque_pixels": 785,
+      "z": 18,
+      "x": 71542,
+      "y": 97991
+    },
+    "streams": {
+      "features": 161,
+      "length_m_reprojected": 764.2839131127203,
+      "reported_length_m": 764.2725773940545
+    },
+    "twi": {
+      "min": -3.5350699424743652,
+      "max": 13.571333885192871,
+      "mean": 2.6911115519768325,
+      "valid_pixels": 673015
+    },
+    "twi_tile": {
+      "rgba_exact": true,
+      "opaque_pixels": 65536,
+      "z": 18,
+      "x": 71541,
+      "y": 97990
+    },
+    "outsider_status": 403,
+    "invalid_outlet_status": 422
+  },
+  "watershed_id": 102,
+  "streams_id": 103,
+  "twi_id": 104
+}

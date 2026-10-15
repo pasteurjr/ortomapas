@@ -142,6 +142,8 @@ def calc_slope(dsm_path: str, output_path: str) -> str:
     slope_deg = np.degrees(slope_rad)
     slope_deg[~valid] = -9999.0
 
+    for option in ('blockxsize','blockysize','tiled'):
+        profile.pop(option,None)
     profile.update(dtype=rasterio.float32, count=1, compress="lzw", nodata=-9999.0)
 
     with rasterio.open(output_path, "w", **profile) as dst:

@@ -122,10 +122,11 @@ Componente: `ToolsPanel.vue` (aba Classificacao)
 
 | ID | Ferramenta | Endpoint | Descricao |
 |----|-----------|----------|-----------|
-| F-HID-01 | Delimitacao de bacia hidrografica | `POST /api/tools/hydrology/watershed` | Fill + D8 flow direction + BFS upstream |
-| F-HID-02 | Extracao de rede de drenagem | `POST /api/tools/hydrology/streams` | Fill + flow dir + accumulation + threshold + vectorize |
+| F-HID-01 | Delimitacao de bacia hidrografica | `POST /api/tools/hydrology/watershed` | DTM projetado, priority-flood, D8, exutorio WGS84 ajustado, bacia raster persistida |
+| F-HID-02 | Extracao de rede de drenagem potencial | `POST /api/tools/hydrology/streams` | Area contribuinte minima em m2, rede LineString GeoJSON persistida |
+| F-HID-03 | Indice topografico de umidade | `POST /api/tools/hydrology/twi` | Raster TWI e estatisticas persistidos |
 
-Funcoes internas: fill_sinks, flow_direction, flow_accumulation, extract_streams, delineate_watershed, calc_twi
+Funcoes internas operacionais: prepare_dem, fill_sinks, flow_direction, flow_accumulation, snap_pour_point, watershed_from_flow, extract_stream_lines, calc_twi. As funcoes antigas extract_streams e delineate_watershed permanecem para compatibilidade.
 
 Componente: `ToolsPanel.vue` (aba Hidrologia)
 

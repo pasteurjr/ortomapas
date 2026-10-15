@@ -7,15 +7,18 @@ from typing import Optional, List, Dict, Any
 import os
 import logging
 import json
+import tempfile
+import numpy as np
 import rasterio
 from rasterio.enums import Resampling
 from datetime import datetime
+from pyproj import Transformer
 
 from backend.config import ANALISES_DIR, DATA_DIR
 from backend.tools import gdal_tools, raster_analysis, change_detection, classification, hydrology, volumetry, segmentation
 from backend.utils.resource_access import authorize_tools, data_path, tool_context
 from backend.utils.analysis_products import (terrain_source, publish_terrain, publish_contours,
-                                             image_source, publish_image_analysis)
+                                             image_source, publish_image_analysis, publish_hydrology)
 from backend.utils.terrain_aoi import prepare_aoi, mask_derivative
 from backend.utils.contour_products import contour_result, contour_input
 from backend.utils.raster_metrics import metric_jacobian
@@ -102,11 +105,35 @@ class WatershedRequest(BaseModel):
     dtm_path: str
     pour_point: Dict[str, float]  # {lat, lon}
     output_name: str
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
+    snap_radius_m: float = Field(default=5, ge=0, le=1000, allow_inf_nan=False)
+    max_dimension: int = Field(default=1024, ge=128, le=4096)
+
+    @property
+    def input_path(self): return self.dtm_path
 
 class StreamsRequest(BaseModel):
     dtm_path: str
     output_name: str
-    threshold: int = Field(default=100, gt=0, description="Acumulacao minima de fluxo (> 0)")
+    minimum_area_m2: float = Field(default=100, gt=0, allow_inf_nan=False)
+    threshold: Optional[int] = Field(default=None, gt=0, description="Compatibilidade: acumulacao minima em celulas")
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
+    max_dimension: int = Field(default=1024, ge=128, le=4096)
+
+    @property
+    def input_path(self): return self.dtm_path
+
+class TWIRequest(BaseModel):
+    dtm_path: str
+    output_name: str
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
+    max_dimension: int = Field(default=1024, ge=128, le=4096)
+
+    @property
+    def input_path(self): return self.dtm_path
 
 class VolumeRequest(BaseModel):
     dsm_path: str
@@ -367,42 +394,74 @@ async def classify_raster(req: ClassifyRequest):
 @router.post("/hydrology/watershed")
 async def delineate_watershed(req: WatershedRequest):
     try:
-        dtm = _resolve_path(req.dtm_path)
-        output = _output_path(req.output_name)
-        result = hydrology.delineate_watershed(dtm, (req.pour_point["lat"], req.pour_point["lon"]), output)
-        return {"status": "success", "output_path": result}
+        source=terrain_source(req);dtm=_resolve_path(req.dtm_path);output=_output_path(req.output_name)
+        lat=float(req.pour_point['lat']);lon=float(req.pour_point['lon'])
+        if not np.isfinite([lat,lon]).all() or not -90<=lat<=90 or not -180<=lon<=180:
+            raise ValueError('Exutorio deve conter latitude/longitude WGS84 validas')
+        with tempfile.TemporaryDirectory(prefix='ortomapas_hydro_') as folder:
+            work=os.path.join(folder,'dem.tif');filled=os.path.join(folder,'filled.tif')
+            direction=os.path.join(folder,'direction.tif');accumulation=os.path.join(folder,'accumulation.tif')
+            grid=hydrology.prepare_dem(dtm,work,req.max_dimension);hydrology.fill_sinks(work,filled)
+            hydrology.flow_direction(filled,direction);hydrology.flow_accumulation(direction,accumulation)
+            with rasterio.open(work) as dataset:
+                forward=Transformer.from_crs(4326,dataset.crs,always_xy=True);reverse=Transformer.from_crs(dataset.crs,4326,always_xy=True)
+            x,y=forward.transform(lon,lat);snap=hydrology.snap_pour_point(accumulation,x,y,req.snap_radius_m)
+            result=hydrology.watershed_from_flow(direction,output,snap['row'],snap['col'])
+            snapped_lon,snapped_lat=reverse.transform(*snap['snapped_xy'])
+        result.update(working_grid=grid,requested_outlet={'lat':lat,'lon':lon},
+                      snapped_outlet={'lat':snapped_lat,'lon':snapped_lon,'distance_m':snap['snap_distance_m'],
+                                      'accumulation_cells':snap['accumulation_cells']})
+        analysis=publish_hydrology(source,'watershed',output,result,req.model_dump()) if source else None
+        return {"status":"success",**result,"analise":analysis}
+    except HTTPException:
+        raise
+    except (ValueError,KeyError,TypeError) as e:
+        raise HTTPException(status_code=422,detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/hydrology/streams")
 async def extract_streams(req: StreamsRequest):
     try:
-        dtm = _resolve_path(req.dtm_path)
-        # O pipeline D8 usa estruturas em memoria; reduzimos rasters muito grandes
-        # para manter tempo e memoria previsiveis, preservando a extensao espacial.
-        with rasterio.open(dtm) as src:
-            scale = min(1.0, 512 / max(src.width, src.height))
-            if scale < 1.0:
-                work = _output_path(f"{req.output_name}_resampled", ".tif")
-                h, w = max(1, int(src.height * scale)), max(1, int(src.width * scale))
-                profile = src.profile.copy(); profile.update(height=h, width=w, transform=src.transform * src.transform.scale(src.width / w, src.height / h))
-                with rasterio.open(work, 'w', **profile) as dst: dst.write(src.read(1, out_shape=(h, w), resampling=Resampling.bilinear), 1)
-                dtm = work
-        # Generate intermediate products
-        filled = _output_path(f"{req.output_name}_filled")
-        flow_dir = _output_path(f"{req.output_name}_flowdir")
-        flow_acc = _output_path(f"{req.output_name}_flowacc")
-        output = _output_path(req.output_name, ".geojson")
-
-        hydrology.fill_sinks(dtm, filled)
-        hydrology.flow_direction(filled, flow_dir)
-        hydrology.flow_accumulation(flow_dir, flow_acc)
-        result = hydrology.extract_streams(flow_acc, output, threshold=req.threshold)
-        return {"status": "success", "output_path": result}
+        source=terrain_source(req);dtm=_resolve_path(req.dtm_path);output=_output_path(req.output_name,'.geojson')
+        with tempfile.TemporaryDirectory(prefix='ortomapas_hydro_') as folder:
+            work=os.path.join(folder,'dem.tif');filled=os.path.join(folder,'filled.tif')
+            direction=os.path.join(folder,'direction.tif');accumulation=os.path.join(folder,'accumulation.tif')
+            grid=hydrology.prepare_dem(dtm,work,req.max_dimension);hydrology.fill_sinks(work,filled)
+            hydrology.flow_direction(filled,direction);hydrology.flow_accumulation(direction,accumulation)
+            minimum=req.threshold*grid['pixel_area_m2'] if req.threshold is not None else req.minimum_area_m2
+            result=hydrology.extract_stream_lines(accumulation,direction,output,minimum)
+        result['working_grid']=grid
+        analysis=publish_hydrology(source,'streams',output,result,req.model_dump()) if source else None
+        return {"status":"success",**result,"analise":analysis}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422,detail=str(e))
     except (FileNotFoundError, rasterio.errors.RasterioIOError) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post('/hydrology/twi')
+async def topographic_wetness(req: TWIRequest):
+    try:
+        source=terrain_source(req);dtm=_resolve_path(req.dtm_path);output=_output_path(req.output_name)
+        with tempfile.TemporaryDirectory(prefix='ortomapas_hydro_') as folder:
+            work=os.path.join(folder,'dem.tif');filled=os.path.join(folder,'filled.tif')
+            direction=os.path.join(folder,'direction.tif');accumulation=os.path.join(folder,'accumulation.tif');slope=os.path.join(folder,'slope.tif')
+            grid=hydrology.prepare_dem(dtm,work,req.max_dimension);hydrology.fill_sinks(work,filled)
+            hydrology.flow_direction(filled,direction);hydrology.flow_accumulation(direction,accumulation)
+            raster_analysis.calc_slope(filled,slope);hydrology.calc_twi(slope,accumulation,output)
+        stats=raster_analysis.raster_statistics(output);details={**stats['band_1'],'working_grid':grid}
+        analysis=publish_hydrology(source,'twi',output,details,req.model_dump()) if source else None
+        return {'status':'success','output_path':output,'statistics':stats,'working_grid':grid,'analise':analysis}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422,detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500,detail=str(e))
 
 @router.post("/volume")
 async def calc_volume(req: VolumeRequest):

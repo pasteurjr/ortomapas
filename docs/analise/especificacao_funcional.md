@@ -505,11 +505,11 @@
 |-------|-----------|
 | **ID** | EF-HID-01 |
 | **Descricao** | Delimitar bacia hidrografica a partir de ponto de exutorio |
-| **Entrada** | `{dtm_path: string, pour_point: {lat, lon}, output_name: string}` |
-| **Saida** | `{status: "success", output_path: string}` |
+| **Entrada** | `{dtm_path, ortomapa_id, projeto_id, pour_point: {lat, lon}, snap_radius_m, output_name, max_dimension?}` |
+| **Saida** | Mascara GeoTIFF da bacia, area em m2, celulas, exutorio solicitado/ajustado e analise persistida |
 | **Endpoint** | `POST /api/tools/hydrology/watershed` |
 | **Componente** | `ToolsPanel.vue` (aba Hidrologia) |
-| **Regras** | Pipeline: fill_sinks -> flow_direction (D8) -> BFS upstream do pour point. Pour point convertido de coordenadas geo para pixel. Erro se pour point fora do raster. Output: mascara binaria (1=bacia, 0=fora). Arquivos intermediarios em tempfile (removidos apos). |
+| **Regras** | Preferir DTM em CRS projetado. Grade de trabalho ate 1024 px por padrao, suavizacao gaussiana de 1 celula, preenchimento priority-flood, fluxo D8 e acumulacao. Exutorio informado em WGS84 e ajustado ao maximo de acumulacao no raio em metros. Bacia determinada por percurso reverso de fluxo, publicada como raster e reaberta pelo catalogo. Rejeitar coordenada invalida ou fora do raster com HTTP 422; usuario sem acesso recebe HTTP 403. Arquivos intermediarios sao temporarios. |
 
 ### EF-HID-02: Extrair Rede de Drenagem
 
@@ -517,11 +517,21 @@
 |-------|-----------|
 | **ID** | EF-HID-02 |
 | **Descricao** | Extrair rede de cursos dagua |
-| **Entrada** | `{dtm_path: string, output_name: string, threshold: int (default 100)}` |
-| **Saida** | `{status: "success", output_path: string}` (GeoJSON) |
+| **Entrada** | `{dtm_path, ortomapa_id, projeto_id, minimum_area_m2, output_name, max_dimension?}`; `threshold` em celulas so para compatibilidade |
+| **Saida** | GeoJSON LineString, numero e comprimento dos segmentos, limiar aplicado e analise persistida |
 | **Endpoint** | `POST /api/tools/hydrology/streams` |
 | **Componente** | `ToolsPanel.vue` (aba Hidrologia) |
-| **Regras** | Pipeline: fill_sinks -> flow_direction -> flow_accumulation (topological sort) -> threshold -> vectorize (rasterio.features.shapes). Output GeoJSON com features de poligono. Arquivos intermediarios nomeados com prefixo output_name. |
+| **Regras** | Mesmo preparo do DTM e fluxo D8 da bacia. Converter o limiar em m2 para celulas pela area real do pixel, vetorizar ligacoes entre celulas de fluxo como LineStrings WGS84. A interface inicia em 50 m2; o operador calibra conforme area e resolucao. Nenhum canal acima do limiar produz HTTP 422. A rede representa canais potenciais derivados do relevo, nao hidrografia confirmada em campo. |
+
+### EF-HID-03: Calcular indice topografico de umidade
+
+| Campo | Descricao |
+|-------|-----------|
+| **ID** | EF-HID-03 |
+| **Entrada** | `{dtm_path, ortomapa_id, projeto_id, output_name, max_dimension?}` |
+| **Saida** | GeoTIFF TWI, min/max/media, pixels validos, estilo e analise persistida |
+| **Endpoint** | `POST /api/tools/hydrology/twi` |
+| **Regras** | Usar acumulacao D8 e declividade do DTM preparado. O TWI e um indicador topografico relativo de propensao a acumulacao, nao uma medicao de umidade ou diagnostico de inundacao. |
 
 ---
 
