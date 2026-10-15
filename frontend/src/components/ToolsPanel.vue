@@ -21,10 +21,11 @@
               <label>Ortomapa</label>
               <Select
                 v-model="veg.ortomapaId"
-                :options="ortoOptions"
+                :options="rgbOptions"
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Selecionar..."
+                :disabled="veg.loading"
                 class="w-full"
               />
             </div>
@@ -35,22 +36,34 @@
                 :options="vegIndices"
                 optionLabel="label"
                 optionValue="value"
+                :disabled="veg.loading"
                 class="w-full"
               />
+            </div>
+            <div class="terrain-aoi">
+              <label><input type="checkbox" v-model="useVegAoi" :disabled="veg.loading" /> Limitar a area</label>
+              <div v-if="useVegAoi" class="aoi-actions">
+                <button type="button" title="Desenhar area do indice" :disabled="veg.loading" @click="mapStore.setDrawMode(mapStore.drawMode === 'analysis-aoi' ? null : 'analysis-aoi')"><i class="pi pi-pencil"></i></button>
+                <span>{{ mapStore.drawMode === 'analysis-aoi' ? 'Desenhando' : mapStore.analysisAoi ? 'Area selecionada' : 'Sem area' }}</span>
+                <button type="button" title="Limpar area do indice" :disabled="veg.loading || !mapStore.analysisAoi" @click="mapStore.analysisAoi = null; mapStore.setDrawMode(null)"><i class="pi pi-trash"></i></button>
+              </div>
             </div>
             <Button
               label="Calcular Indice"
               icon="pi pi-play"
               :loading="veg.loading"
+              :disabled="!projectStore.canEdit || !veg.ortomapaId || (useVegAoi && (!mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'))"
               @click="runVegetacao"
               class="w-full"
             />
+            <div v-if="veg.error" class="terrain-error" role="alert">{{ veg.error }}</div>
             <div v-if="veg.result" class="result-stats">
               <h4>Resultado</h4>
-              <div class="stat-row"><span>Min:</span> <strong>{{ veg.result.min?.toFixed(3) }}</strong></div>
-              <div class="stat-row"><span>Max:</span> <strong>{{ veg.result.max?.toFixed(3) }}</strong></div>
-              <div class="stat-row"><span>Media:</span> <strong>{{ veg.result.mean?.toFixed(3) }}</strong></div>
-              <div class="stat-row"><span>Desvio:</span> <strong>{{ veg.result.std?.toFixed(3) }}</strong></div>
+              <div class="stat-row"><span>Min:</span> <strong>{{ veg.result.statistics.band_1.min.toFixed(3) }}</strong></div>
+              <div class="stat-row"><span>Max:</span> <strong>{{ veg.result.statistics.band_1.max.toFixed(3) }}</strong></div>
+              <div class="stat-row"><span>Media:</span> <strong>{{ veg.result.statistics.band_1.mean.toFixed(3) }}</strong></div>
+              <div class="stat-row"><span>Pixels validos:</span> <strong>{{ veg.result.statistics.band_1.valid_pixels.toLocaleString('pt-BR') }}</strong></div>
+              <small>Indice visivel RGB; nao utiliza banda NIR.</small>
             </div>
           </div>
         </TabPanel>
@@ -123,10 +136,11 @@
               <label>Ortomapa</label>
               <Select
                 v-model="classif.ortomapaId"
-                :options="ortoOptions"
+                :options="rgbOptions"
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Selecionar..."
+                :disabled="classif.loading"
                 class="w-full"
               />
             </div>
@@ -137,28 +151,39 @@
                 :options="classifAlgorithms"
                 optionLabel="label"
                 optionValue="value"
+                :disabled="classif.loading"
                 class="w-full"
               />
             </div>
             <div class="form-group">
-              <label>Num. Classes</label>
-              <InputText v-model.number="classif.numClasses" type="number" class="w-full" />
+              <label>Numero de grupos espectrais</label>
+              <InputText v-model.number="classif.numClasses" type="number" min="2" max="12" :disabled="classif.loading" class="w-full" />
+            </div>
+            <div class="terrain-aoi">
+              <label><input type="checkbox" v-model="useClassAoi" :disabled="classif.loading" /> Limitar a area</label>
+              <div v-if="useClassAoi" class="aoi-actions">
+                <button type="button" title="Desenhar area da classificacao" :disabled="classif.loading" @click="mapStore.setDrawMode(mapStore.drawMode === 'analysis-aoi' ? null : 'analysis-aoi')"><i class="pi pi-pencil"></i></button>
+                <span>{{ mapStore.drawMode === 'analysis-aoi' ? 'Desenhando' : mapStore.analysisAoi ? 'Area selecionada' : 'Sem area' }}</span>
+                <button type="button" title="Limpar area da classificacao" :disabled="classif.loading || !mapStore.analysisAoi" @click="mapStore.analysisAoi = null; mapStore.setDrawMode(null)"><i class="pi pi-trash"></i></button>
+              </div>
             </div>
             <Button
-              v-if="classif.algorithm === 'RF'"
-              label="Desenhar Areas de Treino"
-              icon="pi pi-pencil"
-              severity="secondary"
-              @click="startDrawTraining"
-              class="w-full mb-2"
-            />
-            <Button
-              label="Classificar"
+              label="Gerar Grupos"
               icon="pi pi-play"
               :loading="classif.loading"
+              :disabled="!projectStore.canEdit || !classif.ortomapaId || classif.numClasses < 2 || classif.numClasses > 12 || (useClassAoi && (!mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'))"
               @click="runClassificacao"
               class="w-full"
             />
+            <div v-if="classif.error" class="terrain-error" role="alert">{{ classif.error }}</div>
+            <div v-if="classif.result" class="result-stats class-result">
+              <h4>Grupos espectrais</h4>
+              <div v-for="cluster in classif.result.clusters" :key="cluster.cluster" class="cluster-row">
+                <span class="cluster-color" :style="{ background: classif.result.analise.resultado.style.colors[cluster.cluster - 1] }"></span>
+                <span>Grupo {{ cluster.cluster }}</span><strong>{{ cluster.percent.toFixed(2) }}%</strong>
+              </div>
+              <small>KMeans RGB sem rotulos semanticos.</small>
+            </div>
           </div>
         </TabPanel>
 
@@ -436,6 +461,12 @@ const ortoOptions = computed(() =>
   projectStore.ortomapas.map((o) => ({ label: o.nome, value: o.id }))
 )
 
+const rgbOptions = computed(() =>
+  projectStore.ortomapas
+    .filter((o) => ['ortomosaico', 'rgb', 'multispectral'].includes(String(o.tipo).toLowerCase()))
+    .map((o) => ({ label: `${o.nome} (${o.tipo})`, value: o.id }))
+)
+
 const dsmDtmOptions = computed(() =>
   projectStore.ortomapas
     .filter((o) => ['dsm', 'dtm', 'DSM', 'DTM'].includes(o.tipo))
@@ -464,8 +495,7 @@ const terrenoTypes = [
 ]
 
 const classifAlgorithms = [
-  { label: 'Random Forest (Supervisionado)', value: 'RF' },
-  { label: 'K-Means (Nao Supervisionado)', value: 'KMeans' },
+  { label: 'K-Means RGB (Nao Supervisionado)', value: 'kmeans' },
 ]
 
 const hidroTypes = [
@@ -492,10 +522,14 @@ const crsOptions = [
 ]
 
 // Reactive state for each tool
-const veg = reactive({ ortomapaId: null, index: 'VARI', loading: false, result: null })
+const useVegAoi = ref(false)
+const veg = reactive({ ortomapaId: null, index: 'VARI', loading: false, result: null, error: '' })
+watch(() => [veg.ortomapaId, veg.index, useVegAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { veg.result = null; veg.error = '' })
 const terreno = reactive({ ortomapaId: null, tipo: 'slope', interval: 5, loading: false, result: null, error: '' })
 watch(() => [terreno.tipo, terreno.ortomapaId, terreno.interval, useTerrainAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { terreno.result = null; terreno.error = '' })
-const classif = reactive({ ortomapaId: null, algorithm: 'KMeans', numClasses: 5, loading: false })
+const useClassAoi = ref(false)
+const classif = reactive({ ortomapaId: null, algorithm: 'kmeans', numClasses: 5, loading: false, result: null, error: '' })
+watch(() => [classif.ortomapaId, classif.algorithm, classif.numClasses, useClassAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { classif.result = null; classif.error = '' })
 const hidro = reactive({ ortomapaId: null, tipo: 'watershed', threshold: 500, pourLat: null, pourLon: null, loading: false })
 const useChangeAoi = ref(false)
 const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.1, loading: false, result: null, error: '' })
@@ -506,6 +540,8 @@ watch(() => [volume.ortomapaId, volume.refElevation, useVolumeAoi.value, JSON.st
 watch(() => projectStore.activeProject?.id, () => {
   useVolumeAoi.value = false; volume.result = null; volume.error = ''
   useChangeAoi.value = false; mudanca.result = null; mudanca.error = ''
+  useVegAoi.value = false; veg.result = null; veg.error = ''
+  useClassAoi.value = false; classif.result = null; classif.error = ''
 })
 const recorte = reactive({ ortomapaId: null, polygon: null, loading: false })
 const exportar = reactive({ layerId: null, format: 'geotiff', crs: 'EPSG:4326', loading: false })
@@ -515,10 +551,16 @@ function ortoPath(id) {
 }
 
 watch(() => projectStore.ortomapas, (items) => {
-  if (!items?.length) { terreno.ortomapaId = null; return }
-  const rgb = items.find((item) => item.tipo === 'ortomosaico' || item.tipo === 'RGB' || item.tipo === 'rgb') || items[0]
+  if (!items?.length) {
+    veg.ortomapaId = null
+    classif.ortomapaId = null
+    terreno.ortomapaId = null
+    return
+  }
+  const rgb = items.find((item) => ['ortomosaico', 'rgb', 'multispectral'].includes(item.tipo?.toLowerCase()))
   const elevation = items.find((item) => ['dsm', 'dtm', 'DSM', 'DTM'].includes(item.tipo))
-  if (!veg.ortomapaId) veg.ortomapaId = rgb.id
+  if (!items.some(item => item.id === veg.ortomapaId && ['ortomosaico', 'rgb', 'multispectral'].includes(item.tipo?.toLowerCase()))) veg.ortomapaId = rgb?.id || null
+  if (!items.some(item => item.id === classif.ortomapaId && ['ortomosaico', 'rgb', 'multispectral'].includes(item.tipo?.toLowerCase()))) classif.ortomapaId = rgb?.id || null
   if (!items.some(item => item.id === mudanca.antesId)) mudanca.antesId = elevation?.id || null
   if (!items.some(item => item.id === mudanca.depoisId)) {
     const before = items.find(item => item.id === mudanca.antesId)
@@ -527,7 +569,7 @@ watch(() => projectStore.ortomapas, (items) => {
   if (!items.some(item => item.id === terreno.ortomapaId)) terreno.ortomapaId = elevation?.id || null
   if (!hidro.ortomapaId && elevation) hidro.ortomapaId = elevation.id
   if (!volume.ortomapaId && elevation) volume.ortomapaId = elevation.id
-  if (!recorte.ortomapaId) recorte.ortomapaId = rgb.id
+  if (!recorte.ortomapaId && rgb) recorte.ortomapaId = rgb.id
 }, { immediate: true })
 
 function addResultLayer(name, data) {
@@ -558,17 +600,22 @@ function addResultLayer(name, data) {
 async function runVegetacao() {
   if (!veg.ortomapaId) return
   veg.loading = true
+  veg.result = null
+  veg.error = ''
   try {
-    const res = await runTool('vegetacao', {
+    const res = await runTool('vegetation', {
       input_path: ortoPath(veg.ortomapaId),
+      ortomapa_id: veg.ortomapaId,
+      projeto_id: projectStore.activeProject.id,
+      aoi: useVegAoi.value ? mapStore.analysisAoi : null,
       output_name: `vegetacao_${veg.index.toLowerCase()}_${Date.now()}`,
       index_name: veg.index,
     })
-    veg.result = res.data.stats || res.data
+    veg.result = res.data
     addResultLayer(`${veg.index}`, res.data)
-    projectStore.fetchAnalises()
+    await projectStore.fetchAnalises()
   } catch (e) {
-    console.error(e)
+    veg.error = e.response?.data?.detail || 'Nao foi possivel calcular o indice RGB'
   } finally {
     veg.loading = false
   }
@@ -604,23 +651,26 @@ async function runTerreno() {
 async function runClassificacao() {
   if (!classif.ortomapaId) return
   classif.loading = true
+  classif.result = null
+  classif.error = ''
   try {
-    const res = await runTool('classificacao', {
+    const res = await runTool('classify', {
+      ortomapa_path: ortoPath(classif.ortomapaId),
       ortomapa_id: classif.ortomapaId,
-      algoritmo: classif.algorithm,
-      num_classes: classif.numClasses,
+      projeto_id: projectStore.activeProject.id,
+      algorithm: classif.algorithm,
+      n_clusters: classif.numClasses,
+      aoi: useClassAoi.value ? mapStore.analysisAoi : null,
+      output_name: `classificacao_kmeans_${Date.now()}`,
     })
-    addResultLayer('Classificacao', res.data)
-    projectStore.fetchAnalises()
+    classif.result = res.data
+    addResultLayer('Grupos espectrais KMeans', res.data)
+    await projectStore.fetchAnalises()
   } catch (e) {
-    console.error(e)
+    classif.error = e.response?.data?.detail || 'Nao foi possivel gerar os grupos espectrais'
   } finally {
     classif.loading = false
   }
-}
-
-function startDrawTraining() {
-  mapStore.setDrawMode('polygon')
 }
 
 function enablePourPointCapture() {
@@ -786,6 +836,11 @@ async function runExport() {
   color: #173b29;
 }
 
+.class-result h4 { margin: 0 0 6px; font-size: .82rem; }
+.cluster-row { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 7px; padding: 3px 0; font-size: .78rem; }
+.cluster-color { width: 12px; height: 12px; border: 1px solid rgba(0, 0, 0, .22); }
+.class-result small { display: block; margin-top: 6px; }
+
 .volume-result .stat-row { flex-wrap: wrap; gap: 4px; }
 
 .form-group {
@@ -832,10 +887,10 @@ async function runExport() {
   justify-content: space-between;
   font-size: 0.78rem;
   padding: 2px 0;
-  color: var(--text);
+  color: #173b29;
 }
 
 .stat-row span {
-  color: var(--text-dim);
+  color: #52645c;
 }
 </style>

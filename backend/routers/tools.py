@@ -14,7 +14,8 @@ from datetime import datetime
 from backend.config import ANALISES_DIR, DATA_DIR
 from backend.tools import gdal_tools, raster_analysis, change_detection, classification, hydrology, volumetry, segmentation
 from backend.utils.resource_access import authorize_tools, data_path, tool_context
-from backend.utils.analysis_products import terrain_source, publish_terrain, publish_contours
+from backend.utils.analysis_products import (terrain_source, publish_terrain, publish_contours,
+                                             image_source, publish_image_analysis)
 from backend.utils.terrain_aoi import prepare_aoi, mask_derivative
 from backend.utils.contour_products import contour_result, contour_input
 from backend.utils.raster_metrics import metric_jacobian
@@ -52,6 +53,9 @@ class VegetationRequest(BaseModel):
     input_path: str
     output_name: str
     index_name: str = "VARI"
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
+    aoi: Optional[dict] = None
 
 class SlopeRequest(BaseModel):
     input_path: str
@@ -87,8 +91,12 @@ class ChangeDetectionRequest(BaseModel):
 class ClassifyRequest(BaseModel):
     ortomapa_path: str
     algorithm: str = "kmeans"
-    n_clusters: int = 7
+    n_clusters: int = Field(default=7, ge=2, le=12)
     training_samples: Optional[List[Dict[str, Any]]] = None
+    output_name: Optional[str] = None
+    ortomapa_id: Optional[int] = None
+    projeto_id: Optional[int] = None
+    aoi: Optional[dict] = None
 
 class WatershedRequest(BaseModel):
     dtm_path: str
@@ -125,7 +133,7 @@ class DSMDiffRequest(BaseModel):
 class SegmentRequest(BaseModel):
     input_path: str
     output_name: str
-    n_clusters: int = 7
+    n_clusters: int = Field(default=7, ge=2, le=12)
 
 def _resolve_path(path: str) -> str:
     """Resolve relative path to absolute.
@@ -230,11 +238,18 @@ async def create_hillshade(req: HillshadeRequest):
 @router.post("/vegetation")
 async def calc_vegetation_index(req: VegetationRequest):
     try:
+        source=image_source(req,req.input_path)
         input_path = _resolve_path(req.input_path)
+        aoi=prepare_aoi(input_path,req.aoi)
         output = _output_path(req.output_name)
-        result = raster_analysis.calc_vegetation_index(input_path, output, index_name=req.index_name)
+        result = raster_analysis.calc_vegetation_index(input_path, output, index_name=req.index_name,aoi=aoi)
         stats = raster_analysis.raster_statistics(output)
-        return {"status": "success", "output_path": result, "statistics": stats}
+        analysis=publish_image_analysis(source,'vegetation',output,stats,req.model_dump(),aoi) if source else None
+        return {"status": "success", "output_path": result, "statistics": stats,"analise":analysis}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422,detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -320,18 +335,32 @@ async def detect_changes(req: ChangeDetectionRequest):
 @router.post("/classify")
 async def classify_raster(req: ClassifyRequest):
     try:
+        source=image_source(req,req.ortomapa_path)
         input_path = _resolve_path(req.ortomapa_path)
-        output = _output_path(f"classified_{req.algorithm}")
-        if req.algorithm == "kmeans":
-            result = segmentation.segment_ortomapa(input_path, output, n_clusters=req.n_clusters)
+        aoi=prepare_aoi(input_path,req.aoi)
+        algorithm=req.algorithm.lower()
+        output = _output_path(req.output_name or f"classified_{algorithm}")
+        analysis=None
+        if algorithm == "kmeans":
+            result = segmentation.segment_ortomapa(input_path, output, n_clusters=req.n_clusters,aoi=aoi)
+            if source:
+                stats=raster_analysis.raster_statistics(output)
+                analysis=publish_image_analysis(source,'classification',output,stats,req.model_dump(),aoi,result)
         else:
+            if algorithm not in {'random_forest','svm'}:
+                raise ValueError('Algoritmo deve ser kmeans, random_forest ou svm')
             if req.training_samples:
                 model_path = os.path.join(ANALISES_DIR, "model.joblib")
-                classification.train_classifier(input_path, req.training_samples, algorithm=req.algorithm, output_model_path=model_path)
-                result = classification.classify_raster(input_path, model_path, output)
+                training=classification.train_classifier(input_path,req.training_samples,algorithm=algorithm,output_model_path=model_path)
+                classification.classify_raster(input_path,model_path,output)
+                result={"output_path":output,"training":training}
             else:
-                result = segmentation.segment_ortomapa(input_path, output, n_clusters=req.n_clusters)
-        return {"status": "success", "output_path": output, "result": result}
+                raise ValueError('Classificacao supervisionada exige amostras rotuladas')
+        return {"status": "success", "output_path": output, **result,"analise":analysis}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422,detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -426,5 +455,7 @@ async def segment_raster(req: SegmentRequest):
         output = _output_path(req.output_name)
         result = segmentation.segment_ortomapa(input_path, output, n_clusters=req.n_clusters)
         return {"status": "success", **result}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

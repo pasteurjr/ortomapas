@@ -22,6 +22,12 @@ STYLES = {
     'elevation_change': {'unit':'m (depois - antes)','method':'nearest','kind':'elevation_change','min':-1,'max':1,
                          'legend':[{'label':'Remocao','color':'#b2182b'},{'label':'Estavel','color':'#f7f7f7'},
                                    {'label':'Deposicao','color':'#2166ac'}]},
+    'vegetation': {'unit':'indice RGB','method':'bilinear','kind':'vegetation','min':-1,'max':1,
+                   'legend':[{'label':'Baixo','color':'#8c510a'},{'label':'Medio','color':'#f6e8c3'},
+                             {'label':'Alto','color':'#1b7837'}]},
+    'classification': {'unit':'grupo espectral','method':'nearest','kind':'classification','min':1,'max':7,
+                       'colors':['#3b82f6','#f59e0b','#22c55e','#ef4444','#8b5cf6','#06b6d4',
+                                 '#eab308','#ec4899','#64748b','#14b8a6','#f97316','#84cc16']},
 }
 NAMES = {'aspect':'Orientacao do relevo','hillshade':'Sombreamento','slope':'Declividade','volume':'Corte/aterro por cota'}
 
@@ -46,6 +52,92 @@ def terrain_source(request):
     if data_path(source['caminho_arquivo']) != data_path(request.input_path):
         raise HTTPException(status_code=422, detail='Arquivo difere do modelo selecionado')
     return source
+
+
+def image_source(request, path_value):
+    """Resolve an RGB-capable source while retaining file-only legacy calls."""
+    if request.ortomapa_id is None:
+        return None
+    context=tool_context.get()
+    if not context or request.projeto_id != context[1]:
+        raise HTTPException(status_code=403,detail='Contexto do projeto invalido')
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True);cur.execute('SELECT * FROM ortomapas WHERE id=%s',(request.ortomapa_id,));source=cur.fetchone()
+    if not source:
+        raise HTTPException(status_code=404,detail='Ortomapa de origem nao encontrado')
+    if source['projeto_id'] != context[1]:
+        raise HTTPException(status_code=403,detail='Ortomapa pertence a outro projeto')
+    if str(source['tipo']).lower() not in {'ortomosaico','rgb','multispectral'}:
+        raise HTTPException(status_code=422,detail='Selecione um ortomosaico RGB ou multiespectral')
+    if data_path(source['caminho_arquivo']) != data_path(path_value):
+        raise HTTPException(status_code=422,detail='Arquivo difere do ortomapa selecionado')
+    return source
+
+
+def _raster_percentiles(path):
+    with rasterio.open(path) as ds:
+        sample=ds.read(1,out_shape=(min(ds.height,512),min(ds.width,512)),masked=True).compressed()
+    sample=sample[np.isfinite(sample)]
+    if not sample.size:
+        raise ValueError('Resultado sem pixels validos')
+    low,high=np.percentile(sample,[2,98])
+    if high <= low:
+        low,high=float(sample.min()),float(sample.max())
+    if high <= low:
+        low,high=low-.01,high+.01
+    return float(low),float(high)
+
+
+def publish_image_analysis(source, operation, output, statistics, parameters, aoi=None, details=None):
+    """Publish visible-band indices and unsupervised RGB groups."""
+    path=data_path(output);details=details or {}
+    if operation=='vegetation':
+        low,high=_raster_percentiles(path);middle=(low+high)/2
+        index=parameters['index_name'].upper()
+        style={**STYLES['vegetation'],'min':low,'max':high,'legend':[
+            {'label':f'{low:.3f} Baixo','color':'#8c510a'},
+            {'label':f'{middle:.3f}','color':'#f6e8c3'},
+            {'label':f'{high:.3f} Alto','color':'#1b7837'}]}
+        name=f'Indice RGB {index}';kind='vegetacao'
+        result_stats=statistics['band_1']
+    else:
+        colors=STYLES['classification']['colors'][:details['n_clusters']]
+        style={**STYLES['classification'],'max':details['n_clusters'],'colors':colors,'legend':[
+            {'label':f"Grupo {cluster['cluster']} · RGB {','.join(map(str,cluster['center_rgb']))}",'color':colors[i]}
+            for i,cluster in enumerate(details['clusters'])]}
+        name=f"Grupos espectrais KMeans ({details['n_clusters']})";kind='classificacao'
+        result_stats={key:details[key] for key in ('n_clusters','total_valid_pixels','sample_pixels','pixel_area_m2','valid_area_m2')}
+    with rasterio.open(path) as ds:
+        west,south,east,north=transform_bounds(ds.crs,4326,*ds.bounds)
+        metadata={'crs':str(ds.crs),'width':ds.width,'height':ds.height,
+                  'bbox_oeste':west,'bbox_sul':south,'bbox_leste':east,'bbox_norte':north,
+                  'style':style,'stats':result_stats,
+                  'provenance':{'source_ortomapa_id':source['id'],'source_path':source['caminho_arquivo'],
+                                'operation':parameters.get('index_name',operation),'bands':'R=1,G=2,B=3',
+                                'scope':'aoi' if aoi else 'full raster','created_by':tool_context.get()[0]}}
+        if operation=='classification':
+            metadata['classes']=[{'nome':f"Grupo {cluster['cluster']}",'area':cluster['area_m2'],
+                                  'percentual':cluster['percent'],'pixel_count':cluster['pixel_count'],
+                                  'center_rgb':cluster['center_rgb'],'color':style['colors'][i]}
+                                 for i,cluster in enumerate(details['clusters'])]
+            metadata['provenance'].update(algorithm='KMeans RGB normalizado',semantic_labels=False,
+                                          training_sample_pixels=details['sample_pixels'])
+        else:
+            metadata['provenance'].update(algorithm='visible-band index',nir_used=False)
+        if aoi:
+            valid_area=(details.get('valid_area_m2') if operation=='classification'
+                        else statistics['band_1']['valid_pixels']*aoi['pixel_area_m2'])
+            metadata['aoi']={'geometry':aoi['geometry'],'crs':'EPSG:4326','area_m2':aoi['area_m2'],
+                             'pixel_area_m2':aoi['pixel_area_m2'],'valid_area_m2':valid_area,
+                             'mask_rule':'pixel center'}
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+            (source['id'],source['projeto_id'],kind,name+(' - area selecionada' if aoi else ''),
+             Json(parameters),str(path),Json(metadata)))
+        row=dict(cur.fetchone());conn.commit()
+    return serialize_analysis(row)
 
 
 def comparison_sources(request):
@@ -188,6 +280,14 @@ def colorize(values, valid, style):
     elif style['kind']=='volume':
         palette=np.array([[33,102,172],[247,247,247],[178,24,43]])
         rgb=np.stack([np.interp(values,[style['min'],0,style['max']],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)
+    elif style['kind']=='vegetation':
+        palette=np.array([[140,81,10],[246,232,195],[27,120,55]])
+        middle=(style['min']+style['max'])/2
+        rgb=np.stack([np.interp(values,[style['min'],middle,style['max']],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)
+    elif style['kind']=='classification':
+        palette=np.array([[int(color[i:i+2],16) for i in (1,3,5)] for color in style['colors']],dtype=np.uint8)
+        indexes=np.clip(np.rint(values).astype(int)-1,0,len(palette)-1)
+        rgb=palette[indexes]
     else:
         palette=np.array([[int(item['color'][i:i+2],16) for i in (1,3,5)] for item in STYLES['slope']['legend']])
         rgb=np.stack([np.interp(values,[0,10,30,60,90],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)

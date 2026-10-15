@@ -26,6 +26,7 @@ def calc_vegetation_index(
     input_path: str,
     output_path: str,
     index_name: str = "VARI",
+    aoi=None,
 ) -> str:
     """
     Calculate a visible-band vegetation index from an RGB ortomapa.
@@ -57,9 +58,18 @@ def calc_vegetation_index(
         raise ValueError(f"Unsupported index '{index_name}'. Choose from {supported}.")
 
     with rasterio.open(input_path) as src:
-        R = src.read(1).astype(np.float64)
-        G = src.read(2).astype(np.float64)
-        B = src.read(3).astype(np.float64)
+        if src.count < 3:
+            raise ValueError("Indice de vegetacao visivel exige raster RGB com pelo menos tres bandas")
+        if aoi:
+            bands, transform = rasterio_mask(src, [aoi['projected']], indexes=[1, 2, 3], crop=True,
+                                              all_touched=False, filled=False)
+        else:
+            bands = src.read([1, 2, 3], masked=True)
+            transform = src.transform
+        R, G, B = [band.astype(np.float64) for band in bands]
+        invalid = np.logical_or.reduce([np.ma.getmaskarray(band) for band in bands])
+        invalid |= ~np.isfinite(np.asarray(R)) | ~np.isfinite(np.asarray(G)) | ~np.isfinite(np.asarray(B))
+        R, G, B = [np.asarray(band) for band in (R, G, B)]
         profile = src.profile.copy()
 
     # Avoid division by zero
@@ -83,17 +93,26 @@ def calc_vegetation_index(
 
     # Clamp extreme values
     result = np.clip(result, -1e6, 1e6)
-    result[~np.isfinite(result)] = 0.0
+    invalid |= ~np.isfinite(result)
+    if (~invalid).sum() == 0:
+        raise ValueError("Area sem pixels RGB validos para o indice")
+    result[invalid] = np.nan
 
+    for option in ('blockxsize', 'blockysize', 'tiled'):
+        profile.pop(option, None)
     profile.update(
         dtype=rasterio.float32,
         count=1,
         compress="lzw",
-        nodata=-9999.0,
+        nodata=np.nan,
+        width=result.shape[1],
+        height=result.shape[0],
+        transform=transform,
     )
 
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(result.astype(np.float32), 1)
+        dst.update_tags(operation=index_name, bands='R=1,G=2,B=3', analysis_scope='aoi' if aoi else 'full raster')
 
     logger.info("Vegetation index %s written to %s", index_name, output_path)
     return output_path

@@ -405,11 +405,11 @@
 |-------|-----------|
 | **ID** | EF-VEG-01 |
 | **Descricao** | Calcular indice de vegetacao visivel a partir de ortomapa RGB |
-| **Entrada** | `{input_path: string, output_name: string, index_name: "VARI"|"TGI"|"ExG"|"GLI"}` |
-| **Saida** | `{status: "success", output_path: string, statistics: {band_1: {min, max, mean, std, median, histogram, valid_pixels, total_pixels}}}` |
+| **Entrada** | `{input_path, output_name, index_name: "VARI"|"TGI"|"ExG"|"GLI", ortomapa_id, projeto_id, aoi?: Polygon|MultiPolygon WGS84}` |
+| **Saida** | `{status: "success", output_path, statistics, analise}`; `analise` contem ID, estilo, bounds, proveniencia e URL de tiles persistentes |
 | **Endpoint** | `POST /api/tools/vegetation` |
 | **Componente** | `ToolsPanel.vue` (aba Vegetacao) |
-| **Regras** | Bandas lidas como float64 (R=banda1, G=banda2, B=banda3). Formulas: VARI=(G-R)/(G+R-B), TGI=G-0.39*R-0.61*B, ExG=2*G-R-B, GLI=(2*G-R-B)/(2*G+R+B). Divisao por zero tratada com epsilon 1e-10. Valores extremos clampados a [-1e6, 1e6]. Nodata=-9999. Output GeoTIFF float32 com compressao LZW. Estatisticas calculadas apos geracao. |
+| **Regras** | Somente fonte RGB/multiespectral do projeto ativo. Bandas R=1, G=2, B=3; formulas VARI=(G-R)/(G+R-B), TGI=G-0.39R-0.61B, ExG=2G-R-B, GLI=(2G-R-B)/(2G+R+B). Mascara/nodata e AOI sao preservados; output GeoTIFF float32 LZW com NaN como nodata. Resultado e publicado em `analises` com percentis 2-98 para exibicao. Esses indices usam RGB visivel e nao sao NDVI; pedido de NDVI sem NIR recebe 422. |
 
 ---
 
@@ -488,12 +488,12 @@
 | Campo | Descricao |
 |-------|-----------|
 | **ID** | EF-CLA-01 |
-| **Descricao** | Classificar cobertura do solo via KMeans, Random Forest ou SVM |
-| **Entrada** | `{ortomapa_path: string, algorithm: "kmeans"|"random_forest"|"svm" (default "kmeans"), n_clusters: int (default 7), training_samples: [{class_name, geometry_wkt}] (opcional)}` |
-| **Saida** | `{status: "success", output_path: string, result: {...}}` |
+| **Descricao** | Agrupar pixels do ortomosaico em grupos espectrais RGB por KMeans nao supervisionado |
+| **Entrada** | `{ortomapa_path, algorithm: "kmeans", n_clusters: 2..12, output_name, ortomapa_id, projeto_id, aoi?: Polygon|MultiPolygon WGS84}` |
+| **Saida** | `{status: "success", output_path, n_clusters, total_valid_pixels, sample_pixels, clusters, analise}` |
 | **Endpoint** | `POST /api/tools/classify` |
 | **Componente** | `ToolsPanel.vue` (aba Classificacao) |
-| **Regras** | KMeans: subsampling 100k pixels, n_init=10, max_iter=300, clustering em RGB normalizado [0,1]. RF/SVM: requer training_samples, 6 features (R,G,B,VARI,TGI,ExG), train/test split 80/20, accuracy + kappa reportados. Filtro de maioria 3x3 aplicado apos classificacao. 7 classes: vegetacao_densa, vegetacao_rasteira, solo_exposto, agua, urbano, agricola, rocha. |
+| **Regras** | A interface operacional expoe somente KMeans RGB, com amostra deterministica de ate 100 mil pixels, `n_init=10`, predicao em blocos e nodata=0. Pixels RGB pretos validos nao sao confundidos com nodata. Cada grupo retorna centro RGB, pixels, area m2/ha e percentual; o raster e publicado e reabre pelo catalogo. Os grupos nao recebem rotulos semanticos automaticos. RF/SVM permanecem apenas como API legada e exigem amostras rotuladas reais; nao sao anunciados na interface ate existir fluxo de treino e avaliacao completo. |
 
 ---
 

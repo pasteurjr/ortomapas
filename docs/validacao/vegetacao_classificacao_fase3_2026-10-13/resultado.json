@@ -1,0 +1,51 @@
+{
+  "accepted": true,
+  "errors": [],
+  "screens": [
+    "01_vari_parametros_aoi.png",
+    "02_vari_resultado_mapa.png",
+    "03_kmeans_parametros_mesma_aoi.png",
+    "04_kmeans_resultado_mapa_grupos.png",
+    "05_persistencia_catalogo_classificacao.png"
+  ],
+  "checks": {
+    "vari": {
+      "valid_pixels": 8098509,
+      "max_formula_error": 1.0217939117040942e-07,
+      "min": -26.5,
+      "max": 26.5,
+      "mean": 0.0827125832438469
+    },
+    "vari_tile": {
+      "z": 18,
+      "x": 71541,
+      "y": 97990,
+      "rgba_exact": true,
+      "opaque_pixels": 51584
+    },
+    "classification": {
+      "groups": 5,
+      "valid_pixels": 8098509,
+      "percent_sum": 100.0001,
+      "labels": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "classification_tile": {
+      "z": 18,
+      "x": 71541,
+      "y": 97990,
+      "rgba_exact": true,
+      "opaque_pixels": 51584
+    },
+    "ndvi_without_nir_status": 422,
+    "dsm_as_rgb_status": 422,
+    "outsider_status": 403
+  },
+  "vegetation_id": 85,
+  "classification_id": 86
+}

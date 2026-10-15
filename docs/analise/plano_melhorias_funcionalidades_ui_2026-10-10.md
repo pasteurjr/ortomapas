@@ -286,6 +286,8 @@ Adicionar casos específicos para abrir DSM/DTM 3D, nuvem, perfil altimétrico, 
 
 **Aceite:** cada ferramenta demonstra entrada preenchida, submissão, resultado novo, mapa/gráfico, estatísticas e arquivo exportável; erros de banda/CRS/entrada são visíveis; tolerâncias numéricas aprovadas.
 
+**Progresso em 13/10/2026:** vegetacao RGB (VARI/TGI/ExG/GLI) e agrupamento espectral KMeans foram integrados ao contrato por ID/projeto/AOI, publicados no catalogo e validados sobre a ortofoto Aukerman. O teste recalculou VARI independentemente, conferiu contagens/areas dos grupos e comparou tiles RGBA pixel a pixel. Evidencias: `docs/validacao/vegetacao_classificacao_fase3_2026-10-13.md`. Classificacao supervisionada continua fora do aceite operacional ate haver amostras rotuladas e avaliacao de acuracia.
+
 ### Fase 6. ODM pela aplicação
 
 **Entregas:** novo voo, upload real, tarefa NodeODM, acompanhamento, importação idempotente, visualização dos produtos e qualidade. Reaproveitar serviços instalados e investigar estados reais, sem substituir por tasks seed.

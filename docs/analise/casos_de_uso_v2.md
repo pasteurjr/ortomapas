@@ -557,7 +557,7 @@ Enviar um arquivo GeoTIFF para o sistema, vincula-lo ao projeto ativo, e visuali
 - **Ator:** Usuario
 
 ### Objetivo
-Calcular o indice de vegetacao VARI (Visible Atmospherically Resistant Index) a partir de um ortomapa RGB, visualizar o resultado como camada raster no mapa e consultar as estatisticas (min, max, media, desvio padrao).
+Calcular um indice de vegetacao visivel a partir de um ortomapa RGB, opcionalmente limitado por AOI, publicar o raster no mapa e consultar min, max, media e pixels validos. O fluxo nao calcula NDVI sem banda NIR.
 
 ### Pre-condicoes
 - Um projeto esta ativo com pelo menos um ortomapa do tipo RGB
@@ -567,7 +567,7 @@ Calcular o indice de vegetacao VARI (Visible Atmospherically Resistant Index) a 
 ### Pos-condicoes
 - Uma nova analise de vegetacao foi criada no banco de dados
 - O resultado raster do VARI esta disponivel como camada no mapa
-- As estatisticas (min, max, media, desvio) sao exibidas no painel
+- As estatisticas (min, max, media e pixels validos) sao exibidas no painel
 
 ### Elementos de UI Envolvidos
 - ToolsPanel na sidebar direita
@@ -594,7 +594,7 @@ Calcular o indice de vegetacao VARI (Visible Atmospherically Resistant Index) a 
 #### Passo 2 - Selecionar o ortomapa
 - **Acao do ator:** Abre o dropdown "Ortomapa" e seleciona um ortomapa RGB
 - **Contexto visual anterior:** Dropdown mostrando "Selecionar..." (placeholder)
-- **Elemento de UI utilizado:** Select PrimeVue com v-model `veg.ortomapaId`, opcoes vindas de `ortoOptions` (computed que mapeia `projectStore.ortomapas`)
+- **Elemento de UI utilizado:** Select PrimeVue com v-model `veg.ortomapaId`, opcoes vindas de `rgbOptions`; DSM e DTM nao aparecem.
 - **Resposta imediata do sistema:** O dropdown fecha e mostra o nome do ortomapa selecionado
 - **Processamento funcional:** `veg.ortomapaId` e setado para o `id` do ortomapa selecionado
 - **Efeito observavel na UI:** O nome do ortomapa aparece no dropdown
@@ -618,7 +618,7 @@ Calcular o indice de vegetacao VARI (Visible Atmospherically Resistant Index) a 
 - **Contexto visual anterior:** Ortomapa e indice selecionados, botao habilitado
 - **Elemento de UI utilizado:** Button PrimeVue com label "Calcular Indice", icon `pi pi-play`, classe `w-full`
 - **Resposta imediata do sistema:** O botao entra em estado loading (spinner + desabilitado)
-- **Processamento funcional:** (1) Verifica que `veg.ortomapaId` nao e null. (2) Seta `veg.loading = true`. (3) Chama `runTool('vegetacao', { ortomapa_id, indice: 'VARI' })` que faz POST `/api/tools/vegetacao`. (4) O backend calcula o indice VARI pixel a pixel: `(Green - Red) / (Green + Red - Blue)`. (5) Gera raster de resultado e calcula estatisticas. (6) Retorna JSON com `stats: {min, max, mean, std}` e possivelmente `tile_url` e `layer_id`
+- **Processamento funcional:** (1) Valida a fonte RGB e a AOI opcional. (2) Seta `veg.loading = true`. (3) Chama `runTool('vegetation', {input_path, ortomapa_id, projeto_id, aoi, output_name, index_name})`, via POST `/api/tools/vegetation`. (4) O backend preserva nodata, calcula e recorta o indice. (5) Publica GeoTIFF, estatisticas, estilo e proveniencia em `analises`. (6) A interface adiciona a camada persistente e atualiza o catalogo.
 - **Efeito observavel na UI:** O botao mostra spinner enquanto processa
 - **Evidencia esperada:** Screenshot do botao em estado loading
 - **Criterio de aceitacao:** O botao deve estar desabilitado com icone de spinner durante o processamento
@@ -627,12 +627,12 @@ Calcular o indice de vegetacao VARI (Visible Atmospherically Resistant Index) a 
 #### Passo 5 - Visualizar resultados estatisticos
 - **Acao do ator:** Observa os resultados que aparecem abaixo do botao
 - **Contexto visual anterior:** Botao em estado loading
-- **Elemento de UI utilizado:** Div `.result-stats` com titulo "Resultado" e quatro linhas `.stat-row`: Min, Max, Media, Desvio
+- **Elemento de UI utilizado:** Div `.result-stats` com titulo "Resultado" e quatro linhas `.stat-row`: Min, Max, Media, Pixels validos
 - **Resposta imediata do sistema:** Os valores estatisticos aparecem formatados com 3 casas decimais
-- **Processamento funcional:** `veg.result` e populado com `res.data.stats || res.data`. Os valores sao exibidos via template `{{ veg.result.min?.toFixed(3) }}`, etc. `addResultLayer('VARI', res.data)` adiciona a camada ao mapa. `projectStore.fetchAnalises()` recarrega a lista de analises
-- **Efeito observavel na UI:** Bloco verde claro com fundo `rgba(74, 222, 128, 0.08)` mostrando: Min (ex: -0.312), Max (ex: 0.547), Media (ex: 0.123), Desvio (ex: 0.089)
+- **Processamento funcional:** `veg.result` recebe a resposta; `addResultLayer()` usa a analise publicada e `fetchAnalises()` recarrega o catalogo.
+- **Efeito observavel na UI:** Bloco mostra min, max, media, pixels validos e o aviso de que o indice usa RGB visivel, sem NIR.
 - **Evidencia esperada:** Screenshot dos resultados estatisticos
-- **Criterio de aceitacao:** Os quatro valores devem ser numeros validos formatados com 3 casas decimais. Min <= Media <= Max
+- **Criterio de aceitacao:** Min, max e media sao numeros validos; pixels validos e inteiro positivo; Min <= Media <= Max.
 - **Seletor Playwright:** `page.locator('.tools-panel .result-stats')`
 
 #### Passo 6 - Verificar camada de resultado no mapa
@@ -1179,7 +1179,7 @@ Comparar dois ortomapas de datas diferentes para detectar areas onde ocorreram m
 
 ---
 
-## UC-010: Classificar Uso do Solo com KMeans
+## UC-010: Agrupar Assinaturas Espectrais RGB com KMeans
 
 ### Identificacao
 - **ID:** UC-010
@@ -1188,23 +1188,24 @@ Comparar dois ortomapas de datas diferentes para detectar areas onde ocorreram m
 - **Ator:** Usuario
 
 ### Objetivo
-Realizar classificacao nao-supervisionada do uso do solo em um ortomapa RGB utilizando o algoritmo KMeans, definindo o numero de classes, e visualizar o mapa classificado no mapa interativo.
+Agrupar pixels de um ortomapa RGB por similaridade espectral com KMeans, definindo de 2 a 12 grupos e visualizando o raster sem atribuir classes semanticas nao comprovadas.
 
 ### Pre-condicoes
 - Projeto ativo com ortomapa RGB
 - Sidebar direita visivel
 
 ### Pos-condicoes
-- Mapa de classificacao de uso do solo gerado
+- Raster de grupos espectrais gerado e persistido
 - Cada pixel atribuido a uma classe
 - Camada classificada adicionada ao mapa com cores distintas por classe
 
 ### Elementos de UI Envolvidos
 - Tab "Cls" (classificacao) no ToolsPanel
 - Select "Ortomapa"
-- Select "Algoritmo" (KMeans / Random Forest)
-- InputText "Num. Classes"
-- Button "Classificar"
+- Select "Algoritmo" (K-Means RGB nao supervisionado)
+- InputText "Numero de grupos espectrais"
+- Checkbox e comandos da AOI
+- Button "Gerar Grupos"
 
 ### Fluxo Principal
 
@@ -1214,7 +1215,7 @@ Realizar classificacao nao-supervisionada do uso do solo em um ortomapa RGB util
 - **Elemento de UI utilizado:** Tab com valor `classificacao`, conteudo `<i class="pi pi-th-large"></i> Cls`
 - **Resposta imediata do sistema:** Formulario de classificacao
 - **Processamento funcional:** `activeTab = 'classificacao'`
-- **Efeito observavel na UI:** Select de ortomapa, select de algoritmo, input de classes e botao "Classificar"
+- **Efeito observavel na UI:** Select de ortomapa, algoritmo, quantidade, AOI opcional e botao "Gerar Grupos"
 - **Evidencia esperada:** Screenshot aba classificacao
 - **Criterio de aceitacao:** Formulario visivel
 - **Seletor Playwright:** `page.locator('.tools-panel [data-p-value="classificacao"]')`
@@ -1222,7 +1223,7 @@ Realizar classificacao nao-supervisionada do uso do solo em um ortomapa RGB util
 #### Passo 2 - Selecionar ortomapa
 - **Acao do ator:** Seleciona ortomapa RGB no dropdown
 - **Contexto visual anterior:** Dropdown com placeholder
-- **Elemento de UI utilizado:** Select `classif.ortomapaId` com opcoes `ortoOptions`
+- **Elemento de UI utilizado:** Select `classif.ortomapaId` com opcoes `rgbOptions`; DSM/DTM nao aparecem.
 - **Resposta imediata do sistema:** Ortomapa selecionado
 - **Processamento funcional:** `classif.ortomapaId` setado
 - **Efeito observavel na UI:** Nome do ortomapa no dropdown
@@ -1233,10 +1234,10 @@ Realizar classificacao nao-supervisionada do uso do solo em um ortomapa RGB util
 #### Passo 3 - Verificar algoritmo KMeans
 - **Acao do ator:** Verifica que "K-Means (Nao Supervisionado)" esta selecionado (padrao)
 - **Contexto visual anterior:** Dropdown de algoritmo mostrando KMeans
-- **Elemento de UI utilizado:** Select `classif.algorithm` com opcoes `classifAlgorithms`, valor padrao `'KMeans'`
+- **Elemento de UI utilizado:** Select `classif.algorithm` com a opcao operacional `kmeans`.
 - **Resposta imediata do sistema:** N/A - ja e padrao
-- **Processamento funcional:** `classif.algorithm = 'KMeans'`
-- **Efeito observavel na UI:** Dropdown mostra "K-Means (Nao Supervisionado)". Botao "Desenhar Areas de Treino" NAO aparece (so aparece para RF: `v-if="classif.algorithm === 'RF'"`)
+- **Processamento funcional:** `classif.algorithm = 'kmeans'`
+- **Efeito observavel na UI:** Dropdown mostra "K-Means RGB (Nao Supervisionado)". A interface nao anuncia classificacao supervisionada sem amostras reais.
 - **Evidencia esperada:** Screenshot confirmando KMeans
 - **Criterio de aceitacao:** Algoritmo KMeans selecionado, sem botao de treino
 - **Seletor Playwright:** `page.locator('.tools-panel [value="classificacao"] .form-group').nth(1).locator('.p-select')`
@@ -1252,12 +1253,12 @@ Realizar classificacao nao-supervisionada do uso do solo em um ortomapa RGB util
 - **Criterio de aceitacao:** Valor deve ser 7
 - **Seletor Playwright:** `page.locator('.tools-panel [value="classificacao"] input[type="number"]')`
 
-#### Passo 5 - Clicar em "Classificar"
-- **Acao do ator:** Clica no botao "Classificar"
+#### Passo 5 - Clicar em "Gerar Grupos"
+- **Acao do ator:** Clica no botao "Gerar Grupos"
 - **Contexto visual anterior:** Formulario completo
-- **Elemento de UI utilizado:** Button "Classificar" com icon `pi pi-play`
+- **Elemento de UI utilizado:** Button "Gerar Grupos" com icon `pi pi-play`
 - **Resposta imediata do sistema:** Botao em loading
-- **Processamento funcional:** (1) Valida ortomapa. (2) POST `/api/tools/classificacao` com `{ortomapa_id, algoritmo: 'KMeans', num_classes: 7}`. (3) Backend: le raster, extrai pixels como features (R, G, B), aplica KMeans do scikit-learn com 7 clusters. (4) Gera raster classificado onde cada pixel tem o numero da classe. (5) Retorna resultado com mapa e possivelmente GeoJSON de poligonos
+- **Processamento funcional:** (1) Valida fonte RGB, projeto, quantidade e AOI. (2) POST `/api/tools/classify` com paths e IDs vinculados. (3) Treina KMeans deterministico em ate 100 mil pixels validos e prediz em blocos. (4) Gera GeoTIFF de rotulos 1..N, nodata=0. (5) Publica centros RGB, contagens, areas, percentuais, estilo e proveniencia.
 - **Efeito observavel na UI:** Spinner no botao
 - **Evidencia esperada:** Screenshot loading
 - **Criterio de aceitacao:** Requisicao com parametros corretos
@@ -1269,17 +1270,17 @@ Realizar classificacao nao-supervisionada do uso do solo em um ortomapa RGB util
 - **Elemento de UI utilizado:** MapViewer com camada de classificacao
 - **Resposta imediata do sistema:** Mapa classificado com 7 cores distintas
 - **Processamento funcional:** `addResultLayer('Classificacao', res.data)`. O estilo `getAnalysisStyle` do MapViewer atribui cor diferente por classe usando array `['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']`
-- **Efeito observavel na UI:** Mapa colorido por classes de uso do solo, cada classe com cor distinta
+- **Efeito observavel na UI:** Mapa colorido por grupos espectrais, legenda com centro RGB e painel com percentual de cada grupo. Nenhum grupo recebe automaticamente o nome vegetacao, agua ou solo.
 - **Evidencia esperada:** Screenshot da classificacao
 - **Criterio de aceitacao:** Deve haver exatamente 7 classes de cores distintas visiveis no mapa
 - **Seletor Playwright:** `page.locator('.map-container')`
 
 ### Fluxos Alternativos
 
-#### FA-1: Usar Random Forest em vez de KMeans
-- **Passo divergente:** Passo 3
-- **Acao:** Seleciona "Random Forest (Supervisionado)"
-- **Efeito:** Botao "Desenhar Areas de Treino" aparece (v-if `classif.algorithm === 'RF'`). O usuario precisa fornecer amostras de treino antes de classificar
+#### FA-1: Limitar a uma AOI
+- **Passo divergente:** Antes da execucao
+- **Acao:** Marca "Limitar a area" e desenha um poligono valido.
+- **Efeito:** O botao fica bloqueado durante o desenho; o resultado e recortado e mascarado pela geometria, registrada na proveniencia.
 
 ### Fluxos de Excecao
 
