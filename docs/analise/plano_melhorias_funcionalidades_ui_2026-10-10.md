@@ -298,6 +298,8 @@ Adicionar casos específicos para abrir DSM/DTM 3D, nuvem, perfil altimétrico, 
 
 **Aceite:** nova task UUID registrada; logs/status obtidos do serviço; pelo menos ortofoto, DSM/DTM disponíveis conforme parâmetros efetivamente enviados; produtos ligados ao projeto; reinício não duplica importação.
 
+**Aceite validado em 16/10/2026:** duas tasks reais com 77 fotos Aukerman foram submetidas via UI. A primeira rápida/reduzida produziu LAZ esparso (57.452 pontos) e foi corretamente marcada com ressalva; a segunda, em resolução original e sem `skip-3dmodel`, concluiu em ~22 min e importou ortomosaico, DSM, DTM, LAZ (16.091.179 pontos) e PDF. Avaliação, visualizadores 2D/3D e reimportação sem duplicação foram verificadas no Playwright. Corrigidos validação/associação do upload, autorização, idempotência, leitura da contagem LAZ, enquadramento do raster e apresentação da UI. Limite restante: a malha OBJ texturizada não é importada nem visualizada no Ortomapas. Evidências: `docs/validacao/odm_fase6_2026-10-16.md`.
+
 ### Fase 7. Missões e cobertura
 
 **Entregas:** perfil de câmera, footprint/overlap, blocos de autonomia, seleção/arraste, atualização completa, tolerância métrica, reabertura, relatório e exportações verificadas. Resolver M-15 a M-17.

@@ -6,15 +6,6 @@
         <Badge :value="voos.length" severity="info" />
       </h3>
       <Button
-        icon="pi pi-upload"
-        severity="info"
-        text
-        size="small"
-        title="Enviar fotos para ODM"
-        :disabled="!projectStore.canEdit"
-        @click="choosePhotos(voo)"
-      />
-      <Button
         icon="pi pi-plus"
         label="Novo"
         size="small"
@@ -26,9 +17,13 @@
 
     <input ref="photoInput" type="file" accept=".jpg,.jpeg,.tif,.tiff" multiple hidden @change="uploadPhotos" />
 
+    <p v-if="feedback" class="upload-feedback" :class="feedbackType" role="status">{{ feedback }}</p>
+
     <Dialog v-model:visible="showOdmDialog" header="Processar fotos no ODM" :modal="true" :style="{ width: '420px' }">
-      <p class="dialog-help">{{ selectedFiles.length }} foto(s) selecionada(s) para o voo {{ selectedVoo?.id }}.</p>
-      <div class="form-group"><label>Redimensionar para (px)</label><InputText v-model.number="odmResize" type="number" min="0" class="w-full" /></div>
+      <p class="dialog-help">{{ selectedFiles.length }} foto(s), {{ selectedFilesSizeMb }} MB, para o voo {{ selectedVoo?.id }}.</p>
+      <p class="dialog-note">Padrão: resolução original e reconstrução completa, com DSM, DTM e nuvem LAZ. A opção rápida reduz o tempo e pode diminuir a densidade da nuvem.</p>
+      <p v-if="selectedFiles.length < 3" class="validation-warning" role="alert">Selecione ao menos 3 imagens para a fotogrametria.</p>
+      <div class="form-group"><label>Redimensionar para (px, 0 = original)</label><InputText v-model.number="odmResize" type="number" min="0" class="w-full" /></div>
       <div class="form-group"><label><input v-model="odmFast" type="checkbox" /> Gerar ortofoto rápida</label></div>
       <div class="form-group"><label><input v-model="odmDsm" type="checkbox" /> Gerar DSM (superfície)</label></div>
       <div class="form-group"><label><input v-model="odmDtm" type="checkbox" /> Gerar DTM (terreno)</label></div>
@@ -57,17 +52,27 @@
       <div class="voo-info">
         <div class="voo-date">{{ voo.data_voo || 'Sem data' }}</div>
         <div class="voo-meta">
-          <span v-if="voo.drone" class="meta-item" :title="'Drone: ' + voo.drone">
-            <i class="pi pi-video"></i> {{ voo.drone }}
+          <span v-if="voo.app_voo" class="meta-item" :title="'Aplicativo: ' + voo.app_voo">
+            <i class="pi pi-send"></i> {{ voo.app_voo }}
           </span>
-          <span v-if="voo.altitude_voo" class="meta-item" :title="'Altitude: ' + voo.altitude_voo + 'm'">
-            <i class="pi pi-arrow-up"></i> {{ voo.altitude_voo }}m
+          <span v-if="voo.altitude_voo_m" class="meta-item" :title="'Altitude: ' + voo.altitude_voo_m + 'm'">
+            <i class="pi pi-arrow-up"></i> {{ voo.altitude_voo_m }}m
           </span>
           <span v-if="voo.num_fotos" class="meta-item">
             <i class="pi pi-camera"></i> {{ voo.num_fotos }}
           </span>
         </div>
       </div>
+      <Button
+        icon="pi pi-upload"
+        label="Fotos"
+        severity="info"
+        text
+        size="small"
+        title="Enviar fotos deste voo para o ODM"
+        :disabled="!projectStore.canEdit"
+        @click="choosePhotos(voo)"
+      />
       <Button
         icon="pi pi-trash"
         severity="danger"
@@ -90,12 +95,12 @@
         <InputText v-model="newVoo.data_voo" type="date" class="w-full" />
       </div>
       <div class="form-group">
-        <label>Drone</label>
-        <InputText v-model="newVoo.drone" placeholder="Ex: DJI Mini 3" class="w-full" />
+        <label>Aplicativo de voo</label>
+        <InputText v-model="newVoo.app_voo" placeholder="Ex: DJI Fly" class="w-full" />
       </div>
       <div class="form-group">
         <label>Altitude de voo (m)</label>
-        <InputText v-model.number="newVoo.altitude_voo" type="number" placeholder="120" class="w-full" />
+        <InputText v-model.number="newVoo.altitude_voo_m" type="number" placeholder="120" class="w-full" />
       </div>
       <div class="form-group">
         <label>Numero de fotos</label>
@@ -141,16 +146,19 @@ const selectedVoo = ref(null)
 const selectedFiles = ref([])
 const showOdmDialog = ref(false)
 const odmLoading = ref(false)
-const odmResize = ref(1200)
-const odmFast = ref(true)
-const odmSkip3d = ref(true)
+const feedback = ref('')
+const feedbackType = ref('success')
+const odmResize = ref(0)
+const odmFast = ref(false)
+const odmSkip3d = ref(false)
 const odmDsm = ref(true)
 const odmDtm = ref(true)
 const odmPointCloud = ref(true)
+const selectedFilesSizeMb = ref('0.0')
 const newVoo = ref({
   data_voo: '',
-  drone: '',
-  altitude_voo: null,
+  app_voo: '',
+  altitude_voo_m: null,
   num_fotos: null,
   area_coberta_ha: null,
   gsd_cm: null,
@@ -180,11 +188,14 @@ async function addVoo() {
       projeto_id: projectStore.activeProject.id,
       ...newVoo.value,
     })
-    newVoo.value = { data_voo: '', drone: '', altitude_voo: null, num_fotos: null, area_coberta_ha: null, gsd_cm: null, observacoes: '' }
+    newVoo.value = { data_voo: '', app_voo: '', altitude_voo_m: null, num_fotos: null, area_coberta_ha: null, gsd_cm: null, observacoes: '' }
     showNewVoo.value = false
+    feedbackType.value = 'success'
+    feedback.value = 'Voo cadastrado no projeto.'
     await fetchVoos()
   } catch (e) {
-    console.error('Erro ao criar voo:', e)
+    feedbackType.value = 'error'
+    feedback.value = e.response?.data?.detail || 'Falha ao cadastrar voo.'
   }
 }
 
@@ -193,7 +204,8 @@ async function removeVoo(voo) {
     await deleteVoo(voo.id)
     await fetchVoos()
   } catch (e) {
-    console.error('Erro ao deletar voo:', e)
+    feedbackType.value = 'error'
+    feedback.value = e.response?.data?.detail || 'Falha ao remover voo.'
   }
 }
 
@@ -206,12 +218,15 @@ async function uploadPhotos(event) {
   const files = Array.from(event.target.files || [])
   if (!files.length || !selectedVoo.value || !projectStore.activeProject) return
   selectedFiles.value = files
+  selectedFilesSizeMb.value = (files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024).toFixed(1)
+  feedback.value = ''
   showOdmDialog.value = true
   event.target.value = ''
 }
 
 async function submitOdm() {
   if (!selectedFiles.value.length || !selectedVoo.value || !projectStore.activeProject) return
+  if (selectedFiles.value.length < 3) return
   const form = new FormData()
   selectedFiles.value.forEach((file) => form.append('images', file))
   form.append('projeto_id', projectStore.activeProject.id)
@@ -227,11 +242,13 @@ async function submitOdm() {
   form.append('options', JSON.stringify(options))
   odmLoading.value = true
   try {
-    await createOdmTask(form)
+    const { data } = await createOdmTask(form)
     showOdmDialog.value = false
-    window.alert('Fotos enviadas. O processamento ODM foi iniciado.')
+    feedbackType.value = 'success'
+    feedback.value = `Processamento iniciado no NodeODM (${data.task.uuid}). ${data.images_count} fotos vinculadas ao voo ${selectedVoo.value.id}.`
   } catch (e) {
-    window.alert(e.response?.data?.detail || 'Falha ao iniciar processamento ODM')
+    feedbackType.value = 'error'
+    feedback.value = e.response?.data?.detail || 'Falha ao iniciar processamento ODM.'
   } finally {
     odmLoading.value = false
   }
@@ -244,6 +261,10 @@ watch(() => projectStore.activeProject, fetchVoos, { immediate: true })
 .voos-list {
   margin-top: 8px;
 }
+
+.upload-feedback,.validation-warning { margin: 8px 0; padding: 8px 10px; border-left: 3px solid #16a34a; background: color-mix(in srgb, #16a34a 10%, transparent); font-size: .8rem; overflow-wrap: anywhere; }
+.dialog-note { margin: 8px 0; color: var(--text-dim); font-size: .78rem; line-height: 1.45; }
+.upload-feedback.error,.validation-warning { border-left-color: #dc2626; background: color-mix(in srgb, #dc2626 10%, transparent); }
 
 .section-header {
   display: flex;

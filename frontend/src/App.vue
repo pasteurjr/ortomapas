@@ -113,8 +113,8 @@
         <div v-if="!rightCollapsed" class="sidebar-content">
           <DrawTools v-if="activeWorkspace === 'dados' || activeWorkspace === 'analises'" />
           <MeasureTools v-if="activeWorkspace === 'dados'" />
-          <div v-if="activeWorkspace === 'odm'" class="workspace-help"><i class="pi pi-cog"></i><strong>Pipeline ODM</strong><span>Envie fotos, acompanhe o processamento, importe produtos e abra as visualizações 3D.</span></div>
-          <div v-if="activeWorkspace === 'missoes'" class="workspace-help"><i class="pi pi-send"></i><strong>Planejamento de voo</strong><span>Crie AOI, exclusões, takeoff, waypoints, grid e exportação para o aplicativo de voo.</span></div>
+          <div v-if="activeWorkspace === 'odm'" class="workspace-help"><i class="pi pi-cog"></i><div class="workspace-help-copy"><strong>Pipeline ODM</strong><span>Envie fotos, acompanhe o processamento, importe produtos e abra as visualizações 3D.</span></div></div>
+          <div v-if="activeWorkspace === 'missoes'" class="workspace-help"><i class="pi pi-send"></i><div class="workspace-help-copy"><strong>Planejamento de voo</strong><span>Crie AOI, exclusões, takeoff, waypoints, grid e exportação para o aplicativo de voo.</span></div></div>
         </div>
       </aside>
     </div>
@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide, watch } from 'vue'
 import { useProjectStore } from './stores/projectStore'
 import { useMapStore } from './stores/mapStore'
 import Select from 'primevue/select'
@@ -183,6 +183,7 @@ const rightCollapsed = ref(compactViewport.matches)
 function onCompactViewport(event) { rightCollapsed.value=event.matches }
 const searchQuery = ref('')
 const selectedProjectId = ref(null)
+watch(() => projectStore.activeProject?.id, (id) => { selectedProjectId.value = id ?? null }, { immediate: true })
 const showAnalysisForm = ref(false)
 const showExportDialog = ref(false)
 const showMissionPlanner = ref(false)
@@ -396,6 +397,11 @@ html, body, #app { width: 100%; height: 100%; overflow: clip; }
 }
 
 .sidebar-content > * { flex-shrink: 0; }
+.workspace-help { display:flex; align-items:flex-start; gap:10px; padding:12px; border:1px solid var(--border); border-radius:4px; color:var(--text-dim); }
+.workspace-help > i { flex:none; margin-top:2px; color:var(--accent); }
+.workspace-help-copy { min-width:0; display:grid; gap:6px; }
+.workspace-help-copy strong { color:var(--text); font-size:.82rem; }
+.workspace-help-copy span { font-size:.75rem; line-height:1.45; overflow-wrap:anywhere; }
 
 .workspace-sidebar-nav {
   flex: 0 0 auto;
