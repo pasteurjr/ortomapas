@@ -13,6 +13,7 @@
 - Perguntas de área/perímetro sobre a geometria selecionada executam o motor determinístico `geometry_metrics`; o resultado inclui CRS de cálculo, área em m², perímetro em m e a origem da geometria.
 - Declividade, aspecto, hillshade e volume aceitam AOI GeoJSON. A janela do raster é recortada pela geometria reprojetada para o CRS do produto e pixels fora da AOI são mascarados antes das estatísticas. Raster sem CRS, geometria inadequada ou AOI sem pixels suficientes é rejeitada.
 - O chat mostra ferramentas executadas e oferece uma seção expansível com resultado, origem e erro. O histórico restaura as evidências armazenadas em `copilot_messages.ferramentas`.
+- O chat lista conversas do usuário para o projeto ativo, permite iniciar uma conversa independente e trocar de thread; o histórico de cada seleção é carregado da API. Mensagens atualizam `atualizado_em`, mantendo a lista ordenada por atividade recente.
 - O modo `Poligono` do painel de desenho agora está ligado ao handler `L.Draw.Polygon`; antes os cliques não produziam uma geometria selecionável. O botão enviar do chat também ganhou nome acessível para automação e tecnologia assistiva.
 
 ## Execução integrada real
@@ -47,7 +48,9 @@ Resultado estruturado: [`live_result.json`](copiloto_fase8_2026-10-16/live_resul
 - `PYTHONPATH=. pytest -q tests/test_copilot_context.py`: **4 passed**.
 - `PYTHONPATH=. pytest -q tests/test_metric_analysis.py`: **9 passed**.
 - `PYTHONPATH=. pytest -q tests/test_copilot_context.py tests/test_metric_analysis.py`: **13 passed**, incluindo timeout controlado.
+- `PYTHONPATH=. pytest -q tests/test_copilot_threads.py tests/test_copilot_context.py tests/test_metric_analysis.py`: **14 passed**; inclui verificação do escopo por projeto/usuário na listagem de conversas.
 - `FRONTEND_URL=http://127.0.0.1:18762 API_URL=http://127.0.0.1:18761/api python tests/e2e/playwright/test_copilot_fase8_live.py`: **passed**, seis verificações aprovadas e uma verificação de segunda conta ignorada porque a conta não existe; thread 102, quatro mensagens persistidas e nenhuma exceção JavaScript.
+- O roteiro E2E agora também cobre criação de conversa vazia e retorno à conversa anterior. Esta extensão ainda não foi executada visualmente: durante esta continuação, frontend, API e LM Studio não estavam ativos (`127.0.0.1:18762`, `127.0.0.1:18761` e `127.0.0.1:1234` sem serviço escutando).
 - `npm run build`: **aprovado**. O Vite repetiu o aviso já conhecido de chunk JS principal acima de 500 kB.
 - `python -m compileall -q backend/routers/agents.py backend/agents/schemas.py`: **aprovado**.
 - PostgreSQL e LM Studio locais: `/health/ready` respondeu `ready`, ambos os checks `true`; Qwen configurado presente em `/v1/models`.
@@ -58,9 +61,10 @@ Resultado estruturado: [`live_result.json`](copiloto_fase8_2026-10-16/live_resul
 - O fluxo principal foi validado com PostgreSQL e LM Studio reais. O timeout foi testado por simulação do transporte, não por atraso forçado do serviço real.
 - O roteiro tentou usar uma segunda conta E2E já existente, mas ela não estava cadastrada; não criei outra conta e marquei esse passo como ignorado. O isolamento entre usuários segue coberto por teste unitário, faltando confirmação integrada com duas contas reais.
 - O recorte de derivadas limita estatísticas aos pixels internos da AOI, mas gradientes nas bordas dependem dos vizinhos válidos remanescentes. A resolução de derivadas é amostrada até 512 px no maior lado; volume por AOI é amostrado até 2048 px. Isso é adequado para consulta exploratória e deve ser identificado como amostragem, não levantamento topográfico de precisão.
-- Ainda faltam lista/criação/troca de várias conversas na interface (atualmente há uma thread ativa por usuário/projeto/browser), sumarização e memória durável em `copilot_memorias`, aprovação/execução de operações de escrita pelo agente, relatório consolidado PDF e evidência visual do timeout/erro.
+- Ainda faltam sumarização e memória durável em `copilot_memorias`, aprovação/execução de operações de escrita pelo agente, relatório consolidado PDF e evidência visual do timeout/erro.
+- A navegação de várias conversas foi implementada nesta continuação e passou por testes unitários e build, mas não foi capturada visualmente porque API e LM Studio estavam indisponíveis. A confirmação visual automatizada de criar/trocar conversas segue pendente.
 - RAG continua deliberadamente fora da Fase 8.
 
 ## Conclusão
 
-Esta entrega corrigiu lacunas que o teste real revelou: o handler Leaflet do polígono não estava conectado e a evidência numérica da resposta anterior não era incluída no contexto enviado ao modelo, causando confusão entre m² e hectares. Após as correções, o fluxo visual e real passou, incluindo persistência no PostgreSQL e retomada correta pelo LM Studio. A Fase 8 **não está concluída**: falta gerenciamento de múltiplas conversas e memória durável, teste integrado com duas contas reais, fluxo de escrita/aprovação, timeout visual e relatório consolidado previsto no escopo.
+Esta entrega corrigiu lacunas que o teste real revelou: o handler Leaflet do polígono não estava conectado e a evidência numérica da resposta anterior não era incluída no contexto enviado ao modelo, causando confusão entre m² e hectares. O fluxo principal real passou com persistência no PostgreSQL e retomada correta pelo LM Studio. A navegação de múltiplas conversas foi adicionada, com teste unitário e build aprovados, mas ainda requer execução visual integrada. A Fase 8 **não está concluída**: falta memória durável, confirmação integrada com duas contas reais, validação visual da navegação, fluxo de escrita/aprovação, timeout visual e relatório consolidado previsto no escopo.

@@ -32,17 +32,6 @@ def main() -> int:
         page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.set_default_timeout(20_000)
-        created_threads: list[int] = []
-
-        def record_thread(response):
-            if response.request.method == 'POST' and response.url.endswith('/copilot/threads') and response.status == 200:
-                try:
-                    created_threads.append(int(response.json()['id']))
-                except Exception:
-                    pass
-
-        page.on('response', record_thread)
-
         def shot(name: str) -> str:
             path = OUT / f'{name}.png'
             page.screenshot(path=str(path), full_page=False, animations='disabled')
@@ -109,10 +98,9 @@ def main() -> int:
             page.wait_for_timeout(250)
             run['steps'].append({'id': 'F8-LIVE-04', 'status': 'passed', 'action': 'Pergunta de continuacao respondida usando o contexto da conversa', 'answer': answer, 'screenshot': shot('live_05_retomada_contexto')})
 
-            if not created_threads:
-                raise AssertionError('O frontend nao criou ou recuperou uma conversa persistida')
+            active_thread = int(page.locator('.threads select').input_value())
             token = page.evaluate("localStorage.getItem('ortomapas_token')")
-            thread_response = page.request.get(f'{API}/copilot/threads/{created_threads[-1]}', headers={'Authorization': f'Bearer {token}'})
+            thread_response = page.request.get(f'{API}/copilot/threads/{active_thread}', headers={'Authorization': f'Bearer {token}'})
             if thread_response.status != 200:
                 raise AssertionError(f'Falha ao recuperar conversa persistida: HTTP {thread_response.status}')
             persisted = thread_response.json().get('mensagens', [])
@@ -123,14 +111,26 @@ def main() -> int:
             )
             if len(persisted) < 4 or not saved_evidence:
                 raise AssertionError(f'Historico/evidencias nao persistidos corretamente: {len(persisted)} mensagens')
-            run['thread_id'] = created_threads[-1]
+            run['thread_id'] = active_thread
             run['persisted_messages'] = len(persisted)
             run['steps'].append({'id': 'F8-LIVE-05', 'status': 'passed', 'action': 'Historico e evidencia da ferramenta confirmados pela API autenticada', 'messages': len(persisted), 'screenshot': 'live_05_retomada_contexto.png'})
+
+            page.get_by_role('button', name='Nova conversa').click()
+            page.wait_for_function(f"() => document.querySelector('.threads select')?.value !== '{active_thread}'", timeout=10_000)
+            if page.locator('.message').count() != 0:
+                raise AssertionError('Nova conversa deveria abrir sem mensagens da conversa anterior')
+            new_thread = int(page.locator('.threads select').input_value())
+            run['steps'].append({'id': 'F8-LIVE-07', 'status': 'passed', 'action': 'Criacao de conversa independente sem misturar mensagens', 'thread_id': new_thread, 'screenshot': shot('live_06_nova_conversa')})
+            page.locator('.threads select').select_option(str(active_thread))
+            page.get_by_text('Na medicao da geometria que voce acabou de concluir', exact=False).wait_for(timeout=10_000)
+            if page.locator('.message').count() < 4:
+                raise AssertionError('Troca de conversa nao restaurou as mensagens persistidas')
+            run['steps'].append({'id': 'F8-LIVE-08', 'status': 'passed', 'action': 'Troca de conversa restaura o historico associado a thread selecionada', 'thread_id': active_thread, 'screenshot': shot('live_07_troca_conversa')})
 
             outsider_login = page.request.post(f'{API}/auth/login', data={'email': OUTSIDER_EMAIL, 'senha': OUTSIDER_PASSWORD})
             if outsider_login.status == 200:
                 outsider_token = outsider_login.json()['access_token']
-                outsider_read = page.request.get(f'{API}/copilot/threads/{created_threads[-1]}', headers={'Authorization': f'Bearer {outsider_token}'})
+                outsider_read = page.request.get(f'{API}/copilot/threads/{active_thread}', headers={'Authorization': f'Bearer {outsider_token}'})
                 if outsider_read.status != 404:
                     raise AssertionError(f'Outra conta recebeu HTTP {outsider_read.status} ao ler thread privada')
                 run['steps'].append({'id': 'F8-LIVE-06', 'status': 'passed', 'action': 'Segunda conta autenticada recebeu 404 para a conversa privada'})

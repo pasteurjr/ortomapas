@@ -1,7 +1,7 @@
-<template><section class="copilot"><div class="title"><i class="pi pi-sparkles"></i> Copiloto geoespacial</div><div v-if="mapStore.selectedGeometry" class="selection"><i class="pi pi-map-marker"></i><span>Geometria selecionada</span><button type="button" title="Medir area e perimetro" @click="quick('Calcule a area e o perimetro da geometria desenhada no mapa.')"><i class="pi pi-ruler"></i></button><button type="button" title="Analisar declividade" @click="quick('Calcule a declividade media e maxima dentro da geometria desenhada no mapa.')"><i class="pi pi-chart-line"></i></button><button type="button" title="Calcular volume" @click="quick('Calcule o volume do relevo dentro da geometria desenhada no mapa usando a cota media.')"><i class="pi pi-chart-bar"></i></button></div><div class="messages"><div v-if="!messages.length" class="empty">Pergunte sobre produtos, qualidade, relevo ou análises do projeto.</div><div v-for="(m,i) in messages" :key="i" class="message" :class="m.role"><b>{{m.role==='user'?'Você':'Copiloto'}}</b><p>{{m.text}}</p><small v-if="m.tools?.length">Ferramentas: {{m.tools.join(', ')}}</small><details v-if="m.evidence?.length" class="evidence"><summary>Ver resultados e origem dos cálculos</summary><div v-for="(item,j) in m.evidence" :key="j" class="evidence-item"><b>{{item.tool}}</b><pre>{{formatEvidence(item)}}</pre></div></details></div></div><form @submit.prevent="send"><textarea v-model="prompt" rows="2" placeholder="Ex.: compare DSM e DTM deste projeto..." :disabled="loading"></textarea><button :disabled="loading || !prompt.trim()" title="Enviar" aria-label="Enviar"><i :class="loading?'pi pi-spin pi-spinner':'pi pi-send'"></i></button></form></section></template>
+<template><section class="copilot"><div class="title"><i class="pi pi-sparkles"></i> Copiloto geoespacial</div><div class="threads"><select v-model="threadId" aria-label="Conversas do projeto" :disabled="loading || !threads.length" @change="openThread"><option v-if="!threads.length" :value="null">Nenhuma conversa</option><option v-for="thread in threads" :key="thread.id" :value="thread.id">{{thread.titulo || 'Conversa sem título'}}</option></select><button type="button" title="Nova conversa" aria-label="Nova conversa" :disabled="loading || !projectStore.activeProject" @click="newThread"><i class="pi pi-plus"></i></button></div><div v-if="mapStore.selectedGeometry" class="selection"><i class="pi pi-map-marker"></i><span>Geometria selecionada</span><button type="button" title="Medir area e perimetro" @click="quick('Calcule a area e o perimetro da geometria desenhada no mapa.')"><i class="pi pi-ruler"></i></button><button type="button" title="Analisar declividade" @click="quick('Calcule a declividade media e maxima dentro da geometria desenhada no mapa.')"><i class="pi pi-chart-line"></i></button><button type="button" title="Calcular volume" @click="quick('Calcule o volume do relevo dentro da geometria desenhada no mapa usando a cota media.')"><i class="pi pi-chart-bar"></i></button></div><div class="messages"><div v-if="!messages.length" class="empty">Pergunte sobre produtos, qualidade, relevo ou análises do projeto.</div><div v-for="(m,i) in messages" :key="i" class="message" :class="m.role"><b>{{m.role==='user'?'Você':'Copiloto'}}</b><p>{{m.text}}</p><small v-if="m.tools?.length">Ferramentas: {{m.tools.join(', ')}}</small><details v-if="m.evidence?.length" class="evidence"><summary>Ver resultados e origem dos cálculos</summary><div v-for="(item,j) in m.evidence" :key="j" class="evidence-item"><b>{{item.tool}}</b><pre>{{formatEvidence(item)}}</pre></div></details></div></div><form @submit.prevent="send"><textarea v-model="prompt" rows="2" placeholder="Ex.: compare DSM e DTM deste projeto..." :disabled="loading"></textarea><button :disabled="loading || !prompt.trim()" title="Enviar" aria-label="Enviar"><i :class="loading?'pi pi-spin pi-spinner':'pi pi-send'"></i></button></form></section></template>
 <script setup>
 import { ref, watch } from 'vue'
-import { askCopilot, createCopilotThread, getCopilotThread, addCopilotMessage, getCopilotLayers, saveCopilotLayer } from '../api/client'
+import { askCopilot, createCopilotThread, getCopilotThread, listCopilotThreads, addCopilotMessage, getCopilotLayers, saveCopilotLayer } from '../api/client'
 import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
 
@@ -11,41 +11,60 @@ const prompt = ref('')
 const loading = ref(false)
 const messages = ref([])
 const threadId = ref(null)
+const threads = ref([])
 
 async function loadThread() {
   const project = projectStore.activeProject
-  if (!project) return
+  if (!project) { threads.value = []; threadId.value = null; messages.value = []; return }
   const key = `ortomapas.thread.${project.id}`
-  let id = localStorage.getItem(key)
   try {
-    if (id) {
-      const history = await getCopilotThread(Number(id))
-      threadId.value = Number(id)
-      messages.value = (history.data.mensagens || []).filter(m => m.papel !== 'tool').map(m => ({
-        role: m.papel,
-        text: m.conteudo,
-        tools: Array.isArray(m.ferramentas) ? m.ferramentas.map(item => item.tool) : [],
-        evidence: Array.isArray(m.ferramentas) ? m.ferramentas : []
-      }))
-    } else {
-      throw new Error('Nova conversa')
-    }
+    const { data } = await listCopilotThreads(project.id)
+    threads.value = data.conversas || []
   } catch {
-    try {
-      const { data } = await createCopilotThread({ projeto_id: project.id, titulo: `Copiloto - ${project.nome}` })
-      id = data.id
-      localStorage.setItem(key, id)
-      threadId.value = Number(id)
-      messages.value = []
-    } catch {
-      threadId.value = null
-      messages.value = []
-    }
+    threads.value = []
   }
+  const savedId = Number(localStorage.getItem(key))
+  const selected = threads.value.find(thread => Number(thread.id) === savedId) || threads.value[0]
+  if (selected) await selectThread(selected.id)
+  else await newThread()
   try {
     const saved = await getCopilotLayers(project.id)
     ;(saved.data.camadas || []).forEach(layer => mapStore.addLayer({ id: `saved-${layer.id}`, name: layer.nome, type: 'analysis', geojson: layer.geojson }))
   } catch {}
+}
+
+async function selectThread(id) {
+  const selectedId = Number(id)
+  threadId.value = selectedId
+  try {
+    const { data } = await getCopilotThread(selectedId)
+    messages.value = (data.mensagens || []).filter(m => m.papel !== 'tool').map(m => ({
+      role: m.papel,
+      text: m.conteudo,
+      tools: Array.isArray(m.ferramentas) ? m.ferramentas.map(item => item.tool) : [],
+      evidence: Array.isArray(m.ferramentas) ? m.ferramentas : []
+    }))
+    if (projectStore.activeProject) localStorage.setItem(`ortomapas.thread.${projectStore.activeProject.id}`, selectedId)
+  } catch {
+    messages.value = []
+  }
+}
+
+async function openThread() {
+  if (threadId.value) await selectThread(threadId.value)
+}
+
+async function newThread() {
+  const project = projectStore.activeProject
+  if (!project) return
+  try {
+    const { data } = await createCopilotThread({ projeto_id: project.id, titulo: `Conversa ${new Date().toLocaleString('pt-BR')}` })
+    threads.value = [data, ...threads.value]
+    await selectThread(data.id)
+  } catch {
+    threadId.value = null
+    messages.value = []
+  }
 }
 
 watch(() => projectStore.activeProject, loadThread, { immediate: true })
@@ -94,6 +113,6 @@ function quick(text) {
   prompt.value = text
   send()
 }
-</script><style scoped>.copilot{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}.title{font-size:.8rem;font-weight:600;color:#7fd1b9;text-transform:uppercase}.messages{max-height:230px;overflow:auto;margin:8px 0}.empty{font-size:.75rem;color:var(--text-dim);padding:8px 0}.message{padding:7px;margin:5px 0;border-left:2px solid #40515c;background:#17242c;font-size:.75rem}.message.user{border-color:#56b4d3}.message p{margin:3px 0;white-space:pre-wrap}.message small{color:#7fd1b9}.evidence{margin-top:7px;color:#9cd9d0}.evidence summary{cursor:pointer;font-size:.7rem}.evidence-item{margin-top:5px;padding:5px;background:#101820;border:1px solid var(--border)}.evidence-item pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.4 monospace;margin:4px 0;color:#d6e3e8}form{display:flex;gap:6px}textarea{flex:1;resize:vertical;background:var(--input-bg,#101820);color:var(--text);border:1px solid var(--border);padding:7px;font:inherit}form button{width:34px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}form button:disabled{opacity:.5}
+</script><style scoped>.copilot{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}.title{font-size:.8rem;font-weight:600;color:#7fd1b9;text-transform:uppercase}.threads{display:flex;gap:5px;margin-top:7px}.threads select{flex:1;min-width:0;background:var(--input-bg,#101820);color:var(--text);border:1px solid var(--border);padding:5px;font:inherit;font-size:.72rem}.threads button{width:30px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}.threads button:disabled{opacity:.5}.messages{max-height:230px;overflow:auto;margin:8px 0}.empty{font-size:.75rem;color:var(--text-dim);padding:8px 0}.message{padding:7px;margin:5px 0;border-left:2px solid #40515c;background:#17242c;font-size:.75rem}.message.user{border-color:#56b4d3}.message p{margin:3px 0;white-space:pre-wrap}.message small{color:#7fd1b9}.evidence{margin-top:7px;color:#9cd9d0}.evidence summary{cursor:pointer;font-size:.7rem}.evidence-item{margin-top:5px;padding:5px;background:#101820;border:1px solid var(--border)}.evidence-item pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.4 monospace;margin:4px 0;color:#d6e3e8}form{display:flex;gap:6px}textarea{flex:1;resize:vertical;background:var(--input-bg,#101820);color:var(--text);border:1px solid var(--border);padding:7px;font:inherit}form button{width:34px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}form button:disabled{opacity:.5}
 .selection{display:flex;align-items:center;gap:5px;margin-top:7px;padding:5px 6px;border:1px solid #315563;background:#12242b;color:#9cd9d0;font-size:.72rem}.selection span{flex:1}.selection button{width:27px;height:25px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}.selection button:hover{background:#21404a}
 </style>

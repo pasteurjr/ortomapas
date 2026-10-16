@@ -154,6 +154,7 @@ export function getCopilotLayers(projetoId) { return api.get('/agents/layers', {
 export function saveCopilotLayer(data) { return api.post('/agents/layers', data) }
 export function deleteCopilotLayer(id) { return api.delete(`/agents/layers/${id}`) }
 export function createCopilotThread(data) { return api.post('/copilot/threads', data) }
+export function listCopilotThreads(projectId) { return api.get('/copilot/threads', { params: { projeto_id: projectId } }) }
 export function getCopilotThread(id) { return api.get(`/copilot/threads/${id}`) }
 export function addCopilotMessage(id, data) { return api.post(`/copilot/threads/${id}/messages`, data) }
 
