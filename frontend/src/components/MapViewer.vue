@@ -300,7 +300,8 @@ function fitResource(resource) {
   const bounds = resourceBounds(resource)
   if (!map || !bounds) return
   map.invalidateSize()
-  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20, animate: false })
+  // Keep small analysis extents readable instead of zooming until the raster fills the map.
+  map.fitBounds(bounds, { padding: [64, 64], maxZoom: 18, animate: false })
   mapStore.setView([map.getCenter().lat, map.getCenter().lng], map.getZoom())
 }
 
@@ -334,16 +335,19 @@ function setupDrawing(map) {
       }
     }
     mapStore.setDrawMode(null)
+    mapStore.finishAnalysisAoi = null
   })
   stopDrawingWatch = watch(() => mapStore.drawMode, mode => {
     drawHandler?.disable()
     mapStore.profileVertexCount=0; mapStore.finishProfile=null
+    mapStore.finishAnalysisAoi=null
     if (mode === 'profile') drawHandler = new L.Draw.Polyline(map,{shapeOptions:{color:'#eab308',weight:3}})
     else if (mode === 'analysis-aoi') drawHandler = new L.Draw.Polygon(map,{allowIntersection:false,shapeOptions:{color:'#eab308',weight:3}})
     else if (mode === 'clip') drawHandler = new L.Draw.Rectangle(map,{shapeOptions:{color:'#f59e0b'}})
     else drawHandler = null
     drawHandler?.enable()
     if(mode==='profile') mapStore.finishProfile=()=>drawHandler?.completeShape()
+    if(mode==='analysis-aoi') mapStore.finishAnalysisAoi=()=>drawHandler?.completeShape()
   },{immediate:true})
 }
 

@@ -18,6 +18,7 @@ export const useMapStore = defineStore('map', {
     clipBbox: (() => { try { return JSON.parse(localStorage.getItem('ortomapas.clipBbox') || 'null') } catch { return null } })(),
     selectedGeometry: null,
     analysisAoi: null,
+    finishAnalysisAoi: null,
     profileOpen: false,
     profileLine: null,
     profileVertexCount: 0,
@@ -113,6 +114,7 @@ export const useMapStore = defineStore('map', {
       this.profileOpen = false
       this.selectedGeometry = null
       this.analysisAoi = null
+      this.finishAnalysisAoi = null
       this.hydrologyOutlet = null
       this.setClipBbox(null)
     },

@@ -402,14 +402,25 @@
               @click="startDrawClip"
               class="w-full mb-2"
             />
+            <div class="aoi-actions">
+              <span>{{ mapStore.analysisAoi ? 'Area selecionada' : 'Nenhuma area selecionada' }}</span>
+              <button type="button" title="Limpar area" :disabled="!mapStore.analysisAoi" @click="mapStore.analysisAoi = null"><i class="pi pi-trash"></i></button>
+            </div>
+            <Button v-if="mapStore.drawMode === 'analysis-aoi'" label="Concluir poligono" icon="pi pi-check" severity="secondary" class="w-full mb-2" @click="mapStore.finishAnalysisAoi?.()" />
             <Button
               label="Recortar"
               icon="pi pi-play"
               :loading="recorte.loading"
-              :disabled="!recorte.polygon"
+              :disabled="!projectStore.canEdit || !recorte.ortomapaId || !mapStore.analysisAoi || mapStore.drawMode === 'analysis-aoi'"
               @click="runRecorte"
               class="w-full"
             />
+            <div v-if="recorte.error" class="error-message">{{ recorte.error }}</div>
+            <div v-if="recorte.result" class="result-panel">
+              <h4>Recorte criado</h4>
+              <div class="stat-row"><span>Pixels validos:</span><strong>{{ recorte.result.statistics.valid_pixels }}</strong></div>
+              <div class="stat-row"><span>Dimensoes:</span><strong>{{ recorte.result.statistics.width }} x {{ recorte.result.statistics.height }}</strong></div>
+            </div>
           </div>
         </TabPanel>
 
@@ -431,7 +442,7 @@
               <label>Formato</label>
               <Select
                 v-model="exportar.format"
-                :options="exportFormats"
+                :options="availableExportFormats"
                 optionLabel="label"
                 optionValue="value"
                 class="w-full"
@@ -444,6 +455,7 @@
                 :options="crsOptions"
                 optionLabel="label"
                 optionValue="value"
+                :disabled="['geojson', 'kml'].includes(exportar.format)"
                 class="w-full"
               />
             </div>
@@ -451,9 +463,12 @@
               label="Exportar"
               icon="pi pi-download"
               :loading="exportar.loading"
+              :disabled="!exportar.layerId"
               @click="runExport"
               class="w-full"
             />
+            <div v-if="exportar.error" class="error-message">{{ exportar.error }}</div>
+            <small v-if="['png', 'jpeg'].includes(exportar.format)">PNG/JPEG sao imagens sem georreferenciamento. Para GIS, use GeoTIFF.</small>
           </div>
         </TabPanel>
       </TabPanels>
@@ -499,10 +514,10 @@ const dsmDtmOptions = computed(() =>
 )
 
 const allLayerOptions = computed(() => [
-  ...ortoOptions.value,
-  ...mapStore.activeLayers
-    .filter((l) => l.type === 'analysis')
-    .map((l) => ({ label: l.name, value: l.id })),
+  ...projectStore.ortomapas.map((o) => ({ label: o.nome, value: `ortomapa-${o.id}`, path: o.caminho_arquivo })),
+  ...projectStore.analises.filter((a) => a.resultado_path).map((a) => ({
+    label: a.nome, value: `analise-${a.id}`, path: a.resultado_path,
+  })),
 ])
 
 const vegIndices = [
@@ -571,8 +586,18 @@ watch(() => projectStore.activeProject?.id, () => {
   useClassAoi.value = false; classif.result = null; classif.error = ''
   hidro.result = null; hidro.error = ''; hidro.pourLat = null; hidro.pourLon = null; mapStore.hydrologyOutlet = null
 })
-const recorte = reactive({ ortomapaId: null, polygon: null, loading: false })
-const exportar = reactive({ layerId: null, format: 'geotiff', crs: 'EPSG:4326', loading: false })
+const recorte = reactive({ ortomapaId: null, loading: false, result: null, error: '' })
+const exportar = reactive({ layerId: null, format: 'geotiff', crs: 'EPSG:4326', loading: false, error: '' })
+const selectedExportSource = computed(() => allLayerOptions.value.find((item) => item.value === exportar.layerId))
+const exportIsVector = computed(() => /\.(geojson|json|gpkg|shp|kml)$/i.test(selectedExportSource.value?.path || ''))
+const availableExportFormats = computed(() => exportFormats.filter((item) =>
+  exportIsVector.value ? ['geojson', 'kml', 'shapefile'].includes(item.value) : ['geotiff', 'png', 'jpeg'].includes(item.value)))
+watch(exportIsVector, () => { exportar.format = exportIsVector.value ? 'geojson' : 'geotiff' })
+watch(() => exportar.format, (format) => { if (['geojson', 'kml'].includes(format)) exportar.crs = 'EPSG:4326' })
+watch(() => projectStore.activeProject?.id, () => {
+  recorte.result = null; recorte.error = ''; recorte.ortomapaId = null
+  exportar.layerId = null; exportar.error = ''
+})
 
 function ortoPath(id) {
   return projectStore.ortomapas.find((item) => item.id === id)?.caminho_arquivo || ''
@@ -788,43 +813,56 @@ async function runVolume() {
 }
 
 function startDrawClip() {
-  mapStore.setDrawMode('polygon')
+  mapStore.setDrawMode('analysis-aoi')
 }
 
 async function runRecorte() {
   if (!recorte.ortomapaId) return
   recorte.loading = true
+  recorte.error = ''
+  recorte.result = null
   try {
     const res = await runTool('recorte', {
       ortomapa_id: recorte.ortomapaId,
-      polygon: recorte.polygon,
+      projeto_id: projectStore.activeProject.id,
+      input_path: ortoPath(recorte.ortomapaId),
+      aoi: mapStore.analysisAoi,
+      output_name: `recorte_${Date.now()}`,
     })
     addResultLayer('Recorte', res.data)
-    projectStore.fetchAnalises()
+    recorte.result = res.data
+    await projectStore.fetchAnalises()
   } catch (e) {
-    console.error(e)
+    recorte.error = e.response?.data?.detail || 'Falha ao recortar o raster'
   } finally {
     recorte.loading = false
   }
 }
 
 async function runExport() {
-  if (!exportar.layerId) return
+  if (!selectedExportSource.value) return
   exportar.loading = true
+  exportar.error = ''
   try {
     const res = await exportLayer({
-      layer_id: exportar.layerId,
+      input_path: selectedExportSource.value.path,
       format: exportar.format,
       crs: exportar.crs,
     })
     const url = window.URL.createObjectURL(res.data)
     const a = document.createElement('a')
     a.href = url
-    a.download = `export_${Date.now()}.${exportar.format === 'geotiff' ? 'tif' : exportar.format}`
+    const extension = { geotiff: 'tif', jpeg: 'jpg', shapefile: 'zip' }[exportar.format] || exportar.format
+    a.download = `export_${Date.now()}.${extension}`
+    document.body.appendChild(a)
     a.click()
-    window.URL.revokeObjectURL(url)
+    a.remove()
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000)
   } catch (e) {
-    console.error(e)
+    if (e.response?.data instanceof Blob) {
+      const body = await e.response.data.text()
+      try { exportar.error = JSON.parse(body).detail || body } catch { exportar.error = body }
+    } else exportar.error = e.response?.data?.detail || 'Falha na exportacao'
   } finally {
     exportar.loading = false
   }

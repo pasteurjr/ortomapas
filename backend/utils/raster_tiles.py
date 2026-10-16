@@ -77,6 +77,8 @@ def render_xyz_tile(path: str, z: int, x: int, y: int) -> bytes:
 
 
 def render_analysis_tile(path, z, x, y, style):
+    if style.get('kind') == 'raw':
+        return render_xyz_tile(path, z, x, y)
     from backend.utils.analysis_products import colorize
     from rasterio.warp import reproject
     bounds=tile_bounds(z,x,y)

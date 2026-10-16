@@ -17,8 +17,8 @@
               </option>
             </optgroup>
             <optgroup v-if="analysisLayers.length > 0" label="Resultados de Analise">
-              <option v-for="l in analysisLayers" :key="'layer-' + l.id" :value="{ type: 'analysis', id: l.id, sourceId: l.sourceId, name: l.name }">
-                {{ l.name }}
+              <option v-for="l in analysisLayers" :key="'layer-' + l.id" :value="{ type: 'analysis', id: l.id, path: l.resultado_path, name: l.nome }">
+                {{ l.nome }}
               </option>
             </optgroup>
           </select>
@@ -27,17 +27,13 @@
         <div class="form-group">
           <label>Formato de saida</label>
           <select v-model="format">
-            <option value="GTiff">GeoTIFF (.tif)</option>
-            <option value="PNG">PNG (.png)</option>
-            <option value="JPEG">JPEG (.jpg)</option>
-            <option value="KML">KML (.kml)</option>
-            <option value="GeoJSON">GeoJSON (.geojson)</option>
+            <option v-for="item in availableFormats" :key="item.value" :value="item.value">{{ item.label }}</option>
           </select>
         </div>
 
         <div class="form-group">
           <label>Sistema de Coordenadas (CRS)</label>
-          <select v-model="targetCrs">
+          <select v-model="targetCrs" :disabled="format === 'geojson' || format === 'kml'">
             <option value="EPSG:4326">EPSG:4326 - WGS 84 (Geograficas)</option>
             <option value="EPSG:31983">EPSG:31983 - SIRGAS 2000 / UTM 23S</option>
             <option value="EPSG:31984">EPSG:31984 - SIRGAS 2000 / UTM 24S</option>
@@ -46,16 +42,7 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label>Resolucao (opcional, metros)</label>
-          <input type="number" v-model.number="resolution" step="0.01" min="0.01" placeholder="Manter original" />
-          <span class="hint">Deixe vazio para manter a resolucao original</span>
-        </div>
-
-        <div v-if="format === 'PNG' || format === 'JPEG'" class="form-group">
-          <label>Qualidade ({{ quality }}%)</label>
-          <input type="range" v-model.number="quality" min="10" max="100" step="5" class="slider" />
-        </div>
+        <span v-if="format === 'png' || format === 'jpeg'" class="hint">PNG/JPEG sao imagens sem georreferenciamento; para GIS use GeoTIFF.</span>
 
         <div v-if="error" class="error-message">
           <i class="pi pi-exclamation-triangle"></i> {{ error }}
@@ -78,27 +65,26 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import { useMapStore } from '../stores/mapStore'
-import { runTool, exportLayer } from '../api/client'
+import { exportLayer } from '../api/client'
 
 const props = defineProps({ visible: Boolean })
 const emit = defineEmits(['close'])
 
 const projectStore = useProjectStore()
-const mapStore = useMapStore()
-
 const ortomapas = computed(() => projectStore.ortomapas)
-const analysisLayers = computed(() =>
-  mapStore.activeLayers.filter((l) => l.type === 'analysis')
-)
+const analysisLayers = computed(() => projectStore.analises.filter((a) => a.resultado_path))
 
 const selectedSource = ref(null)
-const format = ref('GTiff')
+const format = ref('geotiff')
 const targetCrs = ref('EPSG:4326')
-const resolution = ref(null)
-const quality = ref(90)
+const isVector = computed(() => /\.(geojson|json|gpkg|shp|kml)$/i.test(selectedSource.value?.path || ''))
+const availableFormats = computed(() => isVector.value
+  ? [{ label: 'GeoJSON (.geojson)', value: 'geojson' }, { label: 'KML (.kml)', value: 'kml' }, { label: 'Shapefile (.zip)', value: 'shapefile' }]
+  : [{ label: 'GeoTIFF (.tif)', value: 'geotiff' }, { label: 'PNG (.png)', value: 'png' }, { label: 'JPEG (.jpg)', value: 'jpeg' }])
+watch(isVector, () => { format.value = isVector.value ? 'geojson' : 'geotiff' })
+watch(format, (value) => { if (value === 'geojson' || value === 'kml') targetCrs.value = 'EPSG:4326' })
 const loading = ref(false)
 const error = ref(null)
 const downloadReady = ref(false)
@@ -111,23 +97,9 @@ async function doExport() {
 
   try {
     const params = {
+      input_path: selectedSource.value.path,
       format: format.value,
       crs: targetCrs.value,
-    }
-
-    if (selectedSource.value.type === 'ortomapa') {
-      params.input_path = selectedSource.value.path
-      params.ortomapa_id = selectedSource.value.id
-    } else {
-      params.layer_id = selectedSource.value.sourceId || selectedSource.value.id
-    }
-
-    if (resolution.value && resolution.value > 0) {
-      params.resolution = resolution.value
-    }
-
-    if ((format.value === 'PNG' || format.value === 'JPEG') && quality.value < 100) {
-      params.quality = quality.value
     }
 
     const res = await exportLayer(params)
@@ -138,24 +110,21 @@ async function doExport() {
     const link = document.createElement('a')
     link.href = url
 
-    const extensions = { GTiff: 'tif', PNG: 'png', JPEG: 'jpg', KML: 'kml', GeoJSON: 'geojson' }
+    const extensions = { geotiff: 'tif', png: 'png', jpeg: 'jpg', kml: 'kml', geojson: 'geojson', shapefile: 'zip' }
     const ext = extensions[format.value] || 'dat'
     const safeName = (selectedSource.value.name || 'export').replace(/[^a-zA-Z0-9_-]/g, '_')
     link.download = `${safeName}_${Date.now()}.${ext}`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000)
 
     downloadReady.value = true
   } catch (e) {
-    // If blob export fails, try with URL approach
-    if (e.response?.data?.output_path) {
-      window.open(`/data/${e.response.data.output_path}`, '_blank')
-      downloadReady.value = true
-    } else {
-      error.value = e.response?.data?.detail || e.message || 'Erro ao exportar'
-    }
+    if (e.response?.data instanceof Blob) {
+      const body = await e.response.data.text()
+      try { error.value = JSON.parse(body).detail || body } catch { error.value = body }
+    } else error.value = e.response?.data?.detail || e.message || 'Erro ao exportar'
   } finally {
     loading.value = false
   }

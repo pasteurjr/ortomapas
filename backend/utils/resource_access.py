@@ -123,7 +123,7 @@ async def authorize_tools(request: Request, user: dict = Depends(current_user)):
             projects &= {int(body["projeto_id"])}
         except (ValueError, TypeError):
             raise HTTPException(status_code=422, detail="projeto_id invalido")
-    if request.url.path != "/api/tools/statistics" and not (request.url.path == "/api/tools/volume" and not name and not body.get('ortomapa_id')):
+    if request.url.path not in {"/api/tools/statistics", "/api/tools/exportar"} and not (request.url.path == "/api/tools/volume" and not name and not body.get('ortomapa_id')):
         editable = set()
         for project_id in projects:
             try:

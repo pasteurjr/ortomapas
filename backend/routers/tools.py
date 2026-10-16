@@ -1,5 +1,7 @@
 """Spatial analysis tools router."""
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pathlib import Path
 from uuid import uuid4
 from pydantic import BaseModel, Field
@@ -8,6 +10,7 @@ import os
 import logging
 import json
 import tempfile
+import shutil
 import numpy as np
 import rasterio
 from rasterio.enums import Resampling
@@ -22,6 +25,11 @@ from backend.utils.analysis_products import (terrain_source, publish_terrain, pu
 from backend.utils.terrain_aoi import prepare_aoi, mask_derivative
 from backend.utils.contour_products import contour_result, contour_input
 from backend.utils.raster_metrics import metric_jacobian
+from backend.utils.clip_export import clip_raster_aoi, export_dataset
+from backend.database.connection import get_connection
+from psycopg2.extras import Json
+from backend.utils.analysis_products import serialize_analysis
+from rasterio.warp import transform_bounds
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tools", tags=["tools"], dependencies=[Depends(authorize_tools)])
@@ -33,6 +41,18 @@ class ClipRequest(BaseModel):
     output_name: str
     bbox: Optional[Dict[str, float]] = None  # {north, south, east, west}
     polygon_wkt: Optional[str] = None
+
+class CropRequest(BaseModel):
+    input_path: str
+    ortomapa_id: int
+    projeto_id: int
+    aoi: dict
+    output_name: str = 'recorte'
+
+class ExportRequest(BaseModel):
+    input_path: str
+    format: str
+    crs: str = 'EPSG:4326'
 
 class ReprojectRequest(BaseModel):
     input_path: str
@@ -199,6 +219,68 @@ async def clip_raster(req: ClipRequest):
         return {"status": "success", "output_path": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post('/recorte')
+async def crop_raster(req: CropRequest):
+    context = tool_context.get()
+    if not context or context[1] != req.projeto_id:
+        raise HTTPException(status_code=403, detail='Projeto sem acesso autorizado')
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT * FROM ortomapas WHERE id=%s', (req.ortomapa_id,))
+        source = cur.fetchone()
+    if not source:
+        raise HTTPException(status_code=404, detail='Ortomapa nao encontrado')
+    if source['projeto_id'] != req.projeto_id or data_path(source['caminho_arquivo']) != data_path(req.input_path):
+        raise HTTPException(status_code=403, detail='Origem difere do projeto ou arquivo selecionado')
+    input_path = _resolve_path(req.input_path)
+    try:
+        aoi = prepare_aoi(input_path, req.aoi)
+        output = _output_path(req.output_name)
+        stats = clip_raster_aoi(input_path, output, aoi['projected'])
+        with rasterio.open(output) as ds:
+            west, south, east, north = transform_bounds(ds.crs, 4326, *ds.bounds)
+            metadata = {'crs': str(ds.crs), 'width': ds.width, 'height': ds.height,
+                        'bbox_oeste': west, 'bbox_sul': south, 'bbox_leste': east, 'bbox_norte': north,
+                        'style': {'kind': 'raw', 'method': 'bilinear'}, 'stats': stats,
+                        'aoi': {'geometry': aoi['geometry'], 'crs': 'EPSG:4326',
+                                'area_m2': aoi['area_m2'], 'valid_area_m2': stats['valid_pixels'] * aoi['pixel_area_m2'],
+                                'mask_rule': 'pixel center'},
+                        'provenance': {'source_ortomapa_id': source['id'], 'source_path': source['caminho_arquivo'],
+                                       'operation': 'clip', 'created_by': context[0]}}
+        with get_connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+                resultado_path,resultado_json,status,data_analise)
+                VALUES (%s,%s,'recorte',%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+                (source['id'], req.projeto_id, f"Recorte - {source['nome']}", Json(req.model_dump()),
+                 output, Json(metadata)))
+            row = cur.fetchone()
+            conn.commit()
+        return {'status': 'success', 'output_path': output, 'statistics': stats, 'analise': serialize_analysis(row)}
+    except (ValueError, rasterio.errors.RasterioError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+@router.post('/exportar')
+async def export_file(req: ExportRequest):
+    if not req.crs.startswith('EPSG:') or not req.crs[5:].isdigit():
+        raise HTTPException(status_code=422, detail='CRS deve ser um codigo EPSG')
+    source = data_path(req.input_path)
+    if not source.is_file():
+        raise HTTPException(status_code=404, detail='Arquivo nao encontrado')
+    extensions = {'geotiff': '.tif', 'png': '.png', 'jpeg': '.jpg',
+                  'geojson': '.geojson', 'kml': '.kml', 'shapefile': '.zip'}
+    fmt = req.format.lower()
+    if fmt not in extensions:
+        raise HTTPException(status_code=422, detail='Formato nao suportado')
+    folder = Path(tempfile.mkdtemp(prefix='ortomapas-export-'))
+    target = folder / ('exportacao' + extensions[fmt])
+    try:
+        export_dataset(source, fmt, req.crs, target)
+    except (ValueError, OSError) as exc:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return FileResponse(target, filename=target.name, background=BackgroundTask(shutil.rmtree, folder, ignore_errors=True))
 
 @router.post("/reproject")
 async def reproject_raster(req: ReprojectRequest):
