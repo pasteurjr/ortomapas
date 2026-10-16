@@ -147,8 +147,8 @@ export function getOdmQuality(processingId) {
   return api.get(`/odm/processamentos/${processingId}/qualidade`)
 }
 
-export function askCopilot(prompt, context = {}) {
-  return api.post('/agents/ask', { prompt, context }, { timeout: 180000 })
+export function askCopilot(prompt, context = {}, threadId = null) {
+  return api.post('/agents/ask', { prompt, context, thread_id: threadId }, { timeout: 180000 })
 }
 export function getCopilotLayers(projetoId) { return api.get('/agents/layers', { params: { projeto_id: projetoId } }) }
 export function saveCopilotLayer(data) { return api.post('/agents/layers', data) }

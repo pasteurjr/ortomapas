@@ -108,6 +108,8 @@ Implementar o Ortomapas Copilot com contexto, memória, RAG e ferramentas geoesp
 
 **Aceite:** o usuário faz uma pergunta completa, acompanha o plano, aprova operações, visualiza o resultado e baixa um relatório rastreável.
 
+**Progresso em 16/10/2026:** integração de thread/histórico/contexto espacial e apresentação expansível das evidências iniciada; cálculos de geometria usam motor determinístico e declividade/aspecto/volume recebem AOI quando selecionada. Isto não conclui a Fase 8: ainda faltam relatório consolidado, timeout demonstrado, validação visual autenticada e execução com banco/modelo locais reais. Ver [relatório de validação parcial](../validacao/copiloto_fase8_2026-10-16.md).
+
 ### Fase 9 — RAG documental (final)
 
 - habilitar `pgvector`;

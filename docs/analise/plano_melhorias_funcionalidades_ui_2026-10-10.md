@@ -314,6 +314,8 @@ Adicionar casos específicos para abrir DSM/DTM 3D, nuvem, perfil altimétrico, 
 
 **Aceite:** duas contas não compartilham conversa privada; retomada preserva contexto no modelo; resposta contém resultado calculado e origem; geometria solicitada delimita o cálculo; timeout é erro demonstrável.
 
+**Progresso em 16/10/2026:** primeira fatia implementada: `thread_id` é enviado pelo chat e validado no backend contra usuário e projeto; até 25 mensagens anteriores são recuperadas para o contexto do LM Studio (a mensagem atual, já persistida pelo frontend, não é duplicada); seleção espacial atual acompanha a pergunta; medição de área/perímetro usa o motor determinístico; declividade, aspecto e volume aceitam recorte por AOI; respostas do chat podem expandir resultados e origem das ferramentas. Conversa de outra conta é ocultada com 404. Testes unitários com dependências controladas e build aprovados. Ainda falta validar com PostgreSQL e LM Studio reais, fluxo visual autenticado, timeout operacional, troca de projeto/usuário no navegador e relatório consolidado; portanto a fase permanece em andamento. Evidências e limites: [validação da Fase 8](../validacao/copiloto_fase8_2026-10-16.md).
+
 ### Fase 9. Aceitação integrada e documentação final
 
 **Entregas:** suíte revisada, matriz UC/requisito/teste, seed reprodutível, relatório de falhas, evidências e storyboard completo. Resolver M-19/M-20 e atualizar documentos que ainda citam SQLite/portas antigas.

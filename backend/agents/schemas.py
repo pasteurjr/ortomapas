@@ -29,10 +29,12 @@ def metric_tool_contracts(catalog):
                 tool.parameters['properties']['distancia']['description'] = 'Raio em metros, nao em graus.'
                 tool.parameters['properties']['distancia']['minimum'] = 0
         if tool.name == 'calcular_volume':
-            tool.description = 'Calcula volume de TODO o raster projetado acima/abaixo de uma cota em metros; nao recorta por poligono.'
+            tool.parameters['properties'].update(geometry={'type':'object','description':'GeoJSON Polygon/MultiPolygon opcional para limitar o calculo'},crs={'type':'string','default':'EPSG:4326'})
+            tool.description = 'Calcula volume do raster ou da AOI fornecida acima/abaixo de uma cota em metros.'
             tool.parameters['properties']['cota']['description'] = 'Cota de referencia em metros no mesmo datum vertical do raster.'
         if tool.name in {'calcular_declividade', 'calcular_aspecto', 'gerar_hillshade'}:
-            tool.description += ' Analisa TODO o raster projetado, sem recorte por poligono; altitudes assumidas em metros.'
+            tool.parameters['properties'].update(geometry={'type':'object','description':'GeoJSON Polygon/MultiPolygon opcional para limitar a analise'},crs={'type':'string','default':'EPSG:4326'})
+            tool.description += ' Analisa o raster projetado; quando geometry e fornecida, limita os resultados a essa AOI. Altitudes assumidas em metros.'
     return catalog
 
 READ_ONLY_TOOL = ToolDefinition(name="listar_produtos", description="Lista produtos geoespaciais autorizados do projeto.", parameters={"type":"object","properties":{"projeto_id":{"type":"integer"}},"required":["projeto_id"]})

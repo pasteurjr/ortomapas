@@ -7,6 +7,9 @@ from backend.config import DATA_DIR
 from pathlib import Path
 import json
 import rasterio, laspy
+from rasterio.features import geometry_mask
+from rasterio.windows import Window, from_bounds
+from rasterio.warp import transform_geom
 import numpy as np
 from shapely.geometry import shape, mapping
 from affine import Affine
@@ -17,12 +20,64 @@ from backend.agents.llm_client import LMStudioClient
 metric_tool_contracts(TOOL_CATALOG)
 router = APIRouter()
 
+def _read_raster_sample(ds, geometry=None, source_crs='EPSG:4326', max_dimension=512):
+    if geometry:
+        if geometry.get('type') == 'Feature':
+            geometry = geometry.get('geometry')
+        if not geometry or geometry.get('type') not in {'Polygon', 'MultiPolygon'}:
+            raise ValueError('A geometria da AOI precisa ser Polygon ou MultiPolygon')
+        if not ds.crs:
+            raise ValueError('Raster sem CRS; nao e possivel aplicar a AOI')
+        projected = transform_geom(source_crs, ds.crs, geometry, precision=-1)
+        bounds = shape(projected).bounds
+        raw_window = from_bounds(*bounds, transform=ds.transform).intersection(Window(0, 0, ds.width, ds.height))
+        col0 = max(0, int(np.floor(raw_window.col_off)))
+        row0 = max(0, int(np.floor(raw_window.row_off)))
+        col1 = min(ds.width, int(np.ceil(raw_window.col_off + raw_window.width)))
+        row1 = min(ds.height, int(np.ceil(raw_window.row_off + raw_window.height)))
+        if col1 - col0 < 2 or row1 - row0 < 2:
+            raise ValueError('A AOI nao cobre pixels suficientes do raster')
+        window = Window(col0, row0, col1 - col0, row1 - row0)
+        scale = min(1.0, max_dimension / max(window.width, window.height)) if max_dimension else 1.0
+        out_width = max(2, int(round(window.width * scale)))
+        out_height = max(2, int(round(window.height * scale)))
+        values = ds.read(1, window=window, out_shape=(out_height, out_width), resampling=rasterio.enums.Resampling.bilinear, masked=True).astype(float)
+        affine = ds.window_transform(window) * Affine.scale(window.width / out_width, window.height / out_height)
+        inside = geometry_mask([projected], out_shape=values.shape, transform=affine, invert=True)
+        values = np.ma.array(values, mask=np.ma.getmaskarray(values) | ~inside)
+        return values, affine
+    scale = min(1.0, max_dimension / max(ds.width, ds.height)) if max_dimension else 1.0
+    out_width = max(2, int(round(ds.width * scale)))
+    out_height = max(2, int(round(ds.height * scale)))
+    values = ds.read(1, out_shape=(out_height, out_width), resampling=rasterio.enums.Resampling.bilinear, masked=True).astype(float)
+    affine = ds.transform * Affine.scale(ds.width / out_width, ds.height / out_height)
+    return values, affine
+
 def _audit(user, acao, projeto_id=None, detalhes=None):
     try:
         with get_connection() as conn:
             cur=conn.cursor(); cur.execute('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,detalhes) VALUES (%s,%s,%s,%s,%s::jsonb)', (user.get('id'), acao, 'copilot', projeto_id, json.dumps(detalhes or {}))); conn.commit()
     except Exception:
         pass
+
+def _conversation_messages(prompt, context, history):
+    system = (
+        'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. '
+        'Nunca invente dados; solicite ferramentas quando precisar de dados do projeto. '
+        'Use o historico como contexto, mas considere o contexto espacial atual como autoridade.'
+    )
+    messages = [{'role': 'system', 'content': system}]
+    for item in history:
+        if item.get('papel') in {'user', 'assistant'} and item.get('conteudo'):
+            messages.append({'role': item['papel'], 'content': item['conteudo']})
+    messages.append({'role': 'user', 'content': f'Contexto autorizado atual: {json.dumps(context, ensure_ascii=True, default=str)}\nPergunta: {prompt}'})
+    return messages
+
+def _selected_geometry(context):
+    geometry = context.get('geometria')
+    if isinstance(geometry, dict) and geometry.get('type') == 'Feature':
+        return geometry.get('geometry')
+    return geometry
 
 @router.get('/agents/layers')
 async def list_agent_layers(projeto_id: int, user: dict = Depends(current_user)):
@@ -55,31 +110,64 @@ async def delete_agent_layer(layer_id: int, user: dict = Depends(current_user)):
 async def ask_copilot(data: dict, user: dict = Depends(current_user)):
     prompt = (data.get('prompt') or '').strip()
     if not prompt: raise HTTPException(status_code=400, detail='Prompt obrigatorio')
-    context = data.get('context') or {}; project_id = context.get('projeto_id')
+    context = data.get('context') or {}; project_id = context.get('projeto_id'); thread_id = data.get('thread_id')
     _audit(user, 'copilot_ask', project_id, {'prompt_chars': len(prompt)})
+    history = []
+    if thread_id is not None:
+        with get_connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            cur.execute('SELECT id,projeto_id,estado FROM copilot_threads WHERE id=%s AND usuario_id=%s', (thread_id, user['id']))
+            thread = cur.fetchone()
+            if not thread:
+                raise HTTPException(status_code=404, detail='Conversa nao encontrada')
+            if thread['projeto_id'] != project_id:
+                raise HTTPException(status_code=409, detail='A conversa pertence a outro projeto')
+            cur.execute('SELECT papel,conteudo FROM copilot_messages WHERE thread_id=%s ORDER BY criado_em DESC,id DESC LIMIT 26', (thread_id,))
+            history = list(reversed(cur.fetchall()))
+            # The UI persists the current user message before calling this endpoint.
+            if history and history[-1]['papel'] == 'user' and history[-1]['conteudo'] == prompt:
+                history.pop()
+            state = thread.get('estado') or {}
+            if isinstance(state, str):
+                try: state = json.loads(state)
+                except ValueError: state = {}
+            context = {**state.get('contexto', {}), **context}
     if project_id:
         require_project_role(project_id, user, {'proprietario','editor','visualizador'})
         with get_connection() as conn:
             cur=conn.cursor(dictionary=True); cur.execute("SELECT id,nome,status FROM projetos WHERE id=%s",(project_id,)); project=cur.fetchone(); cur.execute("SELECT id,data_voo,altitude_voo_m,formato_foto,gsd_cm,num_fotos,area_coberta_ha FROM voos WHERE projeto_id=%s ORDER BY data_voo DESC NULLS LAST",(project_id,)); voos=[dict(r) for r in cur.fetchall()]; cur.execute("SELECT p.id,p.tipo,p.formato,p.crs FROM produtos_processamento p JOIN processamentos_odm j ON j.id=p.processamento_id WHERE j.projeto_id=%s ORDER BY p.id",(project_id,)); produtos=[dict(r) for r in cur.fetchall()]; cur.execute("SELECT a.id,a.tipo,a.categoria,a.rotulo,a.centro_lat,a.centro_lon FROM anotacoes a JOIN ortomapas o ON o.id=a.ortomapa_id WHERE o.projeto_id=%s ORDER BY a.id DESC LIMIT 50",(project_id,)); anotacoes=[dict(r) for r in cur.fetchall()]; context={**context,'projeto':dict(project) if project else None,'voos':voos,'produtos_autorizados':produtos,'anotacoes_recentes':anotacoes}
-    messages = [{'role':'system','content':'Voce e o Ortomapas Copilot. Responda em JSON conforme o schema. Nunca invente dados; solicite ferramentas quando precisar de dados do projeto.'}, {'role':'user','content': f'Contexto autorizado: {context}\nPergunta: {prompt}'}]
+    messages = _conversation_messages(prompt, context, history)
     try:
         client = LMStudioClient(); result, telemetry = client.complete(messages, TOOL_CATALOG); tool_results = []
+        geometry = _selected_geometry(context)
+        if geometry and any(term in prompt.lower() for term in ('area', 'área', 'perimetro', 'perímetro')):
+            try:
+                measured = geometry_metrics('medir_geometria', {'geometry': geometry, 'crs': 'EPSG:4326'})
+                tool_results.append({'tool': 'medir_geometria', 'result': {'status': 'ok', 'dados': measured, 'origem': {'tipo': 'geometria_selecionada_no_mapa', 'crs': 'EPSG:4326'}}})
+                messages.extend([{'role': 'assistant', 'content': result.model_dump_json()}, {'role': 'user', 'content': f'Resultado calculado pela ferramenta medir_geometria: {json.dumps(tool_results[-1], ensure_ascii=True)}. Responda usando esses valores e informe unidade e origem.'}])
+                result, telemetry_final = client.complete(messages, [])
+                telemetry = {**telemetry, 'medir_geometria_direta': telemetry_final}
+            except Exception as exc:
+                raise HTTPException(status_code=422, detail=f'Nao foi possivel medir a geometria selecionada: {exc}')
         # Intencao inequivoca: garante a analise pedida mesmo se o modelo responder apenas em texto.
         if 'declividade' in prompt.lower() and project_id and context.get('geometria') and not result.tool_calls:
             dsm = next((p for p in produtos if p.get('tipo') == 'dsm'), None)
             if dsm:
-                try: direct = {'tool':'calcular_declividade','result':await execute_tool({'name':'calcular_declividade','arguments':{'produto_id':dsm['id']}}, user)}
+                try: direct = {'tool':'calcular_declividade','result':{'dados':await execute_tool({'name':'calcular_declividade','arguments':{'produto_id':dsm['id'],'geometry':geometry,'crs':'EPSG:4326'}}, user),'origem':{'tipo':'geometria_selecionada_no_mapa','crs':'EPSG:4326'}}}
                 except HTTPException as exc: direct = {'tool':'calcular_declividade','error':exc.detail}
                 tool_results.append(direct); messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultado da ferramenta: {direct}. Responda com base nesse resultado.'}]); result, telemetry_final = client.complete(messages, []); telemetry = {**telemetry, 'declividade_direta': telemetry_final}
         if project_id and not result.tool_calls and ('aspecto' in prompt.lower() or 'volume' in prompt.lower()):
             dsm = next((p for p in produtos if p.get('tipo') == 'dsm'), None)
             if dsm:
-                if 'aspecto' in prompt.lower(): name, args = 'calcular_aspecto', {'produto_id': dsm['id']}
+                if 'aspecto' in prompt.lower(): name, args = 'calcular_aspecto', {'produto_id': dsm['id'], 'geometry': geometry, 'crs': 'EPSG:4326'}
                 else:
                     import re
                     match = re.search(r'cota\s*(-?\d+(?:[\.,]\d+)?)', prompt.lower()); cota = float(match.group(1).replace(',', '.')) if match else 0.0
-                    name, args = 'calcular_volume', {'produto_id': dsm['id'], 'cota': cota}
-                try: direct = {'tool':name,'result':await execute_tool({'name':name,'arguments':args}, user)}
+                    name, args = 'calcular_volume', {'produto_id': dsm['id'], 'cota': cota, 'geometry': geometry, 'crs': 'EPSG:4326'}
+                try:
+                    direct_data = await execute_tool({'name':name,'arguments':args}, user)
+                    direct_result = {'dados': direct_data, 'origem': {'tipo':'geometria_selecionada_no_mapa','crs':'EPSG:4326'}} if geometry else direct_data
+                    direct = {'tool':name,'result':direct_result}
                 except HTTPException as exc: direct = {'tool':name,'error':exc.detail}
                 tool_results.append(direct); messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultado da ferramenta: {direct}. Responda com base nesse resultado.'}]); result, telemetry_final = client.complete(messages, []); telemetry = {**telemetry, f'{name}_direta': telemetry_final}
         # Permite encadear descoberta de produto -> analise, sem loops longos.
@@ -88,7 +176,13 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
             calls = result.tool_calls; batch = []
             for call in calls:
                 try:
-                    item = {'tool': call.name, 'result': await execute_tool({'name': call.name, 'arguments': call.arguments}, user)}
+                    arguments = dict(call.arguments)
+                    if call.name in {'calcular_declividade', 'calcular_aspecto', 'gerar_hillshade', 'calcular_volume'} and geometry and not arguments.get('geometry'):
+                        arguments.update(geometry=geometry, crs='EPSG:4326')
+                    tool_result = await execute_tool({'name': call.name, 'arguments': arguments}, user)
+                    if arguments.get('geometry') and call.name in {'calcular_declividade', 'calcular_aspecto', 'gerar_hillshade', 'calcular_volume'}:
+                        tool_result = {'dados': tool_result, 'origem': {'tipo': 'geometria_selecionada_no_mapa', 'crs': arguments.get('crs', 'EPSG:4326')}}
+                    item = {'tool': call.name, 'result': tool_result}
                 except HTTPException as exc: item = {'tool': call.name, 'error': exc.detail}
                 tool_results.append(item); batch.append(item)
             # Fallback deterministico para intencoes explicitas apos listar produtos.
@@ -96,16 +190,27 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
                 products = next((x['result'].get('dados', []) for x in batch if x['tool'] == 'listar_produtos' and isinstance(x.get('result'), dict)), [])
                 dsm = next((p for p in products if p.get('tipo') == 'dsm'), None)
                 if dsm:
-                    try: extra = {'tool':'calcular_declividade','result':await execute_tool({'name':'calcular_declividade','arguments':{'produto_id':dsm['id']}}, user)}
+                    fallback_args = {'produto_id':dsm['id']}
+                    if geometry:
+                        fallback_args.update(geometry=geometry, crs='EPSG:4326')
+                    try: extra = {'tool':'calcular_declividade','result':await execute_tool({'name':'calcular_declividade','arguments':fallback_args}, user)}
                     except HTTPException as exc: extra = {'tool':'calcular_declividade','error':exc.detail}
                     tool_results.append(extra); batch.append(extra)
             messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultados das ferramentas: {batch}. Se outra ferramenta for necessaria para responder, solicite-a; caso contrario, responda ao usuario.'}])
             result, cycle_telemetry = client.complete(messages, TOOL_CATALOG)
             telemetry = {**telemetry, f'ciclo_{_+1}': cycle_telemetry}
+        if thread_id is not None:
+            with get_connection() as conn:
+                cur = conn.cursor()
+                state = {'contexto': {k: context[k] for k in ('projeto_id', 'geometria', 'bbox') if context.get(k) is not None}, 'ultima_pergunta': prompt, 'ferramentas': [x.get('tool') for x in tool_results]}
+                cur.execute('UPDATE copilot_threads SET estado=%s::jsonb,atualizado_em=now() WHERE id=%s AND usuario_id=%s', (json.dumps(state), thread_id, user['id']))
+                conn.commit()
         if tool_results:
             _audit(user, 'copilot_tools', project_id, {'tools':[x.get('tool') for x in tool_results]})
             return {'status':'ok','resposta':result.model_dump(),'ferramentas_executadas':tool_results,'telemetria':telemetry}
         return {'status':'ok','resposta':result.model_dump(),'telemetria':telemetry}
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f'Falha no LM Studio: {exc}')
 
@@ -147,8 +252,9 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'})
         try:
             with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds:
-                metrics = volume_metrics(ds.read(1, masked=True), ds.crs, ds.transform, cota)
-        except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc))
+                values, affine = _read_raster_sample(ds, args.get('geometry'), args.get('crs', 'EPSG:4326'), 2048 if args.get('geometry') else None)
+                metrics = volume_metrics(values, ds.crs, affine, cota)
+        except (ValueError, rasterio.errors.RasterioError) as exc: raise HTTPException(status_code=422, detail=str(exc))
         return {'status':'ok','dados':{'produto_id':product_id,'cota':cota,'volume_acima_m3':metrics['volume_above_m3'],'area_acima_m2':metrics['area_above_m2'], **metrics}}
     if name in {'calcular_declividade','calcular_aspecto','gerar_hillshade'}:
         product_id=args.get('produto_id')
@@ -157,11 +263,12 @@ async def execute_tool(data: dict, user: dict = Depends(current_user)):
         if not product: raise HTTPException(status_code=404, detail='DSM/DTM nao encontrado')
         require_project_role(product['projeto_id'], user, {'proprietario','editor','visualizador'})
         with rasterio.open(Path(DATA_DIR)/product['caminho']) as ds:
-            sampled=ds.read(1, out_shape=(min(512,ds.height),min(512,ds.width)), resampling=rasterio.enums.Resampling.bilinear, masked=True).astype(float)
-            affine = ds.transform * Affine.scale(ds.width / sampled.shape[1], ds.height / sampled.shape[0])
-            try: gx,gy,valid=terrain_gradient(sampled, ds.crs, affine)
-            except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc))
-            resolution = np.linalg.norm(metric_jacobian(ds.crs, affine), axis=0).tolist()
+            try:
+                sampled, affine = _read_raster_sample(ds, args.get('geometry'), args.get('crs', 'EPSG:4326'))
+                gx,gy,valid=terrain_gradient(sampled, ds.crs, affine)
+                resolution = np.linalg.norm(metric_jacobian(ds.crs, affine), axis=0).tolist()
+            except (ValueError, rasterio.errors.RasterioError) as exc:
+                raise HTTPException(status_code=422, detail=str(exc))
         if not valid.any(): raise HTTPException(status_code=422, detail='Raster sem vizinhanca valida para calcular gradiente')
         if name == 'calcular_declividade': values=np.degrees(np.arctan(np.hypot(gx,gy)))
         elif name == 'calcular_aspecto': values=terrain_aspect(gx,gy,valid)
