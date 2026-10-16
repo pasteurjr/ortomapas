@@ -69,7 +69,15 @@ def _conversation_messages(prompt, context, history):
     messages = [{'role': 'system', 'content': system}]
     for item in history:
         if item.get('papel') in {'user', 'assistant'} and item.get('conteudo'):
-            messages.append({'role': item['papel'], 'content': item['conteudo']})
+            content = item['conteudo']
+            evidence = item.get('ferramentas')
+            if item['papel'] == 'assistant' and evidence:
+                if isinstance(evidence, str):
+                    try: evidence = json.loads(evidence)
+                    except ValueError: evidence = None
+                if evidence:
+                    content += '\nEvidencias estruturadas desta resposta (fonte primaria dos valores): ' + json.dumps(evidence, ensure_ascii=True, default=str)
+            messages.append({'role': item['papel'], 'content': content})
     messages.append({'role': 'user', 'content': f'Contexto autorizado atual: {json.dumps(context, ensure_ascii=True, default=str)}\nPergunta: {prompt}'})
     return messages
 
@@ -122,7 +130,7 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
                 raise HTTPException(status_code=404, detail='Conversa nao encontrada')
             if thread['projeto_id'] != project_id:
                 raise HTTPException(status_code=409, detail='A conversa pertence a outro projeto')
-            cur.execute('SELECT papel,conteudo FROM copilot_messages WHERE thread_id=%s ORDER BY criado_em DESC,id DESC LIMIT 26', (thread_id,))
+            cur.execute('SELECT papel,conteudo,ferramentas FROM copilot_messages WHERE thread_id=%s ORDER BY criado_em DESC,id DESC LIMIT 26', (thread_id,))
             history = list(reversed(cur.fetchall()))
             # The UI persists the current user message before calling this endpoint.
             if history and history[-1]['papel'] == 'user' and history[-1]['conteudo'] == prompt:

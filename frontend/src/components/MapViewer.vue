@@ -341,9 +341,9 @@ function setupDrawing(map) {
     drawHandler?.disable()
     mapStore.profileVertexCount=0; mapStore.finishProfile=null
     mapStore.finishAnalysisAoi=null
-    if (mode === 'profile') drawHandler = new L.Draw.Polyline(map,{shapeOptions:{color:'#eab308',weight:3}})
-    else if (mode === 'analysis-aoi') drawHandler = new L.Draw.Polygon(map,{allowIntersection:false,shapeOptions:{color:'#eab308',weight:3}})
-    else if (mode === 'clip') drawHandler = new L.Draw.Rectangle(map,{shapeOptions:{color:'#f59e0b'}})
+    if (mode === 'profile' || mode === 'line') drawHandler = new L.Draw.Polyline(map,{shapeOptions:{color:'#eab308',weight:3}})
+    else if (mode === 'analysis-aoi' || mode === 'polygon') drawHandler = new L.Draw.Polygon(map,{allowIntersection:false,shapeOptions:{color:'#eab308',weight:3}})
+    else if (mode === 'clip' || mode === 'rectangle') drawHandler = new L.Draw.Rectangle(map,{shapeOptions:{color:'#f59e0b'}})
     else drawHandler = null
     drawHandler?.enable()
     if(mode==='profile') mapStore.finishProfile=()=>drawHandler?.completeShape()

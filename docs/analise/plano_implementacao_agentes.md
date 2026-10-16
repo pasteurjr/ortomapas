@@ -108,7 +108,7 @@ Implementar o Ortomapas Copilot com contexto, memória, RAG e ferramentas geoesp
 
 **Aceite:** o usuário faz uma pergunta completa, acompanha o plano, aprova operações, visualiza o resultado e baixa um relatório rastreável.
 
-**Progresso em 16/10/2026:** integração de thread/histórico/contexto espacial e apresentação expansível das evidências iniciada; cálculos de geometria usam motor determinístico e declividade/aspecto/volume recebem AOI quando selecionada. Isto não conclui a Fase 8: ainda faltam relatório consolidado, timeout demonstrado, validação visual autenticada e execução com banco/modelo locais reais. Ver [relatório de validação parcial](../validacao/copiloto_fase8_2026-10-16.md).
+**Progresso em 16/10/2026:** thread, histórico/contexto espacial e evidências estão implementados; área/perímetro usam cálculo determinístico e terreno aceita AOI. Playwright autenticado confirmou o fluxo com PostgreSQL e LM Studio locais, incluindo continuação e quatro mensagens/evidências persistidas. Timeout foi exercitado por teste controlado; isolamento entre contas, por teste unitário. A Fase 8 permanece em andamento: faltam gestão de múltiplas conversas, memória durável/sumário, confirmação integrada com segunda conta, aprovação de escrita e relatório consolidado. Capturas e resultados: [relatório da Fase 8](../validacao/copiloto_fase8_2026-10-16.md).
 
 ### Fase 9 — RAG documental (final)
 
