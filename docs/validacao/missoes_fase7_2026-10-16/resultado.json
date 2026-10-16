@@ -1,0 +1,135 @@
+{
+  "suite": "missoes_fase7",
+  "base_url": "http://127.0.0.1:18762",
+  "project": "Guarajuba - Condomínio Paraíso (Demonstração)",
+  "steps": [
+    {
+      "id": "F7-01",
+      "status": "passed",
+      "description": "Login, projeto Guarajuba e editor; mapa enquadrado no bbox do projeto",
+      "screenshot": "01_editor_guarajuba.png"
+    },
+    {
+      "id": "F7-02",
+      "status": "passed",
+      "description": "AOI desenhada junto ao Condomínio Paraíso, exclusão, takeoff e parâmetros salvos no PostGIS",
+      "screenshot": "02_aoi_exclusao_takeoff.png",
+      "mission_name": "Fase 7 cobertura 20261016T170939Z",
+      "distance_to_gate_m": 70.7
+    },
+    {
+      "id": "F7-03",
+      "status": "passed",
+      "description": "Grid deriva footprint e espaçamentos dos overlaps; rota contorna exclusao",
+      "screenshot": "03_cobertura_grid.png",
+      "summary": "Footprint 69.67 x 52.25 m; espacamento 20.89968007718862 / 10.449840038594306 m; overlap 70% / 80%.",
+      "route_markers": 899,
+      "transit_markers": 188
+    },
+    {
+      "id": "F7-04",
+      "status": "passed",
+      "description": "Validador aprova geometrias e verifica autonomia de cada bloco",
+      "screenshot": "04_validacao_rota.png",
+      "validation_status": "aviso",
+      "exclusion_rule": "ZONAS_EXCLUSAO\n0 waypoint(s) em zona de exclusao; 0 trecho(s) cruzam zona proibida",
+      "autonomy": {
+        "distancia_rota_m": 10009.54,
+        "blocos": 4,
+        "maior_bloco_segundos": 809.14,
+        "tempo_utilizavel_por_bloco_segundos": 810.0,
+        "reserva_pct": 25.0,
+        "detalhes": [
+          {
+            "ordem": 1,
+            "tempo_segundos": 809.14,
+            "fotos": 275
+          },
+          {
+            "ordem": 2,
+            "tempo_segundos": 808.96,
+            "fotos": 108
+          },
+          {
+            "ordem": 3,
+            "tempo_segundos": 801.17,
+            "fotos": 156
+          },
+          {
+            "ordem": 4,
+            "tempo_segundos": 633.03,
+            "fotos": 172
+          }
+        ]
+      }
+    },
+    {
+      "id": "F7-05",
+      "status": "passed",
+      "description": "Reabertura restaura parâmetros, AOI, exclusão, takeoff e waypoints persistidos",
+      "screenshot": "05_missao_reaberta.png",
+      "mission_id": 57,
+      "restored_waypoints": 899
+    },
+    {
+      "id": "F7-06",
+      "status": "passed",
+      "description": "Alteração invalida cobertura e exportação; salvar após reabrir preserva a contagem da rota",
+      "screenshot": "06_cobertura_invalidada.png",
+      "mission_id": 57,
+      "persisted_waypoints": 899
+    },
+    {
+      "id": "F7-07",
+      "status": "passed",
+      "description": "API bloqueia validação até regenerar o grid após mudança de altitude",
+      "screenshot": "07_bloqueio_cobertura_antiga.png",
+      "stale_rule": "COBERTURA_ATUALIZADA\nParametros ou geometria mudaram; gere novamente o grid antes de validar a missao"
+    },
+    {
+      "id": "F7-08",
+      "status": "passed",
+      "description": "Novo grid é persistido e validado; cobertura deixa de estar obsoleta",
+      "screenshot": "08_cobertura_recalculada.png",
+      "validation_status": "aviso",
+      "summary": "Footprint 83.6 x 62.7 m; espacamento 25.079616092626342 / 12.53980804631317 m; overlap 70% / 80%."
+    },
+    {
+      "id": "F7-09",
+      "status": "passed",
+      "description": "CSV Litchi e KML baixados; contagem CSV comparada à missão persistida",
+      "screenshot": "09_exportacoes.png",
+      "csv_header": [
+        "latitude",
+        "longitude",
+        "altitude(m)",
+        "heading(deg)",
+        "curvesize(m)",
+        "rotationdir",
+        "gimbalmode",
+        "gimbalpitchangle",
+        "actiontype1",
+        "actionparam1",
+        "altitudemode",
+        "speed(m/s)",
+        "poi_latitude",
+        "poi_longitude",
+        "poi_altitude(m)",
+        "poi_altitudemode",
+        "photo_timeinterval",
+        "photo_distinterval"
+      ],
+      "csv_rows": 646,
+      "photo_actions": 492,
+      "kml_placemarks": 647,
+      "kml_bytes": 229508,
+      "files": {
+        "litchi_csv": "missao_litchi_csv.litchi.csv",
+        "kml": "missao_kml.kml"
+      }
+    }
+  ],
+  "status": "passed",
+  "run_id": "20261016T170939Z",
+  "finished_at": "2026-10-16T17:09:55.079545+00:00"
+}

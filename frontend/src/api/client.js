@@ -66,7 +66,7 @@ export function generateCaptureGrid(id, data = {}) {
 
 export function updateCaptureWaypoints(id, waypoints) {
   return api.put(`/missoes-captura/${id}/waypoints`, {
-    waypoints: waypoints.map(({ lat, lng, altitude_m, velocidade_ms, gimbal_graus, rumo_graus }) => ({ lat, lon: lng, altitude_m, velocidade_ms, gimbal_graus, rumo_graus })),
+    waypoints: waypoints.map(({ lat, lng, altitude_m, velocidade_ms, gimbal_graus, rumo_graus, capture_photo }) => ({ lat, lon: lng, altitude_m, velocidade_ms, gimbal_graus, rumo_graus, captura_foto: capture_photo ?? true })),
   })
 }
 

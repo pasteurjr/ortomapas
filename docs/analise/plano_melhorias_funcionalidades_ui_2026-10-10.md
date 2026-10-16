@@ -306,6 +306,8 @@ Adicionar casos específicos para abrir DSM/DTM 3D, nuvem, perfil altimétrico, 
 
 **Aceite:** AOI reconhecida no mapa; cobertura medida compatível com parâmetros; exclusões respeitadas por trajetória; mudança de parâmetro persiste e invalida validação antiga; CSV/KML/GeoJSON correspondem à rota final.
 
+**Status em 16/10/2026:** concluída com aviso operacional de bateria. A validação Playwright no projeto Guarajuba desenhou uma AOI de demonstração, gerou rota com pontos de foto e trânsito, verificou exclusões, persistência/reabertura, bloqueio por cobertura obsoleta e exportou CSV Litchi/KML conferidos contra o PostGIS. A maior duração estimada por bloco ficou próxima do limite útil configurado; nenhum voo físico foi realizado. Evidências: [relatório detalhado da Fase 7](../validacao/missoes_fase7_2026-10-16.md).
+
 ### Fase 8. Copiloto com contexto e evidências
 
 **Entregas:** conversas e memória por usuário/projeto, produtos e geometria contextualizados, motores de análise compartilhados, resposta terminal e execução auditável. Resolver M-12/M-18. RAG fica fora desta fase.
