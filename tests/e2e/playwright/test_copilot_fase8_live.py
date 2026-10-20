@@ -103,7 +103,9 @@ def main() -> int:
             thread_response = page.request.get(f'{API}/copilot/threads/{active_thread}', headers={'Authorization': f'Bearer {token}'})
             if thread_response.status != 200:
                 raise AssertionError(f'Falha ao recuperar conversa persistida: HTTP {thread_response.status}')
-            persisted = thread_response.json().get('mensagens', [])
+            thread_data = thread_response.json()
+            project_id = thread_data['projeto_id']
+            persisted = thread_data.get('mensagens', [])
             saved_evidence = any(
                 message.get('papel') == 'assistant'
                 and any(tool.get('tool') == 'medir_geometria' for tool in (message.get('ferramentas') or []))
@@ -126,6 +128,24 @@ def main() -> int:
             if page.locator('.message').count() < 4:
                 raise AssertionError('Troca de conversa nao restaurou as mensagens persistidas')
             run['steps'].append({'id': 'F8-LIVE-08', 'status': 'passed', 'action': 'Troca de conversa restaura o historico associado a thread selecionada', 'thread_id': active_thread, 'screenshot': shot('live_07_troca_conversa')})
+
+            details = page.locator('.memory-panel')
+            details.locator('summary').click()
+            memory_key = f'e2e_memoria_{datetime.now().strftime("%H%M%S")}'
+            details.get_by_label('Chave da memória').fill(memory_key)
+            details.get_by_label('Conteúdo da memória').fill('Preferencia temporaria de validacao do Copiloto.')
+            details.get_by_role('button', name='Salvar memória').click()
+            details.get_by_text(memory_key, exact=True).wait_for(timeout=10_000)
+            memory_list = page.request.get(f'{API}/copilot/memories', params={'projeto_id': project_id}, headers={'Authorization': f'Bearer {token}'})
+            if memory_list.status != 200:
+                raise AssertionError(f'Falha ao listar memorias: HTTP {memory_list.status}')
+            saved_memories = memory_list.json().get('memorias', [])
+            if not any(item.get('chave') == memory_key for item in saved_memories):
+                raise AssertionError('A memoria salva na interface nao foi persistida na API')
+            run['steps'].append({'id': 'F8-LIVE-09', 'status': 'passed', 'action': 'Memoria pessoal salva pela interface e confirmada pela API', 'screenshot': shot('live_08_memoria_salva')})
+            details.get_by_role('button', name=f'Excluir memória {memory_key}').click()
+            details.get_by_text(memory_key, exact=True).wait_for(state='detached', timeout=10_000)
+            run['steps'].append({'id': 'F8-LIVE-10', 'status': 'passed', 'action': 'Memoria temporaria excluida pela interface', 'screenshot': shot('live_09_memoria_excluida')})
 
             outsider_login = page.request.post(f'{API}/auth/login', data={'email': OUTSIDER_EMAIL, 'senha': OUTSIDER_PASSWORD})
             if outsider_login.status == 200:

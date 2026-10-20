@@ -157,6 +157,9 @@ export function createCopilotThread(data) { return api.post('/copilot/threads', 
 export function listCopilotThreads(projectId) { return api.get('/copilot/threads', { params: { projeto_id: projectId } }) }
 export function getCopilotThread(id) { return api.get(`/copilot/threads/${id}`) }
 export function addCopilotMessage(id, data) { return api.post(`/copilot/threads/${id}/messages`, data) }
+export function listCopilotMemories(projectId) { return api.get('/copilot/memories', { params: { projeto_id: projectId } }) }
+export function saveCopilotMemory(data) { return api.put('/copilot/memories', data) }
+export function deleteCopilotMemory(id) { return api.delete(`/copilot/memories/${id}`) }
 
 // Ortomapas
 export function getOrtomapas(projetoId) {

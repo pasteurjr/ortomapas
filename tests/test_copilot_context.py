@@ -30,6 +30,8 @@ class Cursor:
             ]
         elif 'SELECT id,nome,status FROM projetos' in query:
             self.row = {'id': 8, 'nome': 'Projeto de teste', 'status': 'ativo'}
+        elif 'SELECT chave,valor FROM copilot_memorias' in query:
+            self.rows = [{'chave': 'preferencia_unidades', 'valor': 'hectares'}]
         elif 'SELECT id,data_voo,altitude_voo_m' in query or 'SELECT p.id,p.tipo,p.formato,p.crs' in query or 'SELECT a.id,a.tipo,a.categoria' in query:
             self.rows = []
         else:
@@ -84,6 +86,9 @@ def test_copilot_resumes_owned_thread_and_measures_selected_geometry(monkeypatch
     assert captured[0][2]['content'].startswith('O projeto tem o produto DTM 31.')
     assert 'Evidencias estruturadas desta resposta' in captured[0][2]['content']
     assert '"unidade_area": "m2"' in captured[0][2]['content']
+    assert 'Memorias pessoais' in captured[0][0]['content']
+    assert 'preferencia_unidades' in captured[0][3]['content']
+    assert 'hectares' in captured[0][3]['content']
     assert 'medir_geometria' in [tool['tool'] for tool in response['ferramentas_executadas']]
     measurement = response['ferramentas_executadas'][0]['result']['dados']
     assert measurement['area_m2'] > 12_000
