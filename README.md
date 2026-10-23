@@ -4,7 +4,7 @@ Plataforma web completa para armazenamento, visualizacao e **analise espacial** 
 
 ## Funcionalidades
 
-- **Armazenamento** com metadados completos em banco MySQL (com fallback SQLite)
+- **Armazenamento** com metadados completos em PostgreSQL/PostGIS (MySQL e SQLite sao legados/opcionais)
 - **Visualizacao** de ortomosaicos, DSMs e DTMs em mapa interativo (Leaflet)
 - **Indices de vegetacao** RGB: VARI, TGI, ExG, GLI
 - **Analise de terreno**: declividade, aspecto, hillshade, curvas de nivel
@@ -34,7 +34,7 @@ Plataforma web completa para armazenamento, visualizacao e **analise espacial** 
 |  └─ 5 agentes IA + orquestrador                     |
 +-----------------------------------------------------+
        |                |                  |
-   MySQL/SQLite     File system        Docker (opcional)
+ PostgreSQL/PostGIS File system        Docker (opcional)
                    (GeoTIFFs)          ├─ WebODM
                                        └─ GeoServer
 ```
@@ -47,7 +47,7 @@ Plataforma web completa para armazenamento, visualizacao e **analise espacial** 
 | Frontend | Vue 3, Vite, Leaflet, PrimeVue, Pinia |
 | Geoespacial | GDAL 3.4+, rasterio, geopandas, shapely |
 | ML/IA | scikit-learn, ultralytics (YOLOv8), Anthropic API |
-| Banco | MySQL 8.0 (fallback SQLite) |
+| Banco | PostgreSQL + PostGIS (ativo); schema MySQL legado |
 | Container | Docker (WebODM + GeoServer opcionais) |
 
 ## Instalacao Rapida
@@ -112,6 +112,7 @@ ortomapas/
 - [Casos de Uso](docs/analise/casos_de_uso.md) — 20 UCs detalhados com fluxos
 - [Arquitetura](docs/analise/arquitetura_observada.md) — diagramas e fluxos
 - [Entidades e Regras](docs/analise/entidades_e_regras.md) — modelo de dados
+- [Restauracao dos Bancos e Dados de Exemplo](docs/restauracao_bancos_e_dados_exemplo.md) — dump estrutural PostgreSQL, referencia MySQL e origem do dataset ODM
 - [Operacao do Drone](configdrone.md) — configurar DJI Mini 3 + Litchi Pilot
 - [Analise de Areas](ANALISE%20AREAS.md) — 19 regioes de interesse no entorno de BH
 - [Parecer de Validacao](docs/validacao/parecer_final_multi_dataset.md) — 100/100 testes em 7 datasets reais
