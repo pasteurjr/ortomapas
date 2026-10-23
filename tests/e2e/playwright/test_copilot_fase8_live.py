@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 
 
 ROOT = Path(__file__).resolve().parents[3]
-OUT = ROOT / 'docs/validacao/copiloto_fase8_2026-10-16'
+OUT = Path(os.getenv('E2E_OUTPUT_DIR', ROOT / 'docs/validacao/copiloto_fase8_2026-10-16'))
 FRONTEND = os.getenv('FRONTEND_URL', 'http://127.0.0.1:18762').rstrip('/')
 API = os.getenv('API_URL', 'http://127.0.0.1:18761/api').rstrip('/')
 EMAIL = os.getenv('E2E_EMAIL', 'phase1-1791391595@example.test')
@@ -19,6 +19,7 @@ PASSWORD = os.getenv('E2E_PASSWORD', 'fase1-senha-segura')
 PROJECT = os.getenv('E2E_PROJECT', 'Guarajuba - Condomínio Paraíso (Demonstração)')
 OUTSIDER_EMAIL = os.getenv('E2E_OUTSIDER_EMAIL', 'phase1-outsider@example.test')
 OUTSIDER_PASSWORD = os.getenv('E2E_OUTSIDER_PASSWORD', 'validacao-fase1-outsider')
+CHROMIUM_EXECUTABLE = os.getenv('PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH')
 
 
 def main() -> int:
@@ -27,7 +28,7 @@ def main() -> int:
     errors: list[str] = []
 
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
+        browser = playwright.chromium.launch(headless=True, executable_path=CHROMIUM_EXECUTABLE)
         context = browser.new_context(viewport={'width': 1600, 'height': 1000}, accept_downloads=True)
         page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
@@ -62,6 +63,8 @@ def main() -> int:
             page.wait_for_timeout(300)
             page.get_by_role('button', name='Copiloto').click()
             page.locator('.copilot .selection').wait_for(timeout=10_000)
+            page.get_by_role('button', name='Nova conversa').click()
+            page.locator('.threads select').wait_for(timeout=10_000)
             run['steps'].append({'id': 'F8-LIVE-02', 'status': 'passed', 'action': 'Desenho de poligono e selecao contextual no chat', 'screenshot': shot('live_03_geometria_selecionada')})
 
             ask = page.get_by_placeholder('Ex.: compare DSM e DTM deste projeto...')
@@ -117,17 +120,45 @@ def main() -> int:
             run['persisted_messages'] = len(persisted)
             run['steps'].append({'id': 'F8-LIVE-05', 'status': 'passed', 'action': 'Historico e evidencia da ferramenta confirmados pela API autenticada', 'messages': len(persisted), 'screenshot': 'live_05_retomada_contexto.png'})
 
+            layers_before_response = page.request.get(f'{API}/agents/layers', params={'projeto_id': project_id}, headers={'Authorization': f'Bearer {token}'})
+            if layers_before_response.status != 200:
+                raise AssertionError(f'Falha ao listar camadas: HTTP {layers_before_response.status}')
+            layer_count_before = len(layers_before_response.json().get('camadas', []))
+            ask.fill('Crie uma geometria de buffer de 20 metros ao redor da geometria selecionada no mapa.')
+            with page.expect_response(lambda r: r.url.endswith('/agents/ask') and r.request.method == 'POST', timeout=180_000) as buffer_response:
+                page.get_by_role('button', name='Enviar').click()
+            buffer_result = buffer_response.value
+            if buffer_result.status != 200:
+                raise AssertionError(f'Criacao do buffer respondeu HTTP {buffer_result.status}: {buffer_result.text()[:500]}')
+            buffer_tool = next((item for item in buffer_result.json().get('ferramentas_executadas', []) if item.get('tool') == 'buffer_geometria'), None)
+            if not buffer_tool or not buffer_tool.get('result', {}).get('dados', {}).get('geometry'):
+                raise AssertionError('A resposta nao trouxe a geometria calculada pelo buffer_geometria')
+            page.locator('.message.assistant').last.locator('.evidence summary').click()
+            save_button = page.locator('.message.assistant').last.get_by_role('button', name='Salvar camada no projeto').first
+            save_button.wait_for(timeout=10_000)
+            layers_after_preview = page.request.get(f'{API}/agents/layers', params={'projeto_id': project_id}, headers={'Authorization': f'Bearer {token}'})
+            if len(layers_after_preview.json().get('camadas', [])) != layer_count_before:
+                raise AssertionError('A previa do buffer foi persistida sem aprovacao explicita')
+            page.locator('.messages').evaluate('(element) => { element.scrollTop = element.scrollHeight }')
+            run['steps'].append({'id': 'F8-LIVE-05A', 'status': 'passed', 'action': 'Buffer real exibido como previa; API confirma que ainda nao foi persistido', 'distance_m': buffer_tool['result']['dados'].get('distancia_m'), 'buffer_tool_count': sum(item.get('tool') == 'buffer_geometria' for item in buffer_result.json().get('ferramentas_executadas', [])), 'screenshot': shot('live_06_buffer_pendente')})
+            save_button.click()
+            page.locator('.message.assistant').last.get_by_role('status').get_by_text('Camada salva no projeto').first.wait_for(timeout=10_000)
+            layers_after_save = page.request.get(f'{API}/agents/layers', params={'projeto_id': project_id}, headers={'Authorization': f'Bearer {token}'})
+            saved_layers = layers_after_save.json().get('camadas', [])
+            if len(saved_layers) != layer_count_before + 1:
+                raise AssertionError(f'Confirmacao nao gravou exatamente uma camada: antes={layer_count_before}, depois={len(saved_layers)}')
+            run['steps'].append({'id': 'F8-LIVE-05B', 'status': 'passed', 'action': 'Clique explicito grava uma camada e a API confirma a persistencia', 'layer_id': saved_layers[0]['id'], 'screenshot': shot('live_07_buffer_salvo')})
+
             page.get_by_role('button', name='Nova conversa').click()
             page.wait_for_function(f"() => document.querySelector('.threads select')?.value !== '{active_thread}'", timeout=10_000)
-            if page.locator('.message').count() != 0:
-                raise AssertionError('Nova conversa deveria abrir sem mensagens da conversa anterior')
+            page.wait_for_function("() => document.querySelectorAll('.message').length === 0", timeout=10_000)
             new_thread = int(page.locator('.threads select').input_value())
-            run['steps'].append({'id': 'F8-LIVE-07', 'status': 'passed', 'action': 'Criacao de conversa independente sem misturar mensagens', 'thread_id': new_thread, 'screenshot': shot('live_06_nova_conversa')})
+            run['steps'].append({'id': 'F8-LIVE-07', 'status': 'passed', 'action': 'Criacao de conversa independente sem misturar mensagens', 'thread_id': new_thread, 'screenshot': shot('live_08_nova_conversa')})
             page.locator('.threads select').select_option(str(active_thread))
             page.get_by_text('Na medicao da geometria que voce acabou de concluir', exact=False).wait_for(timeout=10_000)
             if page.locator('.message').count() < 4:
                 raise AssertionError('Troca de conversa nao restaurou as mensagens persistidas')
-            run['steps'].append({'id': 'F8-LIVE-08', 'status': 'passed', 'action': 'Troca de conversa restaura o historico associado a thread selecionada', 'thread_id': active_thread, 'screenshot': shot('live_07_troca_conversa')})
+            run['steps'].append({'id': 'F8-LIVE-08', 'status': 'passed', 'action': 'Troca de conversa restaura o historico associado a thread selecionada', 'thread_id': active_thread, 'screenshot': shot('live_09_troca_conversa')})
 
             details = page.locator('.memory-panel')
             details.locator('summary').click()
@@ -142,10 +173,10 @@ def main() -> int:
             saved_memories = memory_list.json().get('memorias', [])
             if not any(item.get('chave') == memory_key for item in saved_memories):
                 raise AssertionError('A memoria salva na interface nao foi persistida na API')
-            run['steps'].append({'id': 'F8-LIVE-09', 'status': 'passed', 'action': 'Memoria pessoal salva pela interface e confirmada pela API', 'screenshot': shot('live_08_memoria_salva')})
+            run['steps'].append({'id': 'F8-LIVE-09', 'status': 'passed', 'action': 'Memoria pessoal salva pela interface e confirmada pela API', 'screenshot': shot('live_10_memoria_salva')})
             details.get_by_role('button', name=f'Excluir memória {memory_key}').click()
             details.get_by_text(memory_key, exact=True).wait_for(state='detached', timeout=10_000)
-            run['steps'].append({'id': 'F8-LIVE-10', 'status': 'passed', 'action': 'Memoria temporaria excluida pela interface', 'screenshot': shot('live_09_memoria_excluida')})
+            run['steps'].append({'id': 'F8-LIVE-10', 'status': 'passed', 'action': 'Memoria temporaria excluida pela interface', 'screenshot': shot('live_11_memoria_excluida')})
 
             outsider_login = page.request.post(f'{API}/auth/login', data={'email': OUTSIDER_EMAIL, 'senha': OUTSIDER_PASSWORD})
             if outsider_login.status == 200:

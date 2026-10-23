@@ -136,3 +136,51 @@ Todos exigem usuario/projeto e chave de idempotencia. O endpoint ODM ja existe, 
 - A qualidade do mapa depende de GSD, sobreposicao, exposicao, altitude real, vento e georreferenciamento. IA nao corrige falta fisica de cobertura.
 - Virtual Stick aumenta dependencia de Android, USB, enlace e algoritmo de controle; nao deve ser a primeira entrega de voo automatico.
 - Antes de operar no Brasil, o piloto deve conferir regras e autorizacoes aplicaveis ao local e ao tipo de voo. O app so pode ajudar com checklist; nao concede permissao.
+
+## 10. Simulador de voo baseado no projeto local `drone`
+
+### 10.1 Inventario e decisao de reaproveitamento
+
+Foi inspecionado o projeto local `/mnt/data1/progpython/drone` (fora deste repositorio). Seu documento `DOCUMENTACAO_DRONE.md` descreve tres conjuntos de codigo:
+
+| Fonte | O que aproveitar | O que impede o uso direto |
+|---|---|---|
+| `01_RLDDPGTD3LL` (projeto do usuario; [repositorio RL](https://github.com/pasteurjr/RL)) | Modelo de quadricoptero com 6 graus de liberdade, integracao RK4, mistura dos motores, experimentos de manobra e visualizacao Matplotlib; serve como referencia e base para testes de regressao | Parametros genericos de 1 kg, nao medidos no Mini 3; versoes `.py` com erros de integracao; notebook principal com problema de gravidade projetada e testes de RL que nao convergiram. Nao reutilizar o agente TD3 como piloto |
+| `02_drone_sim` (terceiros, licenca MIT) | API simples `Drone.step` com RPM dos quatro motores, ruido de sensores e visualizacao 3D; exemplo de estrutura de modulo | Modelo e parametros genericos (massa de 0,468 kg); nao recebe comandos de alto nivel da DJI, nao representa o controlador interno do Mini 3 e nao tem validacao contra telemetria real |
+| `03_rldrone` (prototipos antigos) | Formulas e experimentos PID podem orientar testes unitarios de sinais e eixos | No modelo 6-DOF, `fx=fy=0`, torque de guinada nulo e erros de unidades/integracao; nao consegue demonstrar corretamente comandos de avancar, recuar ou guinar |
+
+**Decisao:** extrair conceitos e casos de teste, nao copiar os modulos atuais para producao. O codigo de dinamica deve ser isolado em biblioteca testavel, sem efeitos colaterais ao importar e com unidades/SI e referenciais explicitados. A primeira meta e **simulacao funcional e calibravel** para planejamento, comandos e captura; nao uma replica exata do firmware proprietario DJI. Um modelo sem parametros aerodinamicos, de motores e de controlador medidos no equipamento nao pode garantir equivalencia fisica com o Mini 3.
+
+### 10.2 Arquitetura proposta
+
+```text
+Missao Ortomapas (grid, altitude, velocidade, fotos)
+      -> Mission Runner / mesma maquina de estados do app Android
+      -> contrato DroneGateway (comandos, telemetria, eventos de camera)
+           -> DjiGateway: MSDK V5 + RC-N1 + Mini 3 real
+           -> SimGateway: autopiloto substituto + dinamica 6-DOF + sensores/camera simulados
+      -> diario de execucao e QA -> Ortomapas
+      -> visualizacao: mapa 2D + cena 3D, rota planejada e percorrida
+```
+
+O `SimGateway` deve aceitar **o mesmo contrato de alto nivel** usado pelo app: velocidade horizontal, velocidade vertical/altitude, rumo ou taxa de guinada, pausar, retomar, pousar, RTH e disparar foto. Deve traduzir esses comandos para um controlador interno substituto (por exemplo PID em cascata), mistura de motores e dinamica 6-DOF. Aplicar RPM diretamente aos quatro motores testaria outra interface, nao a experiencia de Virtual Stick do usuario. O modo simulado tera identificacao visual inequivoca e isolamento que impossibilite enviar comandos ao drone real por engano.
+
+Representar posicao em coordenadas locais ENU ou NED com conversao explicita para latitude/longitude; definir quadro do corpo e convencao de sinais para avancar/recuar, deslocar lateralmente, subir/descer e guinar. Propagar atitude preferencialmente por quaternions, exibindo angulos de Euler ao usuario; isto evita a singularidade da parametrizacao de Euler em inclinacoes elevadas. Usar passo fixo deterministico para testes, e RK4 ou integrador numerico equivalente apos testes de conservacao/estabilidade. Parametros da aeronave, camera, bateria e atrasos devem ser configuraveis e versionados, com valores nao medidos marcados como **hipoteses**.
+
+### 10.3 Capacidades e cenarios obrigatorios
+
+- Reproduzir uma missao real do banco Ortomapas sobre mapa/AOI, incluindo waypoints, curvas, velocidade, altitude, rumo, gimbal, intervalo de disparo e pegadas estimadas de cada foto. Registrar rota planejada e realizada, instantes e posicoes dos disparos; permitir replay e exportacao da telemetria.
+- Injetar vento, rajadas, erro GNSS/IMU, atraso/jitter dos comandos, falha de camera, bateria baixa e perda de enlace. Exibir a consequencia operacional: foto perdida, lacuna de cobertura, desvio de rota, pausa, RTH ou termino seguro. Nao modelar obstaculos como evitados automaticamente sem prova de suporte do Mini 3 no modo de controle escolhido.
+- Validar decolagem, hover, avancar, recuar, transladar, subir, descer, guinar, seguir trecho, pausar, retomar e pousar. Conferir sentido do movimento e dos eixos por testes unitarios antes de renderizar a trajetoria.
+- Apresentar visualizacao interativa 2D/3D para inspecao humana; a renderizacao Matplotlib existente e util como diagnostico, mas nao substitui o mapa e a interface operacional do Ortomapas. A 3D deve distinguir simulacao fisica, terreno disponivel e estimativa de cobertura; nao sugerir foto real quando so existe disparo simulado.
+- Executar testes automaticos sem interface (mesma semente, mesmo resultado) e cenarios visuais capturados. O aceite mede erro transversal/altitude/rumo, numero e distribuicao de fotos, sobreposicao prevista, latencia, violacoes de limites e comportamento de falhas. Limites numericos de erro so serao fixados depois de calibracao com logs reais.
+
+### 10.4 Caminho de validacao
+
+1. **Corrigir o nucleo fisico** em modulo novo: gravidade no referencial correto, empuxo projetado pela atitude, arrasto com sinal, derivada de posicao igual a velocidade, torques de roll/pitch/yaw e conversao RPM -> forca/torque. Criar testes de hover, simetria, sinais e conservacao basica.
+2. **Implementar o adaptador de comandos** e testar cada comando de alto nivel com trajeto conhecido, sem RL. O controlador PID substituto e apenas parte do simulador, nao hipotese sobre o algoritmo interno DJI.
+3. **Integrar uma missao do Ortomapas** e conferir georreferenciamento, geometria da rota, captura e cobertura em 2D/3D, com comparacao automatica entre esperado e obtido.
+4. **Testar o simulador oficial do DJI MSDK V5** conectado ao Mini 3/RC-N1, se a combinacao concreta oferecer a funcao, para validar chamadas SDK e comportamento de estado. A DJI documenta a API de simulador, mas isso nao comprova aqui disponibilidade nem fidelidade para esse conjunto; requer prova de bancada. [DJI: Simulator Sample](https://developer.dji.com/doc/mobile-sdk-tutorial/en/tutorials/simulator.html).
+5. **Calibrar com telemetria de voos reais controlados** em area autorizada, registrando firmware, bateria, vento, carga, velocidade, curvas e resposta a comandos; comparar distribuicoes de erro e atualizar parametros. Somente esses ensaios permitem afirmar quao proximo o modelo esta do Mini 3. Simulacao nao substitui teste fisico de seguranca.
+
+**Escopo de aceite:** o simulador demonstra que o *nosso* planejador, runner, conversao de coordenadas, agenda de fotos, tratamento de falhas e interface operam corretamente no contrato definido. Ele nao certifica resposta aerodinamica, capacidade de waypoint nativo, evitamento de obstaculos, nem seguranca real do Mini 3 sem ensaio com aeronave e SDK.

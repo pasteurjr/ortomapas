@@ -2,7 +2,7 @@ import asyncio
 from fastapi import HTTPException
 
 from backend.routers import agents
-from backend.agents.schemas import CopilotResponse
+from backend.agents.schemas import CopilotResponse, TOOL_CATALOG, ToolRequest
 from backend.routers.agents import _read_raster_sample
 from backend.agents.llm_client import LMStudioClient
 from rasterio.io import MemoryFile
@@ -140,3 +140,82 @@ def test_lm_studio_timeout_returns_controlled_error(monkeypatch):
     except RuntimeError as error:
         assert 'apos 3 tentativas' in str(error)
     assert len(calls) == 3
+
+
+def test_lm_studio_native_tool_calls_avoid_structured_output_conflict(monkeypatch):
+    captured = {}
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {'model': 'qwen/qwen3.8-27b', 'choices': [{'message': {
+                'content': '',
+                'tool_calls': [{'function': {'name': 'medir_geometria', 'arguments': '{"geometry":{"type":"Polygon"}}'}}],
+            }}]}
+
+    def post(_url, json, timeout):
+        captured.update(json)
+        return Response()
+
+    monkeypatch.setattr('backend.agents.llm_client.requests.post', post)
+    result, _ = LMStudioClient().complete([{'role': 'user', 'content': 'Meça esta geometria.'}], TOOL_CATALOG)
+
+    assert 'response_format' not in captured
+    assert captured['tool_choice'] == 'auto'
+    assert result.tool_calls[0].name == 'medir_geometria'
+    assert result.tool_calls[0].arguments == {'geometry': {'type': 'Polygon'}}
+
+
+def test_lm_studio_keeps_json_schema_for_final_responses(monkeypatch):
+    captured = {}
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {'model': 'qwen/qwen3.8-27b', 'choices': [{'message': {
+                'content': '{"answer":"Área calculada.","tool_calls":[],"confidence":0.9}',
+            }}]}
+
+    def post(_url, json, timeout):
+        captured.update(json)
+        return Response()
+
+    monkeypatch.setattr('backend.agents.llm_client.requests.post', post)
+    result, _ = LMStudioClient().complete([{'role': 'user', 'content': 'Resuma o resultado.'}], [])
+
+    assert captured['response_format']['type'] == 'json_schema'
+    assert result.answer == 'Área calculada.'
+    assert result.confidence == 0.9
+
+
+def test_copilot_does_not_execute_repeated_identical_tool_calls(monkeypatch):
+    executions = []
+    calls = []
+    geometry = {'type': 'Polygon', 'coordinates': [[[0, 0], [0.001, 0], [0.001, 0.001], [0, 0]]]}
+
+    class Client:
+        def complete(self, messages, tools):
+            calls.append(bool(tools))
+            if tools:
+                return CopilotResponse(answer='', tool_calls=[ToolRequest(
+                    name='buffer_geometria', arguments={'geometry': geometry, 'distancia': 20}
+                )]), {'model': 'test'}
+            return CopilotResponse(answer='Buffer criado uma vez.', confidence=0.9), {'model': 'test'}
+
+    async def execute(data, _user):
+        executions.append(data)
+        return {'status': 'ok', 'dados': {'geometry': geometry, 'distancia_m': 20}}
+
+    monkeypatch.setattr(agents, 'LMStudioClient', Client)
+    monkeypatch.setattr(agents, 'execute_tool', execute)
+    monkeypatch.setattr(agents, '_audit', lambda *_args, **_kwargs: None)
+    response = asyncio.run(agents.ask_copilot({'prompt': 'Gere um buffer de 20 metros.'}, {'id': 5}))
+
+    assert len(executions) == 1
+    assert len(response['ferramentas_executadas']) == 1
+    assert response['resposta']['answer'] == 'Buffer criado uma vez.'
+    assert calls == [True, True, False]

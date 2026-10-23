@@ -32,7 +32,7 @@
       <div v-if="!messages.length" class="empty">Pergunte sobre produtos, qualidade, relevo ou análises do projeto.</div>
       <div v-for="(m,i) in messages" :key="i" class="message" :class="m.role">
         <b>{{m.role==='user'?'Você':'Copiloto'}}</b><p>{{m.text}}</p><small v-if="m.tools?.length">Ferramentas: {{m.tools.join(', ')}}</small>
-        <details v-if="m.evidence?.length" class="evidence"><summary>Ver resultados e origem dos cálculos</summary><div v-for="(item,j) in m.evidence" :key="j" class="evidence-item"><b>{{item.tool}}</b><pre>{{formatEvidence(item)}}</pre></div></details>
+        <details v-if="m.evidence?.length" class="evidence"><summary>Ver resultados e origem dos cálculos</summary><div v-for="(item,j) in m.evidence" :key="j" class="evidence-item"><b>{{item.tool}}</b><pre>{{formatEvidence(item)}}</pre><div v-if="spatialGeometry(item)" class="layer-action"><span v-if="isLayerSaved(item)" role="status">Camada salva no projeto</span><span v-else-if="item.saveError" class="layer-error" role="alert">{{ item.saveError }}</span><button v-if="!isLayerSaved(item)" type="button" :disabled="item.savingLayer" @click="saveSpatialResult(item)"><i :class="item.savingLayer ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i>{{ item.savingLayer ? 'Salvando...' : 'Salvar camada no projeto' }}</button></div></div></details>
       </div>
     </div>
     <form @submit.prevent="send"><textarea v-model="prompt" rows="2" placeholder="Ex.: compare DSM e DTM deste projeto..." :disabled="loading"></textarea><button :disabled="loading || !prompt.trim()" title="Enviar" aria-label="Enviar"><i :class="loading?'pi pi-spin pi-spinner':'pi pi-send'"></i></button></form>
@@ -52,6 +52,7 @@ const messages = ref([])
 const threadId = ref(null)
 const threads = ref([])
 const memories = ref([])
+const savedLayers = ref([])
 const memoryKey = ref('')
 const memoryValue = ref('')
 const memorySaving = ref(false)
@@ -73,7 +74,8 @@ async function loadThread() {
   else await newThread()
   try {
     const saved = await getCopilotLayers(project.id)
-    ;(saved.data.camadas || []).forEach(layer => mapStore.addLayer({ id: `saved-${layer.id}`, name: layer.nome, type: 'analysis', geojson: layer.geojson }))
+    savedLayers.value = saved.data.camadas || []
+    savedLayers.value.forEach(layer => mapStore.addLayer({ id: `saved-${layer.id}`, name: layer.nome, type: 'analysis', geojson: layer.geojson }))
   } catch {}
   await loadMemories()
 }
@@ -125,6 +127,7 @@ function memoryText(value) {
 async function selectThread(id) {
   const selectedId = Number(id)
   threadId.value = selectedId
+  messages.value = []
   try {
     const { data } = await getCopilotThread(selectedId)
     messages.value = (data.mensagens || []).filter(m => m.papel !== 'tool').map(m => ({
@@ -159,14 +162,53 @@ async function newThread() {
 watch(() => projectStore.activeProject, loadThread, { immediate: true })
 
 async function publishSpatialResults(results) {
+  const previews = new Map()
   for (const item of results || []) {
-    const geometry = item?.result?.dados?.geometry
+    const geometry = spatialGeometry(item)
     if (!geometry) continue
+    if (isLayerSaved(item)) continue
+    const geometryKey = JSON.stringify(geometry)
+    if (previews.has(geometryKey)) {
+      item.previewLayerId = previews.get(geometryKey)
+      continue
+    }
     const name = item.tool === 'buffer_geometria' ? 'Buffer gerado' : item.tool === 'intersectar_geometrias' ? 'Intersecao calculada' : 'Resultado espacial'
     const geojson = { type: 'Feature', properties: { tool: item.tool }, geometry }
     const id = `copilot-${item.tool}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    item.previewLayerId = id
+    previews.set(geometryKey, id)
     mapStore.addLayer({ id, name, type: 'analysis', geojson })
-    try { await saveCopilotLayer({ projeto_id: projectStore.activeProject?.id, nome: name, ferramenta: item.tool, geojson, parametros: item.result?.dados || {} }) } catch {}
+  }
+}
+
+function spatialGeometry(item) {
+  const geometry = item?.result?.dados?.geometry
+  return geometry?.type && Array.isArray(geometry.coordinates) ? geometry : null
+}
+
+function isLayerSaved(item) {
+  const geometry = spatialGeometry(item)
+  return !!geometry && savedLayers.value.some(layer => JSON.stringify(layer.geojson?.geometry || layer.geojson) === JSON.stringify(geometry))
+}
+
+async function saveSpatialResult(item) {
+  const geometry = spatialGeometry(item)
+  const projectId = projectStore.activeProject?.id
+  if (!geometry || !projectId || item.savingLayer || isLayerSaved(item)) return
+  item.savingLayer = true
+  item.saveError = ''
+  try {
+    const name = item.tool === 'buffer_geometria' ? 'Buffer gerado' : item.tool === 'intersectar_geometrias' ? 'Intersecao calculada' : 'Resultado espacial'
+    const geojson = { type: 'Feature', properties: { tool: item.tool }, geometry }
+    const { data } = await saveCopilotLayer({ projeto_id: projectId, nome: name, ferramenta: item.tool, geojson, parametros: item.result?.dados || {} })
+    const layer = { id: data.id, nome: name, ferramenta: item.tool, geojson }
+    savedLayers.value = [layer, ...savedLayers.value]
+    if (item.previewLayerId) mapStore.removeLayer(item.previewLayerId)
+    mapStore.addLayer({ id: `saved-${data.id}`, name, type: 'analysis', geojson })
+  } catch (error) {
+    item.saveError = error.response?.data?.detail || 'Falha ao salvar a camada. A prévia continua disponível no mapa.'
+  } finally {
+    item.savingLayer = false
   }
 }
 
@@ -205,4 +247,5 @@ function quick(text) {
 </script><style scoped>.copilot{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}.title{font-size:.8rem;font-weight:600;color:#7fd1b9;text-transform:uppercase}.threads{display:flex;gap:5px;margin-top:7px}.threads select{flex:1;min-width:0;background:var(--input-bg,#101820);color:var(--text);border:1px solid var(--border);padding:5px;font:inherit;font-size:.72rem}.threads button{width:30px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}.threads button:disabled{opacity:.5}.messages{max-height:230px;overflow:auto;margin:8px 0}.empty{font-size:.75rem;color:var(--text-dim);padding:8px 0}.message{padding:7px;margin:5px 0;border-left:2px solid #40515c;background:#17242c;font-size:.75rem}.message.user{border-color:#56b4d3}.message p{margin:3px 0;white-space:pre-wrap}.message small{color:#7fd1b9}.evidence{margin-top:7px;color:#9cd9d0}.evidence summary{cursor:pointer;font-size:.7rem}.evidence-item{margin-top:5px;padding:5px;background:#101820;border:1px solid var(--border)}.evidence-item pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.4 monospace;margin:4px 0;color:#d6e3e8}form{display:flex;gap:6px}textarea{flex:1;resize:vertical;background:var(--input-bg,#101820);color:var(--text);border:1px solid var(--border);padding:7px;font:inherit}form button{width:34px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}form button:disabled{opacity:.5}
 .selection{display:flex;align-items:center;gap:5px;margin-top:7px;padding:5px 6px;border:1px solid #315563;background:#12242b;color:#9cd9d0;font-size:.72rem}.selection span{flex:1}.selection button{width:27px;height:25px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}.selection button:hover{background:#21404a}
 .memory-panel{margin-top:7px;border:1px solid var(--border);padding:6px;font-size:.72rem}.memory-panel>summary{cursor:pointer;color:#9cd9d0}.memory-note{margin:6px 0;color:var(--text-dim);font-size:.68rem}.memory-form{display:grid;grid-template-columns:1fr auto;gap:5px;margin:6px 0}.memory-form input,.memory-form textarea{grid-column:1;background:var(--input-bg,#101820);color:var(--text);border:1px solid var(--border);padding:6px;font:inherit;min-width:0}.memory-form textarea{resize:vertical}.memory-form button{grid-column:2;grid-row:1 / span 2;width:32px;border:1px solid #52616b;background:#17242c;color:#7fd1b9;cursor:pointer}.memory-form button:disabled{opacity:.5}.memory-item{display:flex;align-items:center;gap:6px;border-top:1px solid var(--border);padding:5px 0}.memory-item span{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere}.memory-item small{color:var(--text-dim)}.memory-item button{flex:none;width:28px;height:27px;border:1px solid var(--border);background:transparent;color:#e18c78;cursor:pointer}.memory-error{color:#ff9f90;font-size:.7rem}
+ .layer-action{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:.68rem;color:#9cd9d0}.layer-action button{display:inline-flex;align-items:center;gap:6px;border:1px solid #52616b;background:#17242c;color:#d6e3e8;padding:5px 8px;font:inherit;cursor:pointer}.layer-action button:disabled{opacity:.6;cursor:wait}.layer-error{color:#ff9f90}
 </style>

@@ -1,0 +1,29 @@
+{
+  "project": "Guarajuba - Condomínio Paraíso (Demonstração)",
+  "steps": [
+    {
+      "id": "F8-LIVE-00",
+      "status": "passed",
+      "action": "Tela inicial de autenticacao",
+      "screenshot": "live_01_login.png"
+    },
+    {
+      "id": "F8-LIVE-01",
+      "status": "passed",
+      "action": "Autenticacao e selecao do projeto existente",
+      "screenshot": "live_02_projeto.png"
+    },
+    {
+      "id": "F8-LIVE-02",
+      "status": "passed",
+      "action": "Desenho de poligono e selecao contextual no chat",
+      "screenshot": "live_03_geometria_selecionada.png"
+    }
+  ],
+  "started_at": "2026-10-20T19:41:27.187262-03:00",
+  "status": "failed",
+  "error": "Copiloto respondeu HTTP 502: {\"detail\":\"Falha no LM Studio: LM Studio indisponivel apos 3 tentativas: 400 Client Error: Bad Request for url: http://127.0.0.1:1234/v1/chat/completions\"}",
+  "failure_screenshot": "live_99_falha.png",
+  "page_errors": [],
+  "finished_at": "2026-10-20T19:41:34.946242-03:00"
+}

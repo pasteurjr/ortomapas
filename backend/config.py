@@ -39,7 +39,7 @@ if ENVIRONMENT in {"production", "prod"} and len(AUTH_SECRET) < 32:
     raise RuntimeError("AUTH_SECRET deve ter pelo menos 32 caracteres em producao")
 GEOSERVER_URL = os.getenv("GEOSERVER_URL", "http://localhost:8080/geoserver")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:1234/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-coder-32b-instruct")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen/qwen3.8-27b")
 OTEL_ENABLED = os.getenv("OTEL_ENABLED", "0").lower() in {"1", "true", "yes"}
 OTEL_SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "ortomapas-api")
 OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4317")

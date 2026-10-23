@@ -194,10 +194,22 @@ async def ask_copilot(data: dict, user: dict = Depends(current_user)):
                 except HTTPException as exc: direct = {'tool':name,'error':exc.detail}
                 tool_results.append(direct); messages.extend([{'role':'assistant','content':result.model_dump_json()}, {'role':'user','content':f'Resultado da ferramenta: {direct}. Responda com base nesse resultado.'}]); result, telemetry_final = client.complete(messages, []); telemetry = {**telemetry, f'{name}_direta': telemetry_final}
         # Permite encadear descoberta de produto -> analise, sem loops longos.
+        executed_calls = set()
         for _ in range(3):
             if not result.tool_calls: break
-            calls = result.tool_calls; batch = []
+            calls = result.tool_calls; batch = []; fresh_calls = []
             for call in calls:
+                signature = json.dumps({'name': call.name, 'arguments': call.arguments}, sort_keys=True, ensure_ascii=True, default=str)
+                if signature in executed_calls:
+                    continue
+                executed_calls.add(signature)
+                fresh_calls.append(call)
+            if not fresh_calls:
+                messages.append({'role': 'user', 'content': 'As mesmas ferramentas e argumentos ja foram executados. Use os resultados acima e responda sem solicitar novamente essas ferramentas.'})
+                result, final_telemetry = client.complete(messages, [])
+                telemetry = {**telemetry, 'resposta_final_sem_repeticao': final_telemetry}
+                break
+            for call in fresh_calls:
                 try:
                     arguments = dict(call.arguments)
                     if call.name in {'calcular_declividade', 'calcular_aspecto', 'gerar_hillshade', 'calcular_volume'} and geometry and not arguments.get('geometry'):

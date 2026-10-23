@@ -1,0 +1,29 @@
+{
+  "started_at": "2026-10-21T22:58:31.040027-03:00",
+  "llm_calls": 0,
+  "steps": [
+    {
+      "id": "F8-UI-ERR-01",
+      "status": "passed",
+      "action": "Login real, selecao do projeto e abertura de conversa no Copiloto",
+      "screenshot": "01_copiloto_pronto.png"
+    },
+    {
+      "id": "F8-UI-ERR-02",
+      "status": "passed",
+      "action": "HTTP 504 controlado apresentado; campo e envio habilitados para nova tentativa",
+      "intercepted_url": "http://127.0.0.1:18762/api/agents/ask",
+      "screenshot": "02_timeout_exibido.png"
+    },
+    {
+      "id": "F8-UI-ERR-03",
+      "status": "passed",
+      "action": "Pergunta e erro permanecem visiveis na conversa; interface permite continuar",
+      "thread_id": "113",
+      "screenshot": "02_timeout_exibido.png"
+    }
+  ],
+  "status": "passed",
+  "page_errors": [],
+  "finished_at": "2026-10-21T22:58:32.966043-03:00"
+}

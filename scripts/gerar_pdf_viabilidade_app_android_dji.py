@@ -13,6 +13,7 @@ css = '''<style>
 body { font:8.8pt/1.31 Arial,sans-serif; color:#1c2930 }
 h1 { color:#0c5264; font-size:19pt; line-height:1.2; margin:0 0 7mm }
 h2 { color:#17677b; border-bottom:1px solid #b8cbd0; padding-bottom:1mm; margin-top:4mm }
+h2:last-of-type { break-before:page }
 h3 { color:#30556a; margin-top:3mm } p { text-align:justify }
 table { border-collapse:collapse; width:100%; font-size:8pt; margin:4mm 0 }
 tr { page-break-inside:avoid }

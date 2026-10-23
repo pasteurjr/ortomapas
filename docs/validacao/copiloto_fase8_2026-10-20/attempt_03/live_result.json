@@ -1,0 +1,54 @@
+{
+  "project": "Guarajuba - Condomínio Paraíso (Demonstração)",
+  "steps": [
+    {
+      "id": "F8-LIVE-00",
+      "status": "passed",
+      "action": "Tela inicial de autenticacao",
+      "screenshot": "live_01_login.png"
+    },
+    {
+      "id": "F8-LIVE-01",
+      "status": "passed",
+      "action": "Autenticacao e selecao do projeto existente",
+      "screenshot": "live_02_projeto.png"
+    },
+    {
+      "id": "F8-LIVE-02",
+      "status": "passed",
+      "action": "Desenho de poligono e selecao contextual no chat",
+      "screenshot": "live_03_geometria_selecionada.png"
+    },
+    {
+      "id": "F8-LIVE-03",
+      "status": "passed",
+      "action": "Pergunta executada no LM Studio com medicao deterministica e evidencia renderizada",
+      "area_m2": 39599.67198350416,
+      "perimetro_m": 796.656016639739,
+      "crs": "EPSG:32724",
+      "screenshot": "live_04_medicao_com_evidencia.png"
+    },
+    {
+      "id": "F8-LIVE-04",
+      "status": "passed",
+      "action": "Pergunta de continuacao respondida usando o contexto da conversa",
+      "answer": "Na medição da geometria selecionada, a unidade utilizada para a área foi **m² (metros quadrados)**. O cálculo foi realizado projetando a geometria de entrada (EPSG:4326) para o sistema de coordenadas local **EPSG:32724 (UTM 24S)** para garantir precisão métrica. A área calculada foi de **39.599,67 m²**.",
+      "screenshot": "live_05_retomada_contexto.png"
+    },
+    {
+      "id": "F8-LIVE-05",
+      "status": "passed",
+      "action": "Historico e evidencia da ferramenta confirmados pela API autenticada",
+      "messages": 4,
+      "screenshot": "live_05_retomada_contexto.png"
+    }
+  ],
+  "started_at": "2026-10-20T19:49:53.190122-03:00",
+  "thread_id": 106,
+  "persisted_messages": 4,
+  "status": "failed",
+  "error": "Timeout 180000ms exceeded while waiting for event \"response\"",
+  "failure_screenshot": "live_99_falha.png",
+  "page_errors": [],
+  "finished_at": "2026-10-20T19:53:18.533368-03:00"
+}
