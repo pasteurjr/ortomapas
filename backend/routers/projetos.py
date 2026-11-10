@@ -274,8 +274,17 @@ async def list_project_users(projeto_id: int, user: dict = Depends(current_user)
         cur.execute("SELECT id FROM projetos WHERE id = %s", (projeto_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="Projeto nao encontrado")
-        if not _can_manage_project(cur, projeto_id, user) and user["perfil"] != "leitor":
-            raise HTTPException(status_code=403, detail="Sem permissao para consultar membros")
+        # A global account profile such as ``leitor`` does not grant access to
+        # every project's member list. Require membership in this project;
+        # admins retain their explicit system-wide access.
+        if user["perfil"] != "admin":
+            cur.execute(
+                "SELECT papel FROM projeto_usuarios WHERE projeto_id = %s AND usuario_id = %s",
+                (projeto_id, user["id"]),
+            )
+            membership = cur.fetchone()
+            if not membership or membership["papel"] not in {"proprietario", "editor", "visualizador"}:
+                raise HTTPException(status_code=403, detail="Usuario sem acesso a este projeto")
         cur.execute("SELECT u.id, u.email, u.nome, u.perfil, pu.papel, pu.criado_em FROM projeto_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id WHERE pu.projeto_id = %s ORDER BY u.nome", (projeto_id,))
         return {"total": cur.rowcount, "usuarios": [dict(r) for r in cur.fetchall()]}
 

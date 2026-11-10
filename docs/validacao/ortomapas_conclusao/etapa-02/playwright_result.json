@@ -1,0 +1,57 @@
+{
+  "phase": "2/8",
+  "llm_calls": 0,
+  "credentials_written_to_report": false,
+  "project_name": "Validação isolamento Fase 2 bfe1bb2859",
+  "checks": [
+    {
+      "id": "P2-UI-01",
+      "expected": "novo projeto visível após criação pela UI",
+      "observed": "projeto criado via POST 201 e exibido na lista",
+      "status": "passed"
+    },
+    {
+      "id": "P2-DB-01",
+      "expected": "proprietário ligado ao projeto",
+      "observed": "API confirma papel proprietario para a conta criadora",
+      "status": "passed"
+    },
+    {
+      "id": "P2-OWNER-01",
+      "expected": "proprietário lê projeto, voo, produto e arquivo próprio",
+      "observed": "GETs autorizados retornam 200 e arquivo de fixture correspondente",
+      "status": "passed"
+    },
+    {
+      "id": "P2-ISOLATION-01",
+      "expected": "segundo usuário não lista nem lê recursos privados",
+      "observed": "projeto/voo/produto/arquivo/tile negados ou omitidos; escrita negada",
+      "http": {
+        "project": 403,
+        "project_ortomaps": 403,
+        "ortomapa": 403,
+        "flight": 403,
+        "tile_ticket": 403,
+        "file_access": 403,
+        "update": 403
+      },
+      "status": "passed"
+    },
+    {
+      "id": "P2-REG-01",
+      "expected": "403 ao listar membros de projeto sem associação",
+      "observed_http": 403,
+      "status": "passed"
+    }
+  ],
+  "screenshots": [
+    "01_login.png",
+    "02_projeto_novo_preenchido.png",
+    "03_projeto_do_proprietario.png",
+    "04_lista_vazia_segundo_usuario.png"
+  ],
+  "status": "passed",
+  "project_deleted_via_api": true,
+  "temporary_database_records_removed": true,
+  "temporary_file_removed": true
+}

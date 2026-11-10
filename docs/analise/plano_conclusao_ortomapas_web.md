@@ -2,7 +2,7 @@
 
 **Data:** 10/11/2026  
 **Versão:** 1.0  
-**Situação:** Fase 1 concluída como baseline documental; fases 2–8 aguardam execução.  
+**Situação:** Fases 1 e 2 concluídas dentro dos critérios registrados; fases 3–8 aguardam execução.
 **Escopo:** concluir, validar e documentar o produto web Ortomapas.
 
 ## 1. Objetivo e limites
@@ -67,7 +67,8 @@ Uma captura isolada comprova apenas o que está visível nela. Para resultados g
 - Testar estados vazios, entradas inválidas, erros e remoção/arquivamento se previstos nos UCs.
 
 **Aceite:** usuário autorizado consegue operar seus recursos; a segunda conta não lê nem altera dados não compartilhados; estado persistido é consistente e telas informam erros sem sucesso falso.  
-**Evidência:** roteiro Playwright de duas contas, capturas das telas, respostas HTTP e consultas de verificação sem segredos.
+**Resultado:** aprovada para os recursos testados em 10/11/2026. A validação encontrou e corrigiu fuga na listagem de membros para perfil global `leitor` sem associação e consulta global de voos sem filtro de usuário. Consulta pós-limpeza confirmou remoção de usuários/projeto temporários e arquivo fixture.
+**Evidência:** [relatório Playwright da Fase 2 e capturas](../validacao/ortomapas_conclusao/etapa-02/relatorio.md).
 
 ### Fase 3 — Fluxo fotogramétrico ponta a ponta e reprodutibilidade
 
@@ -167,7 +168,7 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 | Fase | Estado inicial | Esperado / critério de saída | Obtido e evidência | Resultado |
 |---|---|---|---|---|
 | 1. Baseline e rastreabilidade | Concluída (documental) | Matriz reconciliada, UC-020 desambiguado, ambiente inventariado | [Relatório e matriz da Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md) | Aprovada como baseline; não é aceite operacional |
-| 2. Usuários, projetos e autorização | Planejada | CRUD e persistência coerentes; isolamento entre contas | A preencher na execução | Pendente |
+| 2. Usuários, projetos e autorização | Concluída no escopo testado | Duas contas; projeto, voo, ortomapa, arquivo e ticket isolados; persistência e cleanup conferidos | [Relatório e capturas da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md) | Aprovada para endpoints testados; matriz completa de papéis segue limitada |
 | 3. NodeODM ponta a ponta | Evidência anterior existe; reexecução desta fase pendente | Nova execução reproduzível real, produtos ligados e reabertos | Relatório anterior é referência; nova evidência pendente | Pendente |
 | 4. Mapa 2D e exportação | Evidências parciais existentes | CRS/tiles/camadas/exportações conferidos | A preencher na execução | Pendente |
 | 5. Visualização 3D | Evidências do projeto Aukerman existem | DSM, DTM, GLB e LAZ coerentes e legíveis | A preencher na execução | Pendente |
@@ -177,9 +178,9 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 
 ## 6. Próxima etapa
 
-**Fase 1 de 8 concluída:** baseline e matriz estão em [matriz_rastreabilidade_ortomapas_fase1.md](matriz_rastreabilidade_ortomapas_fase1.md), com comparação de evidências no [relatório da etapa](../validacao/ortomapas_conclusao/etapa-01/relatorio.md).  
+**Fases 1 e 2 de 8 concluídas:** baseline e matriz em [matriz de rastreabilidade](matriz_rastreabilidade_ortomapas_fase1.md); relatórios e capturas em [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md) e [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md).
 
-**Próxima etapa: Fase 2 de 8 — Identidade, projetos, autorização e persistência.** Testar dois usuários, criação/seleção de projeto, isolamento de produtos/arquivos/análises/tiles e persistência após recarga; registrar capturas e respostas observadas.
+**Próxima etapa: Fase 3 de 8 — Fluxo fotogramétrico ponta a ponta e reprodutibilidade.** Repetir o ciclo com projeto limpo e dados licenciados, validando upload, tarefa NodeODM real, progresso, importação e reabertura; testar falhas e duplicidade sem confundir chamadas mock com processamento real.
 
 ## 7. Referências internas
 
@@ -192,3 +193,4 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 - [Validação de acesso ao catálogo GeoServer](../validacao/geoserver_catalogo_protegido_2026-11-05/)
 - [Matriz de rastreabilidade da Fase 1](matriz_rastreabilidade_ortomapas_fase1.md)
 - [Relatório de validação da Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md)
+- [Relatório de validação da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md)

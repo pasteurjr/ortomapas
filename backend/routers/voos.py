@@ -32,6 +32,11 @@ async def list_voos(
                 require_project_role(projeto_id, user, {"proprietario", "editor", "visualizador"})
                 query += " AND projeto_id = %s"
                 params.append(projeto_id)
+            elif user["perfil"] != "admin":
+                # The unfiltered list must still be scoped to projects the
+                # authenticated user can read.
+                query += " AND projeto_id IN (SELECT projeto_id FROM projeto_usuarios WHERE usuario_id = %s)"
+                params.append(user["id"])
 
             query += " ORDER BY data_voo DESC"
 

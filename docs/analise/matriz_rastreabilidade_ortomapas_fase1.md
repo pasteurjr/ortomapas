@@ -72,6 +72,14 @@ O plano de agentes documenta contexto, histórico/memória, ferramentas geoespac
 | UI profissional e navegação | Plano de melhorias de 10/10 e validações Playwright pontuais | Não assumir qualidade global da navegação a partir de um modal ou aba; capturar rotas principais nas fases 2–7 |
 | Dados de demonstração | Dataset Aukerman com licença CC0; raster sintético usado em validações pontuais | Rotular origem em UI e relatório; não chamar dataset público de captura DJI/Guarajuba |
 
+## Adendo de validação — Fase 2, 10/11/2026
+
+Playwright percorreu login, criação de projeto pela interface e estado vazio de uma segunda conta. Com duas contas temporárias no PostgreSQL configurado, foram testados detalhe/lista do projeto, listagem/detalhe de voos, metadados de ortomapa, ticket de tile, acesso a arquivo e tentativa de edição. O proprietário recebeu acesso; a conta sem associação não recebeu conteúdo ou permissão de alteração.
+
+A execução encontrou e corrigiu dois controles insuficientes: a listagem de membros aceitava perfil global `leitor` sem vínculo ao projeto; e a listagem geral de voos não filtrava por associação. Após as correções, ambos os casos negados retornaram o resultado esperado. Os quatro testes de regressão passaram, mais um teste de path traversal; o teste Playwright integrado passou. Usuários, projeto e arquivo temporários foram removidos, e a consulta de pós-limpeza encontrou zero contas/projetos temporários. Ver [relatório detalhado e capturas](../validacao/ortomapas_conclusao/etapa-02/relatorio.md).
+
+**Escopo do aceite:** somente os recursos/rotas enumerados no relatório e os papéis owner/reader sem associação. A cobertura de todas as rotas, compartilhamento, editor e visualizador permanece aberta.
+
 ## Resultado da auditoria da Fase 1
 
 1. A fonte normativa do núcleo é UC-001–020 em `casos_de_uso_v2.md`; a fonte complementar de fotogrametria é UC-021–029 e ODM-01–10 em `integracao_odm_requisitos.md`.
