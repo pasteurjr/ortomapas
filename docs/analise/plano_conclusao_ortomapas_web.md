@@ -85,6 +85,10 @@ Uma captura isolada comprova apenas o que está visível nela. Para resultados g
 **Aceite:** processamento real conclui e os produtos esperados são importados uma única vez, permanecem ligados à origem e continuam acessíveis após recarga; falhas não são mascaradas como sucesso.  
 **Evidência:** capturas de cadastro, seleção/upload, progresso, conclusão, catálogo e metadados; IDs/estados do NodeODM e hashes de entrada/saída.
 
+**Execução em 10/11/2026:** o ciclo principal passou com o dataset público CC0 `odm_data_aukerman-master`: projeto/voo novos, 77 fotos com GPS EXIF, NodeODM 2.2.4/ODM 3.5.6 concluído em 36,6 min, seis produtos importados, login/recarga, ortomosaico, GLB, DSM, DTM, LAZ, diferença DSM–DTM e indicador de qualidade validados visualmente. O teste `.txt` foi rejeitado com HTTP 400 sem criar tarefa. A conta, o projeto e os dados temporários foram removidos após guardar as evidências. O relatório completo e as 19 capturas estão em [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md).
+
+**Estado da fase: parcial.** Permanecem pendentes provas de cancelamento, falha real controlada, idempotência/duplicidade e recuperação de tarefa ausente. O indicador “100% / BOM” representa cobertura operacional de produtos, não acurácia cartográfica. Não avançar para a Fase 4 até fechar ou aceitar formalmente essas pendências.
+
 ### Fase 4 — Visualização cartográfica 2D, produtos e exportação
 
 **Objetivo:** assegurar que o mapa mostra o produto certo no lugar certo e permite operações de catálogo.
@@ -169,7 +173,7 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 |---|---|---|---|---|
 | 1. Baseline e rastreabilidade | Concluída (documental) | Matriz reconciliada, UC-020 desambiguado, ambiente inventariado | [Relatório e matriz da Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md) | Aprovada como baseline; não é aceite operacional |
 | 2. Usuários, projetos e autorização | Concluída no escopo testado | Duas contas; projeto, voo, ortomapa, arquivo e ticket isolados; persistência e cleanup conferidos | [Relatório e capturas da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md) | Aprovada para endpoints testados; matriz completa de papéis segue limitada |
-| 3. NodeODM ponta a ponta | Evidência anterior existe; reexecução desta fase pendente | Nova execução reproduzível real, produtos ligados e reabertos | Relatório anterior é referência; nova evidência pendente | Pendente |
+| 3. NodeODM ponta a ponta | Parcial | Ciclo real reproduzido; ainda provar erro, cancelamento, idempotência e recuperação | [Relatório e 19 capturas da Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) | Ciclo principal aprovado; fase aberta por cenários de robustez |
 | 4. Mapa 2D e exportação | Evidências parciais existentes | CRS/tiles/camadas/exportações conferidos | A preencher na execução | Pendente |
 | 5. Visualização 3D | Evidências do projeto Aukerman existem | DSM, DTM, GLB e LAZ coerentes e legíveis | A preencher na execução | Pendente |
 | 6. Análises espaciais | Cobertura desigual; UC-020 parcial | Cada análise de escopo com entrada/saída/reference e aceite explícito | A preencher na execução | Pendente |
@@ -178,9 +182,9 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 
 ## 6. Próxima etapa
 
-**Fases 1 e 2 de 8 concluídas:** baseline e matriz em [matriz de rastreabilidade](matriz_rastreabilidade_ortomapas_fase1.md); relatórios e capturas em [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md) e [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md).
+**Fases 1 e 2 de 8 concluídas; Fase 3 parcialmente validada:** baseline e autorização foram aprovadas no escopo relatado; o ciclo fotogramétrico real e as visualizações passaram, mas robustez/idempotência seguem pendentes. Consulte os relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md) e [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md).
 
-**Próxima etapa: Fase 3 de 8 — Fluxo fotogramétrico ponta a ponta e reprodutibilidade.** Repetir o ciclo com projeto limpo e dados licenciados, validando upload, tarefa NodeODM real, progresso, importação e reabertura; testar falhas e duplicidade sem confundir chamadas mock com processamento real.
+**Próxima etapa: complemento da Fase 3 de 8 — Robustez do fluxo ODM.** Validar cancelamento, falha controlada, idempotência/duplicidade e recuperação de histórico/tarefa ausente; registrar provas e só então consolidar a fase e avançar à Fase 4.
 
 ## 7. Referências internas
 

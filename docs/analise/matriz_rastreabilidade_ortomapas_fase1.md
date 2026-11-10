@@ -4,6 +4,8 @@
 **Propósito:** estabelecer baseline documental para as fases de conclusão do Ortomapas Web.  
 **Estado:** auditoria documental concluída; validação operacional das linhas continua conforme a evidência indicada.
 
+> Atualização de execução: resultados novos da Fase 3 constam no [relatório fotogramétrico com capturas](../validacao/ortomapas_conclusao/etapa-03/relatorio.md). O ciclo principal real passou; os cenários ODM de robustez continuam abertos.
+
 ## Como ler os estados
 
 - **Implementado com evidência referenciada:** há relatório/captura/teste identificável para pelo menos o fluxo descrito. A evidência não é automaticamente prova de todos os critérios do UC.
@@ -49,14 +51,14 @@ O Copiloto conversacional é um fluxo independente, documentado no plano de agen
 
 | ID | Requisito | Evidência localizada | Estado documental / próximo teste |
 |---|---|---|---|
-| UC-021 / ODM-01–02 | Importar fotos, validar arquivos, preservar EXIF/originais | 77/77 JPEG com GPS EXIF; seleção e envio no [aceite ODM](../validacao/odm_operacao_2026-11-05/aceite_projeto_novo/relatorio.md) | Evidência de fluxo positivo; verificar hash, limite e arquivos inválidos sob o mesmo teste reproduzível |
-| UC-022 / ODM-03–04 | Criar tarefa assíncrona e persistir estado, parâmetros e IDs | NodeODM aceitou POST 202; task real documentada | Evidência de execução real para envio/estado; revisar persistência de todos os metadados do requisito |
-| UC-023 | Acompanhar progresso e estado terminal | Capturas de progresso e conclusão no relatório ODM | Evidência referenciada; incluir erro/cancelamento/retomada |
-| UC-024 / ODM-09 | Cancelar ou repetir sem perder histórico | Reenvio de recuperação testado contra HTTP mock, não reprocessamento NodeODM real | Parcial; cancelamento e repetição real continuam sem prova equivalente |
-| UC-025 / ODM-05/05a/06 | Importar e catalogar produtos e metadados | Seis saídas reais no projeto 64: orto, DSM, DTM, PDF, LAZ e GLB | Evidência referenciada; checar idempotência e cada metadado exigido |
-| UC-026 | Exibir qualidade do processamento | Tela marcou 100%/Bom; relatório alerta ser regra de presença de produtos | Parcial sem validação científica: não usar nota como acurácia/GSD/precisão |
-| UC-027 / ODM-07–08 | Visualizar e baixar produtos em CRS adequado | Ortofoto, DSM/DTM, GLB, LAZ e diferença abertos; WMS/WMTS vistos | Evidência de visualização; export/download autenticado e CRS seguem na Fase 4 |
-| UC-028 | Visualizar nuvem 3D | LAZ com 15.953.257 pontos e amostra exibida na interface | Evidência referenciada para cenário Aukerman; testar controles e dados inválidos |
+| UC-021 / ODM-01–02 | Importar fotos, validar arquivos, preservar EXIF/originais | Nova prova: 77/77 JPEG com GPS, hashes SHA-256 registrados; `.txt` rejeitado HTTP 400 sem processamento | Positivo aprovado; limites de volume e persistência duradoura dos originais continuam sem ensaio específico; [relatório Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) |
+| UC-022 / ODM-03–04 | Criar tarefa assíncrona e persistir estado, parâmetros e IDs | Tarefa real concluída em 36,6 min; NodeODM 2.2.4/ODM 3.5.6, UUID e processamento local registrados | Fluxo positivo aprovado; persistência de todos os parâmetros ainda requer auditoria própria; [relatório Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) |
+| UC-023 | Acompanhar progresso e estado terminal | Capturas reais de processamento, marcos 42/77%, conclusão 100% e reabertura após novo login | Caminho positivo aprovado; erro/cancelamento/retomada pendentes; [relatório Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) |
+| UC-024 / ODM-09 | Cancelar ou repetir sem perder histórico | Recuperação anteriormente testada contra HTTP mock; esta execução não acionou cancelamento nem reenvio | Parcial; testar cancelamento, falha e recuperação contra NodeODM real ou simulação controlada separada; idempotência ainda sem suporte/prova confirmado |
+| UC-025 / ODM-05/05a/06 | Importar e catalogar produtos e metadados | Seis saídas reais no projeto temporário: orto, DSM, DTM, PDF, LAZ e GLB; catálogo ligado ao voo | Importação positiva aprovada e limpa após evidência; idempotência e todos os metadados seguem abertos; [relatório Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) |
+| UC-026 | Exibir qualidade do processamento | Tela marcou 100%/BOM e relata revisão do relatório ODM | Exibição validada; parcial sem validação científica: a nota mede presença de produtos, não acurácia/GSD/precisão |
+| UC-027 / ODM-07–08 | Visualizar e baixar produtos em CRS adequado | Ortofoto com 50 tiles, DSM/DTM 3D, GLB, LAZ e diferença abertos em EPSG:32617 | Visualização positiva aprovada; download/export autenticado e cenários adicionais de CRS seguem na Fase 4 |
+| UC-028 | Visualizar nuvem 3D | LAZ abriu e exibiu 16.123.377 pontos na nova execução | Abertura e existência de dados aprovadas; interação dos controles da nuvem ainda não foi exercitada |
 | UC-029 | Reprocessar parâmetros e comparar versões | Nenhum reprocessamento real com novos parâmetros localizado | Não comprovado nesta revisão; execução futura necessária |
 | ODM-10 | Limites de recurso e espaço | Não localizado teste de limite/estimativa | Não comprovado; exercitar com entradas seguras e limites documentados |
 

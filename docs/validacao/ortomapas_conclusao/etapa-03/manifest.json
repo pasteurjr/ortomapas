@@ -1,0 +1,226 @@
+{
+  "started_at": "2026-11-10T19:46:18.060891+00:00",
+  "ui": "http://127.0.0.1:5176",
+  "api": "http://127.0.0.1:8888",
+  "dataset": "/mnt/data1/progpython/ortomapas/data/odm_test/odm_data_aukerman-master/images",
+  "image_count": 77,
+  "dataset_note": "Imagens públicas Aukerman do ODM; não representam Guarajuba nem voo executado nesta validação.",
+  "project_name": "Aceite NodeODM Aukerman Fase3-20261110-1600",
+  "flight_name": "Dataset público Aukerman — validação fotogramétrica",
+  "screenshots": [
+    {
+      "file": "01_aplicativo_logado.png",
+      "description": "Login realizado na interface com uma conta de validação recém-criada."
+    },
+    {
+      "file": "02_novo_projeto_preenchido.png",
+      "description": "Formulário de projeto preenchido antes de salvar; a área está identificada como dataset de teste."
+    },
+    {
+      "file": "03_projeto_novo_vazio.png",
+      "description": "Projeto #86 selecionado, ainda sem voos ou ortomapas."
+    },
+    {
+      "file": "04_novo_voo_preenchido.png",
+      "description": "Cadastro do voo de teste com origem do dataset explicitada e 77 fotos esperadas."
+    },
+    {
+      "file": "05_voo_cadastrado.png",
+      "description": "Voo de teste #32 registrado no projeto."
+    },
+    {
+      "file": "06_fotos_selecionadas.png",
+      "description": "As 77 fotografias reais do dataset estão selecionadas; opções completas de reconstrução habilitadas."
+    },
+    {
+      "file": "07_tarefa_nodeodm_enviada.png",
+      "description": "Upload aceito pelo NodeODM; UUID c53ba032-9fcf-42d9-9b70-e6602508993a."
+    },
+    {
+      "file": "08_processamento_em_andamento.png",
+      "description": "Tarefa real em processamento no NodeODM: etapa None, progresso 0%."
+    },
+    {
+      "file": "09_progresso_25.png",
+      "description": "NodeODM processando; progresso reportado pelo serviço 42%."
+    },
+    {
+      "file": "10_progresso_75.png",
+      "description": "NodeODM processando; progresso reportado pelo serviço 77%."
+    },
+    {
+      "file": "11_processamento_concluido.png",
+      "description": "NodeODM marcou a tarefa como concluída; duração total desde o upload: 36.6 min."
+    },
+    {
+      "file": "12_catalogo_produtos_importados.png",
+      "description": "Catálogo após importação de ortofoto, DSM, DTM, relatório, nuvem de pontos e modelo texturizado, conforme disponibilidade do processamento."
+    },
+    {
+      "file": "13_ortomosaico_no_mapa.png",
+      "description": "Ortomosaico real adicionado ao mapa; tiles carregados: 50."
+    },
+    {
+      "file": "14_modelo_texturizado_3d.png",
+      "description": "Modelo GLB real renderizado em WebGL; rodapé informa métricas de geometria e materiais."
+    },
+    {
+      "file": "15_dsm_superficie_3d.png",
+      "description": "DSM real aberto em visualizador WebGL; 227.1 m\n247.9 m\n268.7 m\nEscala horizontal 1:1 · Vertical 1x · EPSG:32617 · 21197 triangulos; exagero 2x e wireframe testados."
+    },
+    {
+      "file": "16_dtm_terreno_3d.png",
+      "description": "DTM real aberto em visualizador WebGL; 217.3 m\n239.5 m\n261.7 m\nEscala horizontal 1:1 · Vertical 1x · EPSG:32617 · 21028 triangulos; exagero 2x e wireframe testados."
+    },
+    {
+      "file": "17_nuvem_pontos_3d.png",
+      "description": "Nuvem LAS/LAZ real visualizada; Nuvem de pontos 3D — LAZ · 16.123.377 pontos."
+    },
+    {
+      "file": "18_diferenca_dsm_dtm.png",
+      "description": "Raster de diferença DSM–DTM carregado com legenda diverging para valores positivos e negativos."
+    },
+    {
+      "file": "19_qualidade_do_processamento.png",
+      "description": "Indicadores de qualidade calculados para o processamento concluído."
+    }
+  ],
+  "events": [],
+  "project_id": 86,
+  "project_created": true,
+  "voo_id": 32,
+  "flight_created": true,
+  "invalid_upload_test": {
+    "expected_http": 400,
+    "observed_http": 400,
+    "message": "Formato nao suportado: .txt",
+    "processing_count_before": 0,
+    "processing_count_after": 0
+  },
+  "task_id": "c53ba032-9fcf-42d9-9b70-e6602508993a",
+  "processing_id": 18,
+  "accepted_images": 77,
+  "geotagged_images": 77,
+  "upload_seconds": 3.59,
+  "processing_started_at": "2026-11-10T19:46:24.614824+00:00",
+  "processing_latest": {
+    "status": "concluido",
+    "progress": 100.0,
+    "stage": null,
+    "checked_at": "2026-11-10T20:22:56.917805+00:00"
+  },
+  "processing_terminal": {
+    "status": "concluido",
+    "progress": 100,
+    "stage": null,
+    "duration_minutes": 36.6
+  },
+  "imported_products": [
+    {
+      "id": 46,
+      "tipo": "ortomosaico",
+      "caminho": "ortomapas/odm_18_ortomosaico.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 88.44211387634277
+    },
+    {
+      "id": 47,
+      "tipo": "dsm",
+      "caminho": "ortomapas/odm_18_dsm.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 59.8759708404541
+    },
+    {
+      "id": 48,
+      "tipo": "dtm",
+      "caminho": "ortomapas/odm_18_dtm.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 70.3114185333252
+    },
+    {
+      "id": 49,
+      "tipo": "relatorio",
+      "caminho": "exports/odm_18_relatorio.pdf",
+      "formato": "PDF",
+      "tamanho_arquivo_mb": 15.173635482788086
+    },
+    {
+      "id": 50,
+      "tipo": "nuvem_pontos",
+      "caminho": "exports/odm_18_nuvem_pontos.laz",
+      "formato": "LAZ",
+      "tamanho_arquivo_mb": 57.60279655456543
+    },
+    {
+      "id": 51,
+      "tipo": "modelo_3d",
+      "caminho": "exports/odm_18_modelo_3d.glb",
+      "formato": "GLB",
+      "tamanho_arquivo_mb": 44.268062591552734
+    }
+  ],
+  "product_types": [
+    "dsm",
+    "dtm",
+    "modelo_3d",
+    "nuvem_pontos",
+    "ortomosaico",
+    "relatorio"
+  ],
+  "product_type_coverage": {
+    "dsm": true,
+    "dtm": true,
+    "modelo_3d": true,
+    "nuvem_pontos": true,
+    "ortomosaico": true,
+    "relatorio": true
+  },
+  "ortho_tiles_loaded": 50,
+  "textured_model_state": "loaded",
+  "textured_model_footer": "264.885 triângulos\n58 materiais/texturas\nArraste para orbitar · roda do mouse para aproximar",
+  "outcome": "viewers_passed",
+  "failed_at": "2026-11-10T20:23:46.857464+00:00",
+  "error": "TimeoutError: Locator.wait_for: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".dsm-surface-view\") to be visible\n",
+  "viewer_validation": {
+    "DSM": {
+      "status": "passed",
+      "footer": "227.1 m\n247.9 m\n268.7 m\nEscala horizontal 1:1 · Vertical 1x · EPSG:32617 · 21197 triangulos",
+      "triangles": 21197,
+      "vertical_exaggeration": "2x",
+      "wireframe_toggle": "passed",
+      "canvas_count": 1
+    },
+    "DTM": {
+      "status": "passed",
+      "footer": "217.3 m\n239.5 m\n261.7 m\nEscala horizontal 1:1 · Vertical 1x · EPSG:32617 · 21028 triangulos",
+      "triangles": 21028,
+      "vertical_exaggeration": "2x",
+      "wireframe_toggle": "passed",
+      "canvas_count": 1
+    },
+    "point_cloud": {
+      "status": "passed",
+      "header": "Nuvem de pontos 3D\nLAZ · 16.123.377 pontos"
+    },
+    "dsm_dtm_difference": {
+      "status": "passed",
+      "canvas_width": 128,
+      "canvas_height": 102
+    },
+    "quality": {
+      "status": "passed",
+      "text": "Qualidade: 100%\nBOM\nProdutos principais presentes; revisar o relatório ODM para validação final."
+    }
+  },
+  "quality_text": "Qualidade: 100%\nBOM\nProdutos principais presentes; revisar o relatório ODM para validação final.",
+  "cleanup": {
+    "status": "completed",
+    "nodeodm_task_removed": true,
+    "project_removed": true,
+    "temporary_user_removed": true,
+    "temporary_file_count_removed": 7,
+    "remaining_project_rows": 0,
+    "remaining_user_rows": 0,
+    "account_email_redacted": true
+  }
+}
