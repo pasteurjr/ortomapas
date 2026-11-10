@@ -1,0 +1,189 @@
+{
+  "status": "passed",
+  "project_id": 64,
+  "processing_id": 15,
+  "dataset_origin": "Conjunto público ODM Aukerman; não representa voo/drone de Guarajuba.",
+  "read_only": true,
+  "products": {
+    "dsm": {
+      "id": 41,
+      "format": "GeoTIFF",
+      "bytes": 60121496
+    },
+    "modelo_3d": {
+      "id": 45,
+      "format": "GLB",
+      "bytes": 46357884
+    },
+    "nuvem_pontos": {
+      "id": 44,
+      "format": "LAZ",
+      "bytes": 59560319
+    },
+    "dtm": {
+      "id": 42,
+      "format": "GeoTIFF",
+      "bytes": 74823407
+    }
+  },
+  "source_reference": {
+    "DSM": {
+      "crs": "EPSG:32617",
+      "width": 7478,
+      "height": 5889,
+      "bounds": [
+        436848.03,
+        4572651.815,
+        437221.93,
+        4572946.265
+      ],
+      "resolution_m": [
+        0.05,
+        0.05
+      ],
+      "valid_pixels": 35570735,
+      "min_m": 206.52,
+      "max_m": 281.07
+    },
+    "DTM": {
+      "crs": "EPSG:32617",
+      "width": 7477,
+      "height": 5889,
+      "bounds": [
+        436848.04,
+        4572651.81,
+        437221.89,
+        4572946.26
+      ],
+      "resolution_m": [
+        0.05,
+        0.05
+      ],
+      "valid_pixels": 35310161,
+      "min_m": 206.5,
+      "max_m": 264.224
+    },
+    "LAZ": {
+      "points": 15953257,
+      "crs": "EPSG:32617",
+      "bounds_min": [
+        436844.83,
+        4572648.94,
+        206.35
+      ],
+      "bounds_max": [
+        437232.86,
+        4572953.59,
+        281.24
+      ],
+      "units": "m"
+    },
+    "GLB": {
+      "bytes": 46357884,
+      "triangles": 264860,
+      "materials": 56,
+      "meshes": 1,
+      "extensions": [
+        "CESIUM_RTC",
+        "KHR_draco_mesh_compression",
+        "KHR_materials_unlit"
+      ]
+    }
+  },
+  "surface_api": {
+    "DSM": {
+      "width": 128,
+      "height": 101,
+      "min": 213.7112274169922,
+      "max": 268.1451110839844,
+      "metric_crs": "EPSG:32617",
+      "units": "m",
+      "bounds": [
+        436848.03,
+        4572651.815,
+        437221.93,
+        4572946.265000001
+      ],
+      "triangles_max": 25400
+    },
+    "DTM": {
+      "width": 128,
+      "height": 101,
+      "min": 212.22674560546875,
+      "max": 263.6633605957031,
+      "metric_crs": "EPSG:32617",
+      "units": "m",
+      "bounds": [
+        436848.04000000004,
+        4572651.8100000005,
+        437221.89,
+        4572946.260000001
+      ],
+      "triangles_max": 25400
+    }
+  },
+  "cloud_api": {
+    "total": 15953257,
+    "sampled": 119950,
+    "units": "m",
+    "source_crs": "EPSG:32617",
+    "bounds": {
+      "min": [
+        436846.28,
+        4572649.850000001,
+        207.61
+      ],
+      "max": [
+        437229.48,
+        4572949.0600000005,
+        280.99
+      ]
+    }
+  },
+  "screenshots": [
+    {
+      "file": "01_catalogo_produtos_3d.png",
+      "description": "A tarefa ODM real concluída expõe ações separadas para modelo GLB, DSM, DTM e nuvem LAZ."
+    },
+    {
+      "file": "02_modelo_texturizado_glb.png",
+      "description": "GLB 264860 triângulos e 56 materiais/texturas; carregamento WebGL concluído."
+    },
+    {
+      "file": "03_dsm_superficie_3d.png",
+      "description": "DSM real em malha 3D; legenda confrontada com grade API; CRS EPSG:32617; controle vertical 2x e wireframe verificados."
+    },
+    {
+      "file": "04_dtm_terreno_3d.png",
+      "description": "DTM real em malha 3D; legenda confrontada com grade API; CRS EPSG:32617; controle vertical 2x e wireframe verificados."
+    },
+    {
+      "file": "05_nuvem_laz_3d.png",
+      "description": "LAZ 15953257 pontos totais, amostra de 119950 pontos, CRS métrico EPSG:32617. Inspeção: X — 436860.49 m — Y — 4572746.61 m — Z — 240.92 m — Intensidade — 0"
+    }
+  ],
+  "browser_errors": [],
+  "GLB_viewer": {
+    "status": "passed",
+    "footer": "264.860 triângulos\n56 materiais/texturas\nArraste para orbitar · roda do mouse para aproximar",
+    "orbit_zoom_changed_pixels": 176551
+  },
+  "DSM_viewer": {
+    "status": "passed",
+    "footer": "213.7 m\n240.9 m\n268.1 m\nEscala horizontal 1:1 · Vertical 2x · EPSG:32617 · 21067 triangulos",
+    "orbit_zoom_changed_pixels": 232006
+  },
+  "DTM_viewer": {
+    "status": "passed",
+    "footer": "212.2 m\n237.9 m\n263.7 m\nEscala horizontal 1:1 · Vertical 2x · EPSG:32617 · 20888 triangulos",
+    "orbit_zoom_changed_pixels": 219868
+  },
+  "LAZ_viewer": {
+    "status": "passed",
+    "header": "Nuvem de pontos 3D\nLAZ · 15.953.257 pontos",
+    "controls": "vistas superior/frontal/lateral; enquadrar",
+    "orbit_zoom_changed_pixels": 81139,
+    "point_inspection": "X\n436860.49 m\nY\n4572746.61 m\nZ\n240.92 m\nIntensidade\n0",
+    "fullscreen": "abriu; Escape saiu da tela cheia e fechou o visualizador"
+  }
+}

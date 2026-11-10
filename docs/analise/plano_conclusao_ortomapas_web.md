@@ -121,6 +121,8 @@ Uma captura isolada comprova apenas o que está visível nela. Para resultados g
 **Aceite:** superfícies contínuas e modelo/nuvem visíveis, extensão preservada, unidades explícitas e valores coerentes com a fonte; falhas têm mensagem clara.  
 **Evidência:** capturas separadas das cenas DSM, DTM, GLB e LAZ, além de números de referência extraídos dos arquivos.
 
+**Execução em 10/11/2026:** aprovada no projeto 64/processamento 15, com produtos reais Aukerman já persistidos. Playwright abriu DSM, DTM, GLB e LAZ; conferiu dimensões, CRS, bounds, contagem de pontos, triângulos e materiais contra os arquivos; testou arrasto/zoom, exagero vertical, wireframe, vistas, enquadramento, inspeção de ponto e tela cheia. Não houve erros JavaScript. A malha DSM/DTM é uma pré-visualização de 128 × 101 amostras e não deve ser interpretada como estatística ou superfície em resolução integral. O [relatório da Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md) contém valores comparados e cinco capturas.
+
 ### Fase 6 — Análises espaciais e qualidade dos resultados
 
 **Objetivo:** fechar a matriz de análises com entradas corretas, saídas próprias e critérios proporcionais ao uso.
@@ -177,16 +179,16 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 | 2. Usuários, projetos e autorização | Concluída no escopo testado | Duas contas; projeto, voo, ortomapa, arquivo e ticket isolados; persistência e cleanup conferidos | [Relatório e capturas da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md) | Aprovada para endpoints testados; matriz completa de papéis segue limitada |
 | 3. NodeODM ponta a ponta | Concluída no escopo | Ciclo fotogramétrico real e cenários de robustez; fixture identificada como tal | [Relatório, 19 capturas reais e complemento Playwright](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) | Aprovada no escopo; limites explicitados |
 | 4. Mapa 2D e exportação | Executada | Ortofoto, DSM/DTM, camadas, comparação e GeoTIFF de origem em dados reais | [Relatório e 9 capturas da Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md) | Aprovada no escopo raster; comparação não temporal; demais formatos/serviços não reexecutados |
-| 5. Visualização 3D | Evidências do projeto Aukerman existem | DSM, DTM, GLB e LAZ coerentes e legíveis | A preencher na execução | Pendente |
+| 5. Visualização 3D | Executada | DSM, DTM, GLB e LAZ reais; metadados, extensão, controles e seleção conferidos | [Relatório e 5 capturas da Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md) | Aprovada na pré-visualização; grade DSM/DTM reduzida; GLB sem aceite de georreferenciamento |
 | 6. Análises espaciais | Cobertura desigual; UC-020 parcial | Cada análise de escopo com entrada/saída/reference e aceite explícito | A preencher na execução | Pendente |
 | 7. Copiloto | Parcial / escopo precisa reconciliação | Contexto, isolamento, ferramentas e aprovações aprovados | A preencher na execução | Pendente |
 | 8. Robustez e aceite final | Planejada | Roteiro repetível e matriz final sem falhas críticas | A preencher na execução | Pendente |
 
 ## 6. Próxima etapa
 
-**Fases 1 a 4 de 8 concluídas no escopo documentado:** o ciclo fotogramétrico real, a robustez do contrato ODM e o mapa raster 2D/exportação foram validados. Consulte os relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md), [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) e [Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md).
+**Fases 1 a 5 de 8 concluídas no escopo documentado:** o ciclo fotogramétrico real, a robustez do contrato ODM, o mapa raster 2D/exportação e os visualizadores 3D foram validados. Consulte os relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md), [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md), [Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md) e [Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md).
 
-**Próxima etapa: Fase 5 de 8 — Visualização 3D e produtos de elevação.** Validar por Playwright DSM/DTM como superfícies 3D, GLB texturizado e nuvem LAZ; conferir valores, unidades, extensão, controles de rotação/zoom e limites com metadados dos arquivos reais.
+**Próxima etapa: Fase 6 de 8 — Análises espaciais e qualidade dos resultados.** Validar cada análise da matriz com a entrada real exigida, bandas, CRS/unidades, parâmetros, saída persistida, referência independente e telas específicas.
 
 ## 7. Referências internas
 
