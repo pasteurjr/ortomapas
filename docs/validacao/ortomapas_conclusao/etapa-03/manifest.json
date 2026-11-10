@@ -179,8 +179,6 @@
   "textured_model_state": "loaded",
   "textured_model_footer": "264.885 triângulos\n58 materiais/texturas\nArraste para orbitar · roda do mouse para aproximar",
   "outcome": "viewers_passed",
-  "failed_at": "2026-11-10T20:23:46.857464+00:00",
-  "error": "TimeoutError: Locator.wait_for: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".dsm-surface-view\") to be visible\n",
   "viewer_validation": {
     "DSM": {
       "status": "passed",
@@ -222,5 +220,11 @@
     "remaining_project_rows": 0,
     "remaining_user_rows": 0,
     "account_email_redacted": true
+  },
+  "initial_viewer_attempt": {
+    "status": "test_harness_selector_mismatch",
+    "cause": "The first run expected .dsm-surface-view; the implemented component is .surface-view.",
+    "application_defect": false,
+    "retest": "All viewers and quality check passed with corrected Playwright selectors."
   }
 }

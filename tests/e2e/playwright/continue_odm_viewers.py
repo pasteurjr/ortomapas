@@ -107,6 +107,14 @@ def main():
         capture("19_qualidade_do_processamento", "Indicadores de qualidade calculados para o processamento concluído.")
         results["quality"] = {"status": "passed", "text": manifest["quality_text"]}
         manifest["outcome"] = "viewers_passed"
+        manifest.pop("failed_at", None)
+        manifest.pop("error", None)
+        manifest["initial_viewer_attempt"] = {
+            "status": "test_harness_selector_mismatch",
+            "cause": "The first run expected .dsm-surface-view; the implemented component is .surface-view.",
+            "application_defect": False,
+            "retest": "All viewers and quality check passed with corrected Playwright selectors.",
+        }
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
         browser.close()
         print(json.dumps(results, ensure_ascii=False, indent=2))
