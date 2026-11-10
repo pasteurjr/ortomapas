@@ -262,7 +262,7 @@ async def crop_raster(req: CropRequest):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @router.post('/exportar')
-async def export_file(req: ExportRequest):
+def export_file(req: ExportRequest):
     if not req.crs.startswith('EPSG:') or not req.crs[5:].isdigit():
         raise HTTPException(status_code=422, detail='CRS deve ser um codigo EPSG')
     source = data_path(req.input_path)

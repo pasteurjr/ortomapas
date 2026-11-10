@@ -382,7 +382,7 @@ async def delete_ortomapa(ortomapa_id: int, user: dict = Depends(current_user)):
 
 
 @router.get("/ortomapas/{ortomapa_id}/tile/{z}/{x}/{y}.png")
-async def get_tile(ortomapa_id: int, z: int, x: int, y: int, user: dict = Depends(media_user)):
+def get_tile(ortomapa_id: int, z: int, x: int, y: int, user: dict = Depends(media_user)):
     """Serve a georeferenced 256x256 XYZ tile, preserving source alpha/nodata."""
 
     try:

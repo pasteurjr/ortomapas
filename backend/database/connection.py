@@ -48,7 +48,9 @@ PG_CONFIG = {
 }
 
 POOL_NAME = "ortomapas_pool"
-POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
+# A single Leaflet viewport can issue several raster-tile requests at once.
+# Keep enough pooled connections for that burst without exhausting the pool.
+POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "12"))
 
 # ---------------------------------------------------------------------------
 # Connection pool (lazy initialised)

@@ -1,0 +1,227 @@
+{
+  "started_at": "2026-11-10T22:37:22.864910+00:00",
+  "project_id": 62,
+  "screenshots": [
+    {
+      "file": "01_catalogo_ortofotos_reais.png",
+      "description": "Projeto de validação existente selecionado; catálogo mostra os ortomosaicos reais derivados do ODM."
+    },
+    {
+      "file": "02_ortofoto_no_mapa_e_enquadramento.png",
+      "description": "Ortofoto ligada e enquadrada pelo mapa; coordenadas e escala ficam visíveis. Tiles autenticados são contabilizados no manifesto."
+    },
+    {
+      "file": "03_dsm_2d_no_mapa.png",
+      "description": "Produto DSM real ligado e enquadrado em 2D; painel de camadas e tiles da fonte verificados."
+    },
+    {
+      "file": "04_dtm_2d_no_mapa.png",
+      "description": "Produto DTM real ligado e enquadrado em 2D; painel de camadas e tiles da fonte verificados."
+    },
+    {
+      "file": "03_camadas_opacidade_e_ordem.png",
+      "description": "Painel de camadas mostra duas execuções distintas; controle de opacidade da primeira alterado para 45%."
+    },
+    {
+      "file": "04_comparacao_deslizante.png",
+      "description": "Comparador abriu com duas ortofotos do mesmo projeto no modo deslizante antes/depois."
+    },
+    {
+      "file": "05_comparacao_lado_a_lado.png",
+      "description": "Alternância do comparador para duas vistas sincronizadas lado a lado."
+    },
+    {
+      "file": "06_exportacao_crs_disponiveis.png",
+      "description": "Diálogo de exportação com GeoTIFF e CRS; captura revela se o CRS original EPSG:32617 pode ser preservado."
+    },
+    {
+      "file": "07_resultado_exportacao_na_interface.png",
+      "description": "Estado final exibido pelo diálogo depois da resposta HTTP 200; o manifesto registra sucesso ou mensagem de erro apresentada."
+    }
+  ],
+  "checks": [
+    {
+      "case": "tiles e enquadramento 2D",
+      "expected": "pelo menos um tile HTTP 200 no raster real",
+      "observed": {
+        "count": 25,
+        "statuses": [
+          200
+        ],
+        "successful": 25
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "opacidade",
+      "expected": "controle mantém 45%",
+      "observed": "45",
+      "result": "PASS"
+    },
+    {
+      "case": "comparação",
+      "expected": "duas seleções e modos deslizar/lado a lado",
+      "observed": [
+        "ODM ortomosaico 9d17a134",
+        "ODM ortomosaico 9ce614c8"
+      ],
+      "result": "PASS"
+    },
+    {
+      "case": "GeoTIFF export",
+      "expected": "HTTP 200; CRS EPSG:32617; tamanho preservado no CRS de origem",
+      "observed": {
+        "filename": "attachment; filename=\"exportacao.tif\"",
+        "crs": "EPSG:32617",
+        "width": 7470,
+        "height": 5924,
+        "bands": 4,
+        "bounds": [
+          436847.6609127896,
+          4572650.835592971,
+          437221.11373865925,
+          4572947.035590031
+        ],
+        "expected_transformed_bounds": [
+          436847.6609127896,
+          4572650.835592971,
+          437221.11373865925,
+          4572947.035590031
+        ],
+        "max_bound_error": 0.0,
+        "content_length_bytes": 93824935,
+        "source_size_bytes": 93824935,
+        "same_crs_copy": true,
+        "rasterio_inspection": "Source opened with Rasterio; same-CRS export copies its GeoTIFF bytes, and response size equals source size."
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "feedback da exportação",
+      "expected": "diálogo apresenta confirmação de sucesso",
+      "observed": {
+        "http_status": 200,
+        "success_visible": true,
+        "error_text": null,
+        "dialog_text": "Exportar Dados\nCamada / Ortomapa\nSelecione...\nODM ortomosaico 9d17a134\nODM dtm 9d17a134\nODM dsm 9d17a134\nODM dtm 9ce614c8\nODM ortomosaico 9ce614c8\nODM dsm 9ce614c8\nODM dtm 226e16c0\nODM ortomosaico 226e16c0\nODM dsm 226e16c0\nAukerman - DTM real para hidrologia\nAukerman - DSM campanha posterior controlada\nAukerman - DSM real para derivadas\nAukerman - ortofoto ODM real\nBacia contribuinte D8\nRede de drenagem potencial D8\nRede de drenagem potencial D8\nCurvas de nivel\nSombreamento\nOrientacao do relevo\nDeclividade\nGrupos espectrais KMeans (5)\nValidacao UC-020 via fila K-Means RGB\nGrupos espectrais KMeans (5)\nRecorte - Aukerman - ortofoto ODM real\nRecorte - Aukerman - ortofoto ODM real\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nGrupos espectrais KMeans (5) - area selecionada\nIndice RGB VARI - area selecionada\nGrupos espectrais KMeans (5) - area selecionada\nIndice RGB VARI - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nDeclividade\nSombreamento\nOrientacao do relevo\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nSombreamento\nOrientacao do relevo\nFormato de saida\nGeoTIFF (.tif)\nPNG (.png)\nJPEG (.jpg)\nSistema de Coordenadas (CRS)\nEPSG:32617 - CRS de origem\nEPSG:4326 - WGS 84 (Geograficas)\nEPSG:31983 - SIRGAS 2000 / UTM 23S\nEPSG:31984 - SIRGAS 2000 / UTM 24S\nEPSG:32723 - WGS 84 / UTM 23S\nEPSG:32724 - WGS 84 / UTM 24S\nExportacao concluida com sucesso!\nCancelar\nExportar",
+        "browser_errors": []
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "preservar CRS de origem",
+      "expected": true,
+      "observed": true,
+      "result": "PASS"
+    }
+  ],
+  "data_origin": "existing real ODM-derived rasters in PostgreSQL catalog; no copies or DB changes",
+  "project_name": "Validacao Fase 1 - Ortofoto real Aukerman",
+  "ortho_products": [
+    {
+      "id": 43,
+      "name": "ODM ortomosaico 9d17a134",
+      "type": "ortomosaico",
+      "crs": "EPSG:32617",
+      "path": "ortomapas/odm_14_ortomosaico.tif"
+    },
+    {
+      "id": 40,
+      "name": "ODM ortomosaico 9ce614c8",
+      "type": "ortomosaico",
+      "crs": "EPSG:32617",
+      "path": "ortomapas/odm_13_ortomosaico.tif"
+    }
+  ],
+  "source_raster": {
+    "width": 7470,
+    "height": 5924,
+    "bands": 4,
+    "crs": "EPSG:32617",
+    "bounds": [
+      436847.6609127896,
+      4572650.835592971,
+      437221.11373865925,
+      4572947.035590031
+    ],
+    "resolution": [
+      0.04999368485537703,
+      0.04999999950371386
+    ]
+  },
+  "map_tiles": {
+    "count": 25,
+    "statuses": [
+      200
+    ],
+    "successful": 25
+  },
+  "map_footer": "+\n−\n30 m\n Leaflet | © OpenStreetMap contributors\nMedir distancia\nMedir area\nComparar\nODM ortomosaico 9d17a134",
+  "surface_2d_checks": [
+    {
+      "type": "DSM",
+      "product_id": 44,
+      "name": "ODM dsm 9d17a134",
+      "tile_count": 25,
+      "successful_tiles": 25
+    },
+    {
+      "type": "DTM",
+      "product_id": 45,
+      "name": "ODM dtm 9d17a134",
+      "tile_count": 25,
+      "successful_tiles": 25
+    }
+  ],
+  "opacity_percent": "45",
+  "comparison_default_selections": [
+    "ODM ortomosaico 9d17a134",
+    "ODM ortomosaico 9ce614c8"
+  ],
+  "export_ui": {
+    "source_crs": "EPSG:32617",
+    "crs_options": [
+      "EPSG:32617",
+      "EPSG:4326",
+      "EPSG:31983",
+      "EPSG:31984",
+      "EPSG:32723",
+      "EPSG:32724"
+    ],
+    "source_crs_available": true,
+    "selected_target_crs": "EPSG:32617"
+  },
+  "export_ui_result": {
+    "http_status": 200,
+    "success_visible": true,
+    "error_text": null,
+    "dialog_text": "Exportar Dados\nCamada / Ortomapa\nSelecione...\nODM ortomosaico 9d17a134\nODM dtm 9d17a134\nODM dsm 9d17a134\nODM dtm 9ce614c8\nODM ortomosaico 9ce614c8\nODM dsm 9ce614c8\nODM dtm 226e16c0\nODM ortomosaico 226e16c0\nODM dsm 226e16c0\nAukerman - DTM real para hidrologia\nAukerman - DSM campanha posterior controlada\nAukerman - DSM real para derivadas\nAukerman - ortofoto ODM real\nBacia contribuinte D8\nRede de drenagem potencial D8\nRede de drenagem potencial D8\nCurvas de nivel\nSombreamento\nOrientacao do relevo\nDeclividade\nGrupos espectrais KMeans (5)\nValidacao UC-020 via fila K-Means RGB\nGrupos espectrais KMeans (5)\nRecorte - Aukerman - ortofoto ODM real\nRecorte - Aukerman - ortofoto ODM real\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nRede de drenagem potencial D8\nBacia contribuinte D8\nRede de drenagem potencial D8\nBacia contribuinte D8\nIndice topografico de umidade (TWI)\nGrupos espectrais KMeans (5) - area selecionada\nIndice RGB VARI - area selecionada\nGrupos espectrais KMeans (5) - area selecionada\nIndice RGB VARI - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nMudanca de elevacao - area selecionada\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCorte/aterro por cota - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nCurvas de nivel - area selecionada\nDeclividade\nSombreamento\nOrientacao do relevo\nSombreamento - area selecionada\nOrientacao do relevo - area selecionada\nDeclividade - area selecionada\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nDeclividade\nSombreamento\nOrientacao do relevo\nSombreamento\nOrientacao do relevo\nFormato de saida\nGeoTIFF (.tif)\nPNG (.png)\nJPEG (.jpg)\nSistema de Coordenadas (CRS)\nEPSG:32617 - CRS de origem\nEPSG:4326 - WGS 84 (Geograficas)\nEPSG:31983 - SIRGAS 2000 / UTM 23S\nEPSG:31984 - SIRGAS 2000 / UTM 24S\nEPSG:32723 - WGS 84 / UTM 23S\nEPSG:32724 - WGS 84 / UTM 24S\nExportacao concluida com sucesso!\nCancelar\nExportar",
+    "browser_errors": []
+  },
+  "export_result": {
+    "filename": "attachment; filename=\"exportacao.tif\"",
+    "crs": "EPSG:32617",
+    "width": 7470,
+    "height": 5924,
+    "bands": 4,
+    "bounds": [
+      436847.6609127896,
+      4572650.835592971,
+      437221.11373865925,
+      4572947.035590031
+    ],
+    "expected_transformed_bounds": [
+      436847.6609127896,
+      4572650.835592971,
+      437221.11373865925,
+      4572947.035590031
+    ],
+    "max_bound_error": 0.0,
+    "content_length_bytes": 93824935,
+    "source_size_bytes": 93824935,
+    "same_crs_copy": true,
+    "rasterio_inspection": "Source opened with Rasterio; same-CRS export copies its GeoTIFF bytes, and response size equals source size."
+  },
+  "status": "passed",
+  "completed_at": "2026-11-10T22:39:24.148853+00:00"
+}

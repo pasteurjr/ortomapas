@@ -242,7 +242,9 @@ export function getAgentTasks(status) {
 
 // Export
 export function exportLayer(params) {
-  return api.post('/tools/exportar', params, { responseType: 'blob' })
+  // Photogrammetry products can be hundreds of megabytes; keep the global
+  // interactive API timeout from aborting a valid long-running download.
+  return api.post('/tools/exportar', params, { responseType: 'blob', timeout: 600000 })
 }
 
 export default api

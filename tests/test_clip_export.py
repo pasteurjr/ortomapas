@@ -64,6 +64,15 @@ def test_export_raster_reprojects_and_rejects_vector_format(raster, tmp_path):
         export_dataset(raster, 'kml', 'EPSG:4326', tmp_path / 'wrong.kml')
 
 
+def test_export_raster_same_crs_preserves_source_without_rewrite(raster, tmp_path):
+    target = tmp_path / 'same_crs.tif'
+    export_dataset(raster, 'geotiff', 'EPSG:32624', target)
+    assert target.read_bytes() == raster.read_bytes()
+    with rasterio.open(target) as ds:
+        assert ds.crs.to_epsg() == 32624
+        assert (ds.width, ds.height, ds.count) == (20, 20, 1)
+
+
 @pytest.mark.skipif(not shutil.which('ogr2ogr'), reason='OGR CLI required')
 def test_export_vector_kml_and_shapefile(tmp_path):
     source = tmp_path / 'source.geojson'

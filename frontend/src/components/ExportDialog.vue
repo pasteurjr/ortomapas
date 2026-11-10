@@ -12,12 +12,12 @@
           <select v-model="selectedSource">
             <option :value="null" disabled>Selecione...</option>
             <optgroup label="Ortomapas">
-              <option v-for="o in ortomapas" :key="'orto-' + o.id" :value="{ type: 'ortomapa', id: o.id, path: o.caminho_arquivo, name: o.nome }">
+              <option v-for="o in ortomapas" :key="'orto-' + o.id" :value="{ type: 'ortomapa', id: o.id, path: o.caminho_arquivo, name: o.nome, crs: o.sistema_coordenadas }">
                 {{ o.nome }}
               </option>
             </optgroup>
             <optgroup v-if="analysisLayers.length > 0" label="Resultados de Analise">
-              <option v-for="l in analysisLayers" :key="'layer-' + l.id" :value="{ type: 'analysis', id: l.id, path: l.resultado_path, name: l.nome }">
+              <option v-for="l in analysisLayers" :key="'layer-' + l.id" :value="{ type: 'analysis', id: l.id, path: l.resultado_path, name: l.nome, crs: l.resultado?.crs || l.resultado?.sistema_coordenadas }">
                 {{ l.nome }}
               </option>
             </optgroup>
@@ -34,11 +34,7 @@
         <div class="form-group">
           <label>Sistema de Coordenadas (CRS)</label>
           <select v-model="targetCrs" :disabled="format === 'geojson' || format === 'kml'">
-            <option value="EPSG:4326">EPSG:4326 - WGS 84 (Geograficas)</option>
-            <option value="EPSG:31983">EPSG:31983 - SIRGAS 2000 / UTM 23S</option>
-            <option value="EPSG:31984">EPSG:31984 - SIRGAS 2000 / UTM 24S</option>
-            <option value="EPSG:32723">EPSG:32723 - WGS 84 / UTM 23S</option>
-            <option value="EPSG:32724">EPSG:32724 - WGS 84 / UTM 24S</option>
+            <option v-for="item in crsOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
           </select>
         </div>
 
@@ -69,7 +65,7 @@ import { ref, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { exportLayer } from '../api/client'
 
-const props = defineProps({ visible: Boolean })
+const props = defineProps({ visible: Boolean, initialOrtomapaId: { type: Number, default: null } })
 const emit = defineEmits(['close'])
 
 const projectStore = useProjectStore()
@@ -79,12 +75,35 @@ const analysisLayers = computed(() => projectStore.analises.filter((a) => a.resu
 const selectedSource = ref(null)
 const format = ref('geotiff')
 const targetCrs = ref('EPSG:4326')
+const crsOptions = computed(() => {
+  const options = [
+    { label: 'EPSG:4326 - WGS 84 (Geograficas)', value: 'EPSG:4326' },
+    { label: 'EPSG:31983 - SIRGAS 2000 / UTM 23S', value: 'EPSG:31983' },
+    { label: 'EPSG:31984 - SIRGAS 2000 / UTM 24S', value: 'EPSG:31984' },
+    { label: 'EPSG:32723 - WGS 84 / UTM 23S', value: 'EPSG:32723' },
+    { label: 'EPSG:32724 - WGS 84 / UTM 24S', value: 'EPSG:32724' },
+  ]
+  const sourceCrs = selectedSource.value?.crs
+  if (sourceCrs && !options.some((item) => item.value === sourceCrs)) options.unshift({ label: `${sourceCrs} - CRS de origem`, value: sourceCrs })
+  return options
+})
 const isVector = computed(() => /\.(geojson|json|gpkg|shp|kml)$/i.test(selectedSource.value?.path || ''))
 const availableFormats = computed(() => isVector.value
   ? [{ label: 'GeoJSON (.geojson)', value: 'geojson' }, { label: 'KML (.kml)', value: 'kml' }, { label: 'Shapefile (.zip)', value: 'shapefile' }]
   : [{ label: 'GeoTIFF (.tif)', value: 'geotiff' }, { label: 'PNG (.png)', value: 'png' }, { label: 'JPEG (.jpg)', value: 'jpeg' }])
 watch(isVector, () => { format.value = isVector.value ? 'geojson' : 'geotiff' })
 watch(format, (value) => { if (value === 'geojson' || value === 'kml') targetCrs.value = 'EPSG:4326' })
+watch(() => props.visible, (visible) => {
+  if (!visible) return
+  const source = ortomapas.value.find((item) => item.id === props.initialOrtomapaId)
+  if (source) {
+    selectedSource.value = { type: 'ortomapa', id: source.id, path: source.caminho_arquivo, name: source.nome, crs: source.sistema_coordenadas }
+    targetCrs.value = source.sistema_coordenadas || 'EPSG:4326'
+  } else selectedSource.value = null
+}, { immediate: true })
+watch(() => selectedSource.value?.crs, (crs) => {
+  if (!isVector.value && crs && /^EPSG:\d+$/.test(crs)) targetCrs.value = crs
+})
 const loading = ref(false)
 const error = ref(null)
 const downloadReady = ref(false)

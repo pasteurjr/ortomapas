@@ -60,11 +60,17 @@ def export_dataset(source, fmt, crs, destination):
         with rasterio.open(source) as ds:
             if ds.crs is None:
                 raise ValueError('Raster sem CRS')
+            source_crs = ds.crs.to_string()
             if fmt in {'png', 'jpeg'} and (ds.count not in {1, 3} or ds.dtypes[0] != 'uint8'):
                 raise ValueError('PNG/JPEG requer raster de 8 bits com 1 ou 3 bandas; use GeoTIFF')
         if fmt == 'geotiff':
-            _run(['gdalwarp', '-q', '-of', 'GTiff', '-t_srs', crs, '-co', 'COMPRESS=LZW',
-                  str(source), str(destination)])
+            if source_crs == crs:
+                # Preserve the existing GeoTIFF and avoid a costly full raster
+                # rewrite when the user selected its original CRS.
+                shutil.copyfile(source, destination)
+            else:
+                _run(['gdalwarp', '-q', '-of', 'GTiff', '-t_srs', crs, '-co', 'COMPRESS=LZW',
+                      str(source), str(destination)])
         else:
             intermediate = destination.parent / 'reprojected.tif'
             _run(['gdalwarp', '-q', '-of', 'GTiff', '-t_srs', crs, str(source), str(intermediate)])

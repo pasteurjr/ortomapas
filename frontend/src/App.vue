@@ -73,6 +73,7 @@
               v-for="orto in projectStore.ortomapas"
               :key="orto.id"
               :ortomapa="orto"
+              @export="openOrtomapaExport"
             />
             <div v-if="projectStore.ortomapas.length === 0" class="empty-state">
               Nenhum ortomapa carregado
@@ -142,6 +143,7 @@
     <ExportDialog
       v-if="showExportDialog"
       :visible="showExportDialog"
+      :initial-ortomapa-id="exportOrtomapaId"
       @close="showExportDialog = false"
     />
     <MissionPlanner v-if="showMissionPlanner" @close="showMissionPlanner = false" />
@@ -186,6 +188,7 @@ const selectedProjectId = ref(null)
 watch(() => projectStore.activeProject?.id, (id) => { selectedProjectId.value = id ?? null }, { immediate: true })
 const showAnalysisForm = ref(false)
 const showExportDialog = ref(false)
+const exportOrtomapaId = ref(null)
 const showMissionPlanner = ref(false)
 const authenticated = ref(Boolean(localStorage.getItem('ortomapas_token')))
 const activeWorkspace = ref('dados')
@@ -223,6 +226,11 @@ function selectWorkspace(id) {
   activeWorkspace.value = id
   if(id==='copiloto') rightCollapsed.value=true
   if (id === 'missoes') showMissionPlanner.value = true
+}
+
+function openOrtomapaExport(ortomapa) {
+  exportOrtomapaId.value = ortomapa?.id ?? null
+  showExportDialog.value = true
 }
 
 provide('showAnalysisForm', showAnalysisForm)

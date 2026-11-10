@@ -105,7 +105,7 @@ async def tile_access(analise_id: int,user: dict=Depends(current_user)):
 
 
 @router.get('/analises/{analise_id}/tile/{z}/{x}/{y}.png')
-async def tile(analise_id: int,z: int,x: int,y: int,user: dict=Depends(media_user)):
+def tile(analise_id: int,z: int,x: int,y: int,user: dict=Depends(media_user)):
     row=analysis_for_user(analise_id,user)
     style=row['resultado'].get('style')
     if row['resultado'].get('geojson') or not style or not row.get('resultado_path'):
