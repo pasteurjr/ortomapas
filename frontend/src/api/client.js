@@ -111,8 +111,14 @@ export function deleteVoo(id) {
   return api.delete(`/voos/${id}`)
 }
 
-export function createOdmTask(formData) {
-  return api.post('/odm/tasks', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000 })
+export function createOdmTask(formData, idempotencyKey) {
+  const headers = { 'Content-Type': 'multipart/form-data' }
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
+  return api.post('/odm/tasks', formData, { headers, timeout: 300000 })
+}
+
+export function cancelOdmProcessing(processingId) {
+  return api.post(`/odm/processamentos/${processingId}/cancelar`)
 }
 
 export function getOdmProcessamentos(projetoId) {
@@ -121,6 +127,10 @@ export function getOdmProcessamentos(projetoId) {
 
 export function importOdmProducts(processingId) {
   return api.post(`/odm/processamentos/${processingId}/importar`)
+}
+
+export function recoverOdmTask(processingId) {
+  return api.post(`/odm/processamentos/${processingId}/recuperar`, null, { timeout: 600000 })
 }
 
 export function getOdmProducts(projetoId) {

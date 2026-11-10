@@ -240,13 +240,30 @@ async function submitOdm() {
   if (odmDtm.value) options.push({ name: 'dtm', value: true })
   if (odmPointCloud.value) options.push({ name: 'pc-las', value: true })
   form.append('options', JSON.stringify(options))
+  const signature = JSON.stringify({
+    project: projectStore.activeProject.id,
+    flight: selectedVoo.value.id,
+    name: `${projectStore.activeProject.nome} - Voo ${selectedVoo.value.id}`,
+    options,
+    files: selectedFiles.value.map((file) => [file.name, file.size, file.lastModified]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+  })
+  const storageKey = `ortomapas-odm-idempotency:${await crypto.subtle.digest('SHA-256', new TextEncoder().encode(signature)).then((hash) => Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join(''))}`
+  let idempotencyKey = sessionStorage.getItem(storageKey)
+  if (!idempotencyKey) {
+    idempotencyKey = crypto.randomUUID()
+    sessionStorage.setItem(storageKey, idempotencyKey)
+  }
   odmLoading.value = true
   try {
-    const { data } = await createOdmTask(form)
+    const { data } = await createOdmTask(form, idempotencyKey)
+    sessionStorage.removeItem(storageKey)
     showOdmDialog.value = false
     feedbackType.value = 'success'
-    feedback.value = `Processamento iniciado no NodeODM (${data.task.uuid}). ${data.images_count} fotos vinculadas ao voo ${selectedVoo.value.id}.`
+    feedback.value = data.reused
+      ? `Esta tentativa já foi recebida: processamento ${data.task.uuid} reaproveitado, sem criar outra tarefa.`
+      : `Processamento iniciado no NodeODM (${data.task.uuid}). ${data.images_count} fotos vinculadas ao voo ${selectedVoo.value.id}.`
   } catch (e) {
+    if (e.response && e.response.status !== 502) sessionStorage.removeItem(storageKey)
     feedbackType.value = 'error'
     feedback.value = e.response?.data?.detail || 'Falha ao iniciar processamento ODM.'
   } finally {

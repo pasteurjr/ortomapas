@@ -1,7 +1,7 @@
 # Fase 3/8 — Fluxo fotogramétrico ponta a ponta
 
 **Execução:** 10/11/2026<br>
-**Estado:** ciclo principal aprovado; fase parcialmente concluída, com cenários de robustez pendentes.<br>
+**Estado:** Fase 3 concluída no escopo descrito: ciclo fotogramétrico real aprovado e cenários de robustez aprovados contra fixture de contrato.<br>
 **Aplicação:** projeto temporário isolado, removido após a validação.<br>
 **Dados:** conjunto público real `odm_data_aukerman-master` do repositório de teste ODM, licença CC0 1.0. O conjunto não é uma captura do usuário nem da região de Guarajuba.
 
@@ -27,7 +27,7 @@ O upload aceitou 77 fotografias JPEG (77/77 com coordenadas GPS EXIF), total de 
 | Nuvem de pontos | Abrir e informar pontos reais | LAZ aberto; 16.123.377 pontos | Passou |
 | Comparação DSM–DTM | Raster de diferença e estatísticas | Canvas 128×102; 10.437 pixels válidos; mín. −12,60 m, média 3,86 m, máx. 41,28 m | Passou |
 | Qualidade | Resultado visível vinculado à tarefa | 100%, `BOM`; interface recomenda revisar o relatório ODM | Passou com ressalva semântica abaixo |
-| Falha, cancelamento, idempotência e recuperação | Provar que repetição/falha não duplica tarefa e que há retomada segura | Não cobertos nesta execução | Pendente — impede aceite integral da Fase 3 |
+| Falha, cancelamento, idempotência e recuperação | Provar que repetição/falha não duplica tarefa e que há retomada segura | Testados em execução Playwright separada contra fixture NodeODM: 503→retry; replay 200 reutilizado; payload diferente 409; cancelamento estado 50; recuperação 202 com 4 fotos | Passou no contrato; não mede fotogrametria |
 
 ### Produtos gerados
 
@@ -47,6 +47,47 @@ O ortomosaico tem 7.419×5.922 pixels, quatro bandas, `uint8`, EPSG:32617. DSM: 
 ## Roteiro executado e telas
 
 Cada imagem é uma captura nova do navegador Playwright nesta execução, exceto 01–14, capturadas no primeiro percurso antes do teste ser interrompido por um seletor incorreto. A tarefa NodeODM continuou e concluiu; o segundo percurso retomou o projeto persistido e repetiu os viewers com seletores corrigidos. Não foram reaproveitadas capturas de uma execução anterior.
+
+## Complemento de robustez — 10/11/2026
+
+Após o ciclo real, foi feita uma execução Playwright independente para testar o comportamento de erro/repetição/recuperação. A API Ortomapas e o PostgreSQL local foram os reais; o NodeODM foi substituído por uma fixture HTTP de contrato em `127.0.0.1:18022`, deliberadamente incapaz de processar imagens. Foram usadas quatro JPEGs reais com GPS EXIF do conjunto público Aukerman. Portanto, estas evidências provam comportamento de integração, sem afirmar que se gerou novo ortomosaico.
+
+| Cenário | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Indisponibilidade controlada | 503 do serviço vira erro explícito no app, sem sucesso falso nem processo local | NodeODM de contrato retornou 503; API devolveu 502 e a interface mostrou erro; retry no mesmo diálogo preservou a chave | Passou |
+| Retry após incerteza | Uma única tarefa NodeODM e um processamento local | Primeira tentativa não criou tarefa; retry retornou 202; fixture contabilizou uma chamada de criação | Passou |
+| Replay do mesmo payload | 200 reutilizado, mesmo `processing_id`, nenhuma nova tarefa | HTTP 200, `reused=true`, processamento 19, chamadas de criação continuaram em 1 | Passou |
+| Reuso da chave com payload diferente | 409 e nenhum disparo ao ODM | HTTP 409 para conjunto diferente de fotos; chamadas permaneceram em 1 | Passou |
+| Cancelamento | Confirmação explícita; NodeODM confirma status terminal cancelado | UI confirmou; endpoint cancelou UUID; estado da fixture mudou para 50 | Passou |
+| Tarefa ausente e recuperação | UI detecta ausência, preserva fotos originais e cria novo processo vinculado ao antigo | Tarefa removida da fixture; interface ofereceu recuperação; HTTP 202 criou processo 20 a partir do 19 e reenviou 4 fotos preservadas | Passou |
+
+A interface e o mapa de fundo foram capturados em cada estado. O mapa visível está centrado por padrão em Brasília e não representa a área das fotos Aukerman; o teste de robustez não usa o mapa para afirmar posição. Isso não compromete os testes de retry, cancelamento ou recuperação.
+
+### Capturas do complemento
+
+**Erro controlado:** a mensagem de 503 aparece no painel, sem indicar processamento iniciado.
+
+![Resposta visual ao erro controlado](robustez/03_erro_controlado.png)
+
+**Retry e idempotência:** depois do retry, a interface registra uma tarefa; a repetição do mesmo envio é reutilizada, e a chave com outro conjunto de imagens é rejeitada.
+
+![Retry sem duplicidade](robustez/05_retry_idempotente_sem_duplicidade.png)
+
+**Recuperação:** quando o histórico deixa de existir na fixture, a interface identifica a ausência e habilita reenvio das fotos preservadas.
+
+![Tarefa ausente detectada e ação disponível](robustez/08_tarefa_ausente_com_recuperacao.png)
+
+**Confirmação da recuperação:** a confirmação descreve o novo processo e a preservação do histórico anterior.
+
+![Confirmação de recuperação](robustez/09_confirmacao_recuperacao.png)
+
+O manifesto, as dez capturas complementares e o roteiro executável estão em [`robustez/`](robustez/). O teste usou projeto, voo, usuário e fotos temporários. A limpeza confirmou projeto/usuário ausentes do PostgreSQL e removeu os arquivos temporários; as tarefas simuladas foram removidas da fixture. Nenhuma conta ou senha de teste foi mantida no manifesto final.
+
+O cabeçalho `set-uuid` usado para tornar o envio repetível é previsto pelo contrato oficial do [endpoint NodeODM `POST /task/new`](https://github.com/OpenDroneMap/NodeODM/blob/master/docs/index.adoc); a fixture valida nosso fluxo de ponta a ponta, e não substitui a comprovação do comportamento interno do NodeODM.
+
+**Migração de banco:** a tabela `odm_idempotency_keys` está definida em [`004_odm_idempotency.sql`](../../../../backend/database/migrations/004_odm_idempotency.sql) e foi aplicada no PostgreSQL usado nesta validação. Em uma restauração/ambiente novo, aplicar o arquivo com `psql -v ON_ERROR_STOP=1 -d <banco_ortomapas> -f backend/database/migrations/004_odm_idempotency.sql` antes de iniciar o backend.
+
+**Conclusão da Fase 3:** aprovada para o escopo de processamento e integração exercitado. O ciclo real valida geração dos produtos; o contrato controlado valida respostas a falha, retry, cancelamento e recuperação. Permanecem fora da conclusão: captura de drone própria, região de Guarajuba, acurácia cartográfica/topográfica certificada e operação sob carga/concor­rência de múltiplos uploads.
 
 ### Cena 1 — Aplicativo autenticado
 

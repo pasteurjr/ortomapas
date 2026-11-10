@@ -9,6 +9,7 @@ import uuid
 import zipfile
 import shutil
 import time
+from datetime import datetime
 from fastapi.responses import FileResponse
 import rasterio
 import laspy
@@ -18,7 +19,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import requests
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Response, UploadFile
 from PIL import Image
 from psycopg2.extras import Json
 
@@ -42,13 +43,63 @@ def _safe_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]", "_", Path(name or "image.jpg").name)
 
 
+def _odm_request_fingerprint(projeto_id: int, voo_id: int, user_id: int, name: str, options, digests: dict[str, str]) -> str:
+    canonical = {
+        "projeto_id": projeto_id,
+        "voo_id": voo_id,
+        "user_id": user_id,
+        "name": name,
+        "options": options,
+        "images": sorted(({"name": filename, "sha256": digest} for filename, digest in digests.items()), key=lambda item: item["name"]),
+    }
+    encoded = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _nodeodm_task_missing(response) -> bool:
+    """NodeODM may encode a missing UUID as HTTP 200 plus an error JSON."""
+    if response.status_code == 404:
+        return True
+    if not response.ok:
+        return False
+    try:
+        payload = response.json()
+    except (ValueError, json.JSONDecodeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    message = payload.get("error") or payload.get("message")
+    return isinstance(message, str) and bool(re.search(r"(?:not found|does not exist|unknown task)", message, re.IGNORECASE))
+
+
+def _stored_flight_images(voo_id: int) -> list[Path]:
+    """Return only existing, confined image paths preserved for a flight."""
+    root = Path(DATA_DIR).resolve()
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT caminho FROM voo_fotos WHERE voo_id = %s ORDER BY id", (voo_id,))
+        rows = cur.fetchall()
+    paths = []
+    for row in rows:
+        candidate = (root / row["caminho"]).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            continue
+        if candidate.is_file() and candidate.suffix.lower() in {".jpg", ".jpeg", ".tif", ".tiff"}:
+            paths.append(candidate)
+    return paths
+
+
 @router.post("/odm/tasks", status_code=202)
 async def create_odm_task(
+    response: Response,
     images: List[UploadFile] = File(...),
     projeto_id: int = Form(...),
     voo_id: int = Form(...),
     name: str = Form("Ortomapas ODM"),
     options: Optional[str] = Form(None),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     user: dict = Depends(current_user),
 ):
     """Store flight photos and submit them asynchronously to NodeODM."""
@@ -58,6 +109,8 @@ async def create_odm_task(
         raise HTTPException(status_code=422, detail="A fotogrametria requer ao menos 3 imagens")
     if len(images) > MAX_ODM_IMAGES:
         raise HTTPException(status_code=413, detail=f"Limite de {MAX_ODM_IMAGES} imagens por processamento")
+    if idempotency_key is not None and not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", idempotency_key):
+        raise HTTPException(status_code=400, detail="Idempotency-Key deve ter entre 1 e 128 caracteres alfanumericos ou . _ : -")
     require_project_role(projeto_id, user, {"proprietario", "editor"})
     with get_connection() as conn:
         cur = conn.cursor(dictionary=True)
@@ -116,7 +169,7 @@ async def create_odm_task(
         geotagged = sum(1 for metadata in image_metadata.values() if metadata["has_gps"])
         if geotagged < 3:
             raise HTTPException(status_code=422, detail="Ao menos 3 imagens precisam conter coordenadas GPS EXIF para georreferenciar o processamento")
-        fields = {"name": name}
+        parsed_options = {}
         if options:
             try:
                 parsed_options = json.loads(options)
@@ -124,30 +177,74 @@ async def create_odm_task(
                 raise HTTPException(status_code=400, detail=f"options invalido: {exc.msg}")
             if not isinstance(parsed_options, (list, dict)):
                 raise HTTPException(status_code=400, detail="options deve ser uma lista ou objeto JSON")
-            fields["options"] = options
-        handles = []
-        try:
-            handles = [("images", (p.name, p.open("rb"), "application/octet-stream")) for p in paths]
-            response = requests.post(f"{NODEODM_URL}/task/new", data=fields, files=handles, timeout=120)
-            response.raise_for_status()
-            payload = response.json()
-            if not payload.get("uuid"):
-                raise HTTPException(status_code=502, detail="NodeODM respondeu sem o identificador da tarefa")
-        finally:
-            for _, (_, handle, _) in handles:
-                handle.close()
-        (task_dir / "manifest.json").write_text(json.dumps({"name": name, "images": [p.name for p in paths], "nodeodm": payload}, ensure_ascii=False), encoding="utf-8")
-        task_id = payload.get("uuid")
+        fields = {"name": name}
+        if options:
+            fields["options"] = json.dumps(parsed_options, ensure_ascii=False)
+        fingerprint = _odm_request_fingerprint(projeto_id, voo_id, user["id"], name, parsed_options, digests) if idempotency_key else None
+        deterministic_task_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"ortomapas:{projeto_id}:{voo_id}:{user['id']}:{idempotency_key}")) if idempotency_key else None
         with get_connection() as conn:
             cur = conn.cursor(dictionary=True)
-            cur.execute("INSERT INTO processamentos_odm (projeto_id, voo_id, odm_task_id, endpoint, parametros, status, criado_por) VALUES (%s, %s, %s, %s, %s, 'pendente', %s) RETURNING id", (projeto_id, voo_id, task_id, NODEODM_URL, Json(json.loads(options) if options else {}), user["id"]))
+            if idempotency_key:
+                lock_scope = f"odm:{projeto_id}:{voo_id}:{user['id']}:{idempotency_key}"
+                cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (lock_scope,))
+                cur.execute("SELECT request_fingerprint, odm_task_id, processamento_id FROM odm_idempotency_keys WHERE projeto_id = %s AND voo_id = %s AND usuario_id = %s AND idempotency_key = %s FOR UPDATE", (projeto_id, voo_id, user["id"], idempotency_key))
+                existing = cur.fetchone()
+                if existing and existing["request_fingerprint"].strip() != fingerprint:
+                    raise HTTPException(status_code=409, detail="Idempotency-Key ja utilizada com fotos ou parametros diferentes")
+                if existing and existing["processamento_id"]:
+                    cur.execute("SELECT status FROM processamentos_odm WHERE id = %s", (existing["processamento_id"],))
+                    existing_status = cur.fetchone()
+                    conn.rollback()
+                    shutil.rmtree(task_dir, ignore_errors=True)
+                    persisted = True
+                    response.status_code = 200
+                    return {
+                        "task": {"uuid": existing["odm_task_id"]},
+                        "processamento_id": existing["processamento_id"],
+                        "images_count": len(paths),
+                        "geotagged_count": geotagged,
+                        "reused": True,
+                        "status": existing_status["status"] if existing_status else "desconhecido",
+                    }
+                if not existing:
+                    cur.execute("INSERT INTO odm_idempotency_keys (projeto_id, voo_id, usuario_id, idempotency_key, request_fingerprint, odm_task_id) VALUES (%s, %s, %s, %s, %s, %s)", (projeto_id, voo_id, user["id"], idempotency_key, fingerprint, deterministic_task_id))
+
+            payload = None
+            reused_remote_task = False
+            if deterministic_task_id:
+                info_response = requests.get(f"{NODEODM_URL}/task/{deterministic_task_id}/info", timeout=15)
+                if info_response.ok:
+                    info = info_response.json()
+                    if info.get("uuid") == deterministic_task_id:
+                        payload = {"uuid": deterministic_task_id}
+                        reused_remote_task = True
+                elif not _nodeodm_task_missing(info_response):
+                    raise HTTPException(status_code=502, detail=f"NodeODM respondeu HTTP {info_response.status_code} ao consultar a chave idempotente")
+            if payload is None:
+                handles = []
+                try:
+                    handles = [("images", (p.name, p.open("rb"), "application/octet-stream")) for p in paths]
+                    headers = {"set-uuid": deterministic_task_id} if deterministic_task_id else {}
+                    submit = requests.post(f"{NODEODM_URL}/task/new", data=fields, files=handles, headers=headers, timeout=120)
+                    submit.raise_for_status()
+                    payload = submit.json()
+                    if not payload.get("uuid"):
+                        raise HTTPException(status_code=502, detail="NodeODM respondeu sem o identificador da tarefa")
+                finally:
+                    for _, (_, handle, _) in handles:
+                        handle.close()
+            task_id = payload["uuid"]
+            (task_dir / "manifest.json").write_text(json.dumps({"name": name, "images": [p.name for p in paths], "nodeodm": payload, "idempotency_reused_remote_task": reused_remote_task}, ensure_ascii=False), encoding="utf-8")
+            cur.execute("INSERT INTO processamentos_odm (projeto_id, voo_id, odm_task_id, endpoint, parametros, status, criado_por) VALUES (%s, %s, %s, %s, %s, 'pendente', %s) RETURNING id", (projeto_id, voo_id, task_id, NODEODM_URL, Json(parsed_options), user["id"]))
             processing_id = cur.fetchone()["id"]
             for path in paths:
                 cur.execute("INSERT INTO voo_fotos (voo_id, caminho, nome_original, hash_sha256, tamanho_bytes, mime_type, exif, validacao) VALUES (%s, %s, %s, %s, %s, %s, %s, 'valida')", (voo_id, str(path.relative_to(DATA_DIR)), path.name, digests[path.name], path.stat().st_size, "image/" + path.suffix.lower().lstrip("."), Json(image_metadata[path.name])))
             cur.execute("UPDATE voos SET num_fotos = %s, fotos_path = %s WHERE id = %s", (len(paths), str(task_dir.relative_to(DATA_DIR)), voo_id))
+            if idempotency_key:
+                cur.execute("UPDATE odm_idempotency_keys SET processamento_id = %s, odm_task_id = %s WHERE projeto_id = %s AND voo_id = %s AND usuario_id = %s AND idempotency_key = %s", (processing_id, task_id, projeto_id, voo_id, user["id"], idempotency_key))
             conn.commit()
             persisted = True
-        return {"task": payload, "processamento_id": processing_id, "local_upload": str(task_dir.relative_to(DATA_DIR)), "images_count": len(paths), "geotagged_count": geotagged}
+        return {"task": payload, "processamento_id": processing_id, "local_upload": str(task_dir.relative_to(DATA_DIR)), "images_count": len(paths), "geotagged_count": geotagged, "reused": False}
     except HTTPException:
         if not persisted:
             shutil.rmtree(task_dir, ignore_errors=True)
@@ -196,6 +293,19 @@ async def list_processamentos(projeto_id: int = Query(...), user: dict = Depends
         for job in jobs:
             try:
                 info_response = requests.get(f"{job['endpoint']}/task/{job['odm_task_id']}/info", timeout=10)
+                if _nodeodm_task_missing(info_response):
+                    job["nodeodm_missing"] = True
+                    job["recovery_available"] = len(_stored_flight_images(job["voo_id"])) >= 3
+                    missing_message = "Tarefa ausente no histórico NodeODM."
+                    if job["status"] in {"pendente", "processando"}:
+                        missing_message += " As fotos originais foram preservadas; reenvie-as para iniciar uma nova tarefa."
+                        cur.execute("UPDATE processamentos_odm SET status = 'erro', erro = %s, etapa = 'Tarefa ausente no NodeODM', fim_em = COALESCE(fim_em, now()), atualizado_em = now() WHERE id = %s", (missing_message, job["id"]))
+                        job.update(status="erro", erro=missing_message, etapa="Tarefa ausente no NodeODM")
+                    else:
+                        missing_message += " Os produtos já importados permanecem disponíveis no projeto."
+                        job["aviso_nodeodm"] = missing_message
+                    continue
+                job["nodeodm_missing"] = False
                 if info_response.ok:
                     info = info_response.json(); node_status = info.get("status") or {}; code = node_status.get("code")
                     status = {10: "pendente", 20: "processando", 30: "erro", 40: "concluido", 50: "cancelado"}.get(code, job["status"])
@@ -213,6 +323,127 @@ async def list_processamentos(projeto_id: int = Query(...), user: dict = Depends
     return {"total": len(jobs), "processamentos": jobs}
 
 
+@router.post("/odm/processamentos/{processing_id}/cancelar")
+async def cancel_odm_processing(processing_id: int, user: dict = Depends(current_user)):
+    """Cancel an active NodeODM task and persist its terminal state."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,))
+        job = cur.fetchone()
+        if not job:
+            raise HTTPException(status_code=404, detail="Processamento nao encontrado")
+        require_project_role(job["projeto_id"], user, {"proprietario", "editor"})
+        if job["status"] not in {"pendente", "processando"}:
+            raise HTTPException(status_code=409, detail=f"Nao e possivel cancelar um processamento {job['status']}")
+        try:
+            result = requests.post(f"{job['endpoint']}/task/cancel", json={"uuid": job["odm_task_id"]}, timeout=30)
+            result.raise_for_status()
+            payload = result.json()
+        except (requests.RequestException, ValueError, json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=502, detail=f"Falha ao cancelar tarefa no NodeODM: {exc}")
+        if not payload.get("success"):
+            raise HTTPException(status_code=409, detail=payload.get("error") or "NodeODM nao confirmou o cancelamento")
+        cur.execute("UPDATE processamentos_odm SET status = 'cancelado', etapa = 'Cancelado pelo usuario', fim_em = now(), atualizado_em = now() WHERE id = %s", (processing_id,))
+        conn.commit()
+    return {"message": "Processamento cancelado no NodeODM.", "processing_id": processing_id, "task_id": job["odm_task_id"], "status": "cancelado"}
+
+
+@router.post("/odm/processamentos/{processing_id}/recuperar", status_code=202)
+async def recover_missing_odm_task(processing_id: int, user: dict = Depends(current_user)):
+    """Submit preserved flight photos as a new NodeODM task after confirmed 404."""
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,))
+        old_job = cur.fetchone()
+        if not old_job:
+            raise HTTPException(status_code=404, detail="Processamento nao encontrado")
+        require_project_role(old_job["projeto_id"], user, {"proprietario", "editor"})
+        cur.execute("SELECT nome FROM projetos WHERE id = %s", (old_job["projeto_id"],))
+        project = cur.fetchone()
+
+    try:
+        status_response = requests.get(f"{old_job['endpoint']}/task/{old_job['odm_task_id']}/info", timeout=15)
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail=f"Nao foi possivel confirmar o historico NodeODM: {exc}")
+    if not _nodeodm_task_missing(status_response):
+        if status_response.ok:
+            raise HTTPException(status_code=409, detail="A tarefa ainda existe no NodeODM; nao e necessario reenviar as fotos")
+        raise HTTPException(status_code=502, detail=f"NodeODM respondeu HTTP {status_response.status_code} ao verificar a tarefa")
+
+    images = _stored_flight_images(old_job["voo_id"])
+    if len(images) < 3:
+        raise HTTPException(status_code=422, detail="Nao ha pelo menos 3 fotos originais validas preservadas para este voo")
+    sizes = [path.stat().st_size for path in images]
+    total_bytes = sum(sizes)
+    if any(size <= 0 or size > MAX_ODM_IMAGE_BYTES for size in sizes):
+        raise HTTPException(status_code=413, detail="Uma ou mais fotos preservadas excedem o limite de 100 MB por arquivo")
+    if len(images) > MAX_ODM_IMAGES or total_bytes > MAX_ODM_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="As fotos preservadas excedem os limites atuais de reenvio")
+
+    saved_parameters = old_job.get("parametros") or {}
+    if isinstance(saved_parameters, dict):
+        options = saved_parameters.get("options", [])
+    elif isinstance(saved_parameters, str):
+        try:
+            decoded = json.loads(saved_parameters)
+        except json.JSONDecodeError:
+            decoded = []
+        options = decoded.get("options", []) if isinstance(decoded, dict) else decoded
+    else:
+        options = saved_parameters
+    if not isinstance(options, (list, dict)):
+        options = []
+
+    handles = []
+    try:
+        for path in images:
+            handles.append(("images", (path.name, path.open("rb"), "application/octet-stream")))
+        fields = {
+            "name": f"{project['nome']} - Voo {old_job['voo_id']} - recuperacao do processamento {processing_id}",
+            "options": json.dumps(options, ensure_ascii=False),
+        }
+        response = requests.post(f"{old_job['endpoint']}/task/new", data=fields, files=handles, timeout=300)
+        response.raise_for_status()
+        task = response.json()
+        new_task_id = task.get("uuid")
+        if not new_task_id:
+            raise HTTPException(status_code=502, detail="NodeODM aceitou o reenvio sem retornar UUID")
+    except HTTPException:
+        raise
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail=f"Falha ao reenviar as fotos preservadas ao NodeODM: {exc}")
+    finally:
+        for _, (_, handle, _) in handles:
+            handle.close()
+
+    recovery_parameters = {
+        "options": options,
+        "recovery": {
+            "reprocessed_from_id": processing_id,
+            "missing_task_id": old_job["odm_task_id"],
+            "recovered_at": datetime.utcnow().isoformat() + "Z",
+            "images_count": len(images),
+            "source": "voo_fotos local originals",
+        },
+    }
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""INSERT INTO processamentos_odm
+            (projeto_id, voo_id, odm_task_id, endpoint, parametros, status, criado_por)
+            VALUES (%s, %s, %s, %s, %s, 'pendente', %s) RETURNING id""",
+            (old_job["projeto_id"], old_job["voo_id"], new_task_id, old_job["endpoint"], Json(recovery_parameters), user["id"]))
+        new_processing_id = cur.fetchone()["id"]
+        conn.commit()
+    return {
+        "message": "Fotos originais reenviadas; um novo processamento foi criado. Produtos existentes foram preservados.",
+        "processing_id": new_processing_id,
+        "reprocessed_from_id": processing_id,
+        "task": task,
+        "images_count": len(images),
+        "total_bytes": total_bytes,
+    }
+
+
 @router.post("/odm/processamentos/{processing_id}/importar")
 async def import_odm_products(processing_id: int, user: dict = Depends(current_user)):
     """Download and catalog products from a completed NodeODM task."""
@@ -221,10 +452,11 @@ async def import_odm_products(processing_id: int, user: dict = Depends(current_u
         cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,)); job = cur.fetchone()
         if not job: raise HTTPException(status_code=404, detail="Processamento nao encontrado")
         require_project_role(job["projeto_id"], user, {"proprietario", "editor"})
-        cur.execute("SELECT id, tipo, caminho FROM produtos_processamento WHERE processamento_id = %s ORDER BY id", (processing_id,))
+        cur.execute("SELECT id, tipo, caminho, formato, tamanho_arquivo_mb FROM produtos_processamento WHERE processamento_id = %s ORDER BY id", (processing_id,))
         existing_products = [dict(row) for row in cur.fetchall()]
-        if existing_products:
+        if any(product["tipo"] == "modelo_3d" for product in existing_products):
             return {"processing_id": processing_id, "message": "Produtos ja importados", "produtos": existing_products}
+    import_rasters = not existing_products
     work = None
     created_files = []
     committed = False
@@ -233,20 +465,46 @@ async def import_odm_products(processing_id: int, user: dict = Depends(current_u
         info_response.raise_for_status()
         if (info_response.json().get("status") or {}).get("code") != 40:
             raise HTTPException(status_code=409, detail="A tarefa NodeODM ainda nao foi concluida")
-        response = requests.get(f"{job['endpoint']}/task/{job['odm_task_id']}/download/all.zip", timeout=300)
-        response.raise_for_status()
+        response = requests.get(f"{job['endpoint']}/task/{job['odm_task_id']}/download/all.zip", stream=True, timeout=(30, 600))
         work = ODM_UPLOADS_DIR / f"import_{processing_id}_{uuid.uuid4().hex[:8]}"; work.mkdir(parents=True)
-        archive = work / "results.zip"; archive.write_bytes(response.content)
+        archive = work / "results.zip"
+        try:
+            response.raise_for_status()
+            with archive.open("wb") as output:
+                for chunk in response.iter_content(chunk_size=8 * 1024 * 1024):
+                    if chunk:
+                        output.write(chunk)
+        finally:
+            response.close()
+        wanted = {
+            "odm_orthophoto/odm_orthophoto.tif": "odm_orthophoto/odm_orthophoto.tif",
+            "odm_dem/dsm.tif": "odm_dem/dsm.tif",
+            "odm_dem/dtm.tif": "odm_dem/dtm.tif",
+            "odm_report/report.pdf": "odm_report/report.pdf",
+            "odm_georeferencing/odm_georeferenced_model.laz": "odm_georeferencing/odm_georeferenced_model.laz",
+            "odm_texturing/odm_textured_model_geo.glb": "odm_texturing/odm_textured_model_geo.glb",
+        }
+        if not import_rasters:
+            wanted = {"odm_texturing/odm_textured_model_geo.glb": wanted["odm_texturing/odm_textured_model_geo.glb"]}
         with zipfile.ZipFile(archive) as zf:
+            members = {member.filename: member for member in zf.infolist()}
             for member in zf.infolist():
                 target = (work / member.filename).resolve()
                 if not str(target).startswith(str(work.resolve()) + os.sep): raise HTTPException(status_code=400, detail="Arquivo invalido no pacote ODM")
-            zf.extractall(work)
+            for archive_name, relative_name in wanted.items():
+                member = members.get(archive_name)
+                if not member or member.is_dir():
+                    continue
+                target = work / relative_name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(member) as source, target.open("wb") as output:
+                    shutil.copyfileobj(source, output, length=8 * 1024 * 1024)
         extracted = work / "odm_orthophoto" / "odm_orthophoto.tif"
-        if not extracted.exists(): raise HTTPException(status_code=422, detail="Ortofoto nao encontrada no resultado ODM")
+        if import_rasters and not extracted.exists(): raise HTTPException(status_code=422, detail="Ortofoto nao encontrada no resultado ODM")
         products = []
-        for candidate, kind in [(extracted, "ortomosaico"), (work / "odm_dem" / "dsm.tif", "dsm"), (work / "odm_dem" / "dtm.tif", "dtm")]:
-            if candidate.exists(): products.append((candidate, kind))
+        if import_rasters:
+            for candidate, kind in [(extracted, "ortomosaico"), (work / "odm_dem" / "dsm.tif", "dsm"), (work / "odm_dem" / "dtm.tif", "dtm")]:
+                if candidate.exists(): products.append((candidate, kind))
         stored = []
         with get_connection() as conn:
             cur = conn.cursor(dictionary=True)
@@ -261,10 +519,18 @@ async def import_odm_products(processing_id: int, user: dict = Depends(current_u
                     orto_id = cur.fetchone()["id"]
                     cur.execute("INSERT INTO produtos_processamento (processamento_id, ortomapa_id, tipo, caminho, formato, tamanho_arquivo_mb, crs, resolucao, largura_px, altura_px, bandas) VALUES (%s,%s,%s,%s,'GeoTIFF',%s,%s,%s,%s,%s,%s)", (processing_id, orto_id, kind, str(destination.relative_to(DATA_DIR)), destination.stat().st_size / 1048576, crs, abs(ds.transform.a), ds.width, ds.height, ds.count))
                     stored.append({"id": orto_id, "tipo": kind, "caminho": str(destination.relative_to(DATA_DIR))})
-            for source, kind in [(work / "odm_report" / "report.pdf", "relatorio"), (work / "odm_georeferencing" / "odm_georeferenced_model.laz", "nuvem_pontos")]:
-                if source.exists():
-                    destination = Path(DATA_DIR) / "exports" / f"odm_{processing_id}_{kind}{source.suffix}"; shutil.copy2(source, destination); created_files.append(destination)
-                    cur.execute("INSERT INTO produtos_processamento (processamento_id, tipo, caminho, formato, tamanho_arquivo_mb) VALUES (%s,%s,%s,%s,%s)", (processing_id, kind, str(destination.relative_to(DATA_DIR)), source.suffix.lstrip('.').upper(), destination.stat().st_size / 1048576))
+            if import_rasters:
+                for source, kind in [(work / "odm_report" / "report.pdf", "relatorio"), (work / "odm_georeferencing" / "odm_georeferenced_model.laz", "nuvem_pontos")]:
+                    if source.exists():
+                        destination = Path(DATA_DIR) / "exports" / f"odm_{processing_id}_{kind}{source.suffix}"; shutil.copy2(source, destination); created_files.append(destination)
+                        cur.execute("INSERT INTO produtos_processamento (processamento_id, tipo, caminho, formato, tamanho_arquivo_mb) VALUES (%s,%s,%s,%s,%s)", (processing_id, kind, str(destination.relative_to(DATA_DIR)), source.suffix.lstrip('.').upper(), destination.stat().st_size / 1048576))
+            model = work / "odm_texturing" / "odm_textured_model_geo.glb"
+            if model.exists():
+                destination = Path(DATA_DIR) / "exports" / f"odm_{processing_id}_modelo_3d.glb"
+                shutil.copy2(model, destination); created_files.append(destination)
+                cur.execute("INSERT INTO produtos_processamento (processamento_id, tipo, caminho, formato, tamanho_arquivo_mb) VALUES (%s,'modelo_3d',%s,'GLB',%s)", (processing_id, str(destination.relative_to(DATA_DIR)), destination.stat().st_size / 1048576))
+            cur.execute("SELECT id, tipo, caminho, formato, tamanho_arquivo_mb FROM produtos_processamento WHERE processamento_id = %s ORDER BY id", (processing_id,))
+            stored = [dict(row) for row in cur.fetchall()]
             cur.execute("UPDATE processamentos_odm SET status = 'concluido', progresso = 100, etapa = 'Produtos importados', erro = NULL, fim_em = COALESCE(fim_em, now()), atualizado_em = now() WHERE id = %s", (processing_id,)); conn.commit(); committed = True
         return {"processing_id": processing_id, "produtos": stored, "message": "Produtos importados"}
     except HTTPException:
@@ -353,7 +619,7 @@ async def list_odm_products(projeto_id: int = Query(...), user: dict = Depends(c
     require_project_role(projeto_id, user, {"proprietario", "editor", "visualizador"})
     with get_connection() as conn:
         cur = conn.cursor(dictionary=True)
-        cur.execute("""SELECT p.*, j.projeto_id, j.odm_task_id
+        cur.execute("""SELECT p.*, j.projeto_id, j.odm_task_id, j.status AS processamento_status
                        FROM produtos_processamento p
                        JOIN processamentos_odm j ON j.id = p.processamento_id
                        WHERE j.projeto_id = %s ORDER BY p.criado_em DESC, p.id DESC""", (projeto_id,))

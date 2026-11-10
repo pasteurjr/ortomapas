@@ -1,0 +1,148 @@
+{
+  "started_at": "2026-11-10T21:09:11.033119+00:00",
+  "project_name": "Aceite NodeODM Aukerman Fase3-Robustez-20261110-210911",
+  "dataset": "/mnt/data1/progpython/ortomapas/data/odm_test/odm_data_aukerman-master/images",
+  "dataset_note": "Quatro JPEGs reais com metadados do conjunto público Aukerman; enviados ao double de contrato, sem processamento fotogramétrico.",
+  "nodeodm_contract_fixture": "http://127.0.0.1:18022",
+  "screenshots": [
+    {
+      "file": "01_projeto_de_validacao.png",
+      "description": "Projeto descartável criado no app e selecionado; dataset descrito como amostra, sem confundir com voo real."
+    },
+    {
+      "file": "02_fotos_e_parametros.png",
+      "description": "Quatro JPEGs do conjunto de amostra selecionados; tela do app pronta para enviar ao endpoint de contrato."
+    },
+    {
+      "file": "03_erro_controlado.png",
+      "description": "NodeODM de contrato respondeu 503; o app informou falha sem apresentar sucesso falso."
+    },
+    {
+      "file": "04_retry_criou_uma_tarefa.png",
+      "description": "Retry após falha usa a chave retida pela interface e cria uma única tarefa no serviço de contrato."
+    },
+    {
+      "file": "05_retry_idempotente_sem_duplicidade.png",
+      "description": "Replay do mesmo payload reaproveita o processo; alteração de fotos com a mesma chave é recusada."
+    },
+    {
+      "file": "06_confirmacao_cancelamento.png",
+      "description": "Confirmação mostra qual tarefa será cancelada e explica que produtos prévios serão preservados."
+    },
+    {
+      "file": "07_cancelamento_confirmado.png",
+      "description": "Aplicação confirma o cancelamento e o contrato do NodeODM devolve estado terminal cancelado (50)."
+    },
+    {
+      "file": "08_tarefa_ausente_com_recuperacao.png",
+      "description": "Histórico da tarefa foi removido do serviço de contrato; a interface identificou ausência e ofereceu recuperar as fotos preservadas."
+    },
+    {
+      "file": "09_confirmacao_recuperacao.png",
+      "description": "Diálogo informa que será criado novo processamento e que histórico/produtos anteriores permanecem preservados."
+    },
+    {
+      "file": "10_recuperacao_concluida.png",
+      "description": "Novo processamento aparece após reenviar as quatro fotos locais preservadas; o vínculo aponta para a tarefa ausente."
+    }
+  ],
+  "assertions": [
+    {
+      "case": "falha 503 e retry com a mesma chave",
+      "expected": "nenhuma tarefa no primeiro envio; exatamente uma no retry",
+      "observed": {
+        "create_calls": 1,
+        "cancel_calls": 0,
+        "task_count": 1
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "replay idempotente e chave conflitante",
+      "expected": "200 reaproveitado para payload igual; 409 para payload diferente; 1 tarefa",
+      "observed": {
+        "same_payload_http": 200,
+        "same_payload_reused": true,
+        "reused_processing_id": 19,
+        "different_payload_http": 409,
+        "fixture_create_calls_after_both": 1
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "cancelamento",
+      "expected": "POST cancel confirmado e estado terminal 50",
+      "observed": {
+        "fixture_status_code": 50,
+        "processing_id": 19
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "recuperação de tarefa ausente",
+      "expected": "reenvia 4 fotos preservadas, cria novo processo e mantém registro antigo",
+      "observed": {
+        "http": 202,
+        "processing_id": 20,
+        "reprocessed_from_id": 19,
+        "images_count": 4,
+        "fixture_create_calls": 2
+      },
+      "result": "PASS"
+    }
+  ],
+  "project_id": 87,
+  "project_created": true,
+  "voo_id": 33,
+  "controlled_failure_and_retry": {
+    "first_http": 502,
+    "retry_http": 202,
+    "retry_key_present": true,
+    "fixture_create_calls": 1,
+    "processing_id": 19,
+    "task_id": "bc52f6fc-7d6c-5bd4-84c4-6fda0306af84"
+  },
+  "idempotency": {
+    "same_payload_http": 200,
+    "same_payload_reused": true,
+    "reused_processing_id": 19,
+    "different_payload_http": 409,
+    "fixture_create_calls_after_both": 1
+  },
+  "cancel": {
+    "fixture_status_code": 50,
+    "processing_id": 19
+  },
+  "recovery": {
+    "http": 202,
+    "processing_id": 20,
+    "reprocessed_from_id": 19,
+    "images_count": 4,
+    "fixture_create_calls": 2,
+    "task_id": "388e697c-4f1e-4cfc-b0d5-6c5ae3376a91"
+  },
+  "completed_at": "2026-11-10T21:09:25.299237+00:00",
+  "status": "passed",
+  "processing_kind": "NodeODM API contract fixture; no photogrammetry",
+  "cleanup": {
+    "status": "completed",
+    "nodeodm_task_removed_count": 0,
+    "project_removed": true,
+    "temporary_user_removed": true,
+    "temporary_file_count_removed": 1,
+    "remaining_project_rows": 0,
+    "remaining_user_rows": 0,
+    "account_email_redacted": true,
+    "fixture_tasks_created": 2,
+    "fixture_task_removed_to_simulate_missing": 1,
+    "fixture_tasks_remaining_after_run": 0
+  },
+  "task_ids": [
+    "bc52f6fc-7d6c-5bd4-84c4-6fda0306af84",
+    "388e697c-4f1e-4cfc-b0d5-6c5ae3376a91"
+  ],
+  "processing_ids": [
+    19,
+    20
+  ]
+}

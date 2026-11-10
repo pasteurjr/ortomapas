@@ -2,7 +2,7 @@
 
 **Data:** 10/11/2026  
 **Versão:** 1.0  
-**Situação:** Fases 1 e 2 concluídas dentro dos critérios registrados; fases 3–8 aguardam execução.
+**Situação:** Fases 1–3 concluídas dentro dos critérios e limites registrados; fases 4–8 aguardam execução.
 **Escopo:** concluir, validar e documentar o produto web Ortomapas.
 
 ## 1. Objetivo e limites
@@ -85,9 +85,9 @@ Uma captura isolada comprova apenas o que está visível nela. Para resultados g
 **Aceite:** processamento real conclui e os produtos esperados são importados uma única vez, permanecem ligados à origem e continuam acessíveis após recarga; falhas não são mascaradas como sucesso.  
 **Evidência:** capturas de cadastro, seleção/upload, progresso, conclusão, catálogo e metadados; IDs/estados do NodeODM e hashes de entrada/saída.
 
-**Execução em 10/11/2026:** o ciclo principal passou com o dataset público CC0 `odm_data_aukerman-master`: projeto/voo novos, 77 fotos com GPS EXIF, NodeODM 2.2.4/ODM 3.5.6 concluído em 36,6 min, seis produtos importados, login/recarga, ortomosaico, GLB, DSM, DTM, LAZ, diferença DSM–DTM e indicador de qualidade validados visualmente. O teste `.txt` foi rejeitado com HTTP 400 sem criar tarefa. A conta, o projeto e os dados temporários foram removidos após guardar as evidências. O relatório completo e as 19 capturas estão em [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md).
+**Execução em 10/11/2026:** o ciclo principal passou com o dataset público CC0 `odm_data_aukerman-master`: projeto/voo novos, 77 fotos com GPS EXIF, NodeODM 2.2.4/ODM 3.5.6 concluído em 36,6 min, seis produtos importados, login/recarga, ortomosaico, GLB, DSM, DTM, LAZ, diferença DSM–DTM e indicador de qualidade validados visualmente. O teste `.txt` foi rejeitado com HTTP 400 sem criar tarefa. No complemento, a API e o PostgreSQL reais foram exercitados contra fixture NodeODM controlada: erro 503→retry, replay idempotente 200, conflito 409, cancelamento e recuperação 202 de quatro fotos preservadas; não houve novo processamento fotogramétrico no complemento. Contas, projeto, voo e arquivos temporários foram removidos. O relatório e as capturas estão em [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md).
 
-**Estado da fase: parcial.** Permanecem pendentes provas de cancelamento, falha real controlada, idempotência/duplicidade e recuperação de tarefa ausente. O indicador “100% / BOM” representa cobertura operacional de produtos, não acurácia cartográfica. Não avançar para a Fase 4 até fechar ou aceitar formalmente essas pendências.
+**Estado da fase: concluída no escopo exercitado.** A prova de erro/retry/cancelamento/recuperação usa uma fixture de protocolo e não comprova desempenho fotogramétrico; a geração real foi demonstrada separadamente com NodeODM 2.2.4/ODM 3.5.6. O indicador “100% / BOM” representa cobertura operacional de produtos, não acurácia cartográfica.
 
 ### Fase 4 — Visualização cartográfica 2D, produtos e exportação
 
@@ -173,7 +173,7 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 |---|---|---|---|---|
 | 1. Baseline e rastreabilidade | Concluída (documental) | Matriz reconciliada, UC-020 desambiguado, ambiente inventariado | [Relatório e matriz da Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md) | Aprovada como baseline; não é aceite operacional |
 | 2. Usuários, projetos e autorização | Concluída no escopo testado | Duas contas; projeto, voo, ortomapa, arquivo e ticket isolados; persistência e cleanup conferidos | [Relatório e capturas da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md) | Aprovada para endpoints testados; matriz completa de papéis segue limitada |
-| 3. NodeODM ponta a ponta | Parcial | Ciclo real reproduzido; ainda provar erro, cancelamento, idempotência e recuperação | [Relatório e 19 capturas da Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) | Ciclo principal aprovado; fase aberta por cenários de robustez |
+| 3. NodeODM ponta a ponta | Concluída no escopo | Ciclo fotogramétrico real e cenários de robustez; fixture identificada como tal | [Relatório, 19 capturas reais e complemento Playwright](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) | Aprovada no escopo; limites explicitados |
 | 4. Mapa 2D e exportação | Evidências parciais existentes | CRS/tiles/camadas/exportações conferidos | A preencher na execução | Pendente |
 | 5. Visualização 3D | Evidências do projeto Aukerman existem | DSM, DTM, GLB e LAZ coerentes e legíveis | A preencher na execução | Pendente |
 | 6. Análises espaciais | Cobertura desigual; UC-020 parcial | Cada análise de escopo com entrada/saída/reference e aceite explícito | A preencher na execução | Pendente |
@@ -182,9 +182,9 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 
 ## 6. Próxima etapa
 
-**Fases 1 e 2 de 8 concluídas; Fase 3 parcialmente validada:** baseline e autorização foram aprovadas no escopo relatado; o ciclo fotogramétrico real e as visualizações passaram, mas robustez/idempotência seguem pendentes. Consulte os relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md) e [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md).
+**Fases 1, 2 e 3 de 8 concluídas no escopo documentado:** a robustez de protocolo foi validada por fixture controlada e o ciclo fotogramétrico foi executado com NodeODM real. Consulte os relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md) e [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md).
 
-**Próxima etapa: complemento da Fase 3 de 8 — Robustez do fluxo ODM.** Validar cancelamento, falha controlada, idempotência/duplicidade e recuperação de histórico/tarefa ausente; registrar provas e só então consolidar a fase e avançar à Fase 4.
+**Próxima etapa: Fase 4 de 8 — Visualização cartográfica 2D, produtos e exportação.** Validar por Playwright ortomosaico, DSM/DTM, camadas e comparação, conferindo CRS/extensão/tiles, controles de visualização e exportação em relação aos produtos reais importados na Fase 3.
 
 ## 7. Referências internas
 

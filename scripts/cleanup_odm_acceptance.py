@@ -42,15 +42,21 @@ def main() -> int:
     project_id = int(manifest["project_id"])
     project_name = str(manifest["project_name"])
     email = str(manifest["test_user_email"])
-    task_id = str(manifest["task_id"]) if manifest.get("task_id") else None
-    processing_id = int(manifest["processing_id"]) if manifest.get("processing_id") else None
+    task_ids = [str(value) for value in manifest.get("task_ids", [])]
+    if manifest.get("task_id"):
+        task_ids.append(str(manifest["task_id"]))
+    task_ids = sorted(set(task_ids))
+    processing_ids = [int(value) for value in manifest.get("processing_ids", [])]
+    if manifest.get("processing_id"):
+        processing_ids.append(int(manifest["processing_id"]))
+    processing_ids = sorted(set(processing_ids))
 
     if not project_name.startswith("Aceite NodeODM Aukerman Fase3-"):
         raise RuntimeError("Nome do projeto não corresponde ao prefixo temporário da Fase 3")
     if not re.fullmatch(r"aceite-odm-Fase3-[A-Za-z0-9-]+@example\.test", email, re.IGNORECASE):
         raise RuntimeError("E-mail não corresponde ao padrão descartável desta validação")
     email = email.lower()
-    if task_id and not re.fullmatch(r"[0-9a-f-]{36}", task_id):
+    if any(not re.fullmatch(r"[0-9a-f-]{36}", task_id) for task_id in task_ids):
         raise RuntimeError("UUID de tarefa inválido")
 
     # Read paths and verify ownership before deleting any database row.
@@ -59,10 +65,10 @@ def main() -> int:
         cur.execute("SELECT id FROM projetos WHERE id=%s AND nome=%s", (project_id, project_name))
         if not cur.fetchone():
             raise RuntimeError("Projeto da validação não encontrado; nada foi removido")
-        if processing_id:
+        for processing_id in processing_ids:
             cur.execute("SELECT id, projeto_id, odm_task_id FROM processamentos_odm WHERE id=%s", (processing_id,))
             processing = cur.fetchone()
-            if not processing or processing["projeto_id"] != project_id or processing["odm_task_id"] != task_id:
+            if not processing or processing["projeto_id"] != project_id or processing["odm_task_id"] not in task_ids:
                 raise RuntimeError("Vínculo de projeto/processamento/tarefa não confere; nada foi removido")
 
         paths: set[str] = set()
@@ -76,15 +82,15 @@ def main() -> int:
             paths.update(str(row["caminho"]) for row in cur.fetchall() if row.get("caminho"))
 
     # Remove only this run's NodeODM task, then verify the UUID disappeared.
-    task_removed = False
-    if task_id:
+    removed_task_ids = []
+    for task_id in task_ids:
         remove = requests.post(f"{NODEODM_URL}/task/remove", json={"uuid": task_id}, timeout=60)
         remove.raise_for_status()
         task_list = requests.get(f"{NODEODM_URL}/task/list", timeout=30)
         task_list.raise_for_status()
         if task_id in task_list.text:
             raise RuntimeError("NodeODM ainda lista a tarefa após task/remove")
-        task_removed = True
+        removed_task_ids.append(task_id)
 
     with get_connection() as conn:
         cur = conn.cursor(dictionary=True)
@@ -131,7 +137,7 @@ def main() -> int:
 
     manifest["cleanup"] = {
         "status": "completed",
-        "nodeodm_task_removed": task_removed,
+        "nodeodm_task_removed_count": len(removed_task_ids),
         "project_removed": True,
         "temporary_user_removed": True,
         "temporary_file_count_removed": len(removed_files),
