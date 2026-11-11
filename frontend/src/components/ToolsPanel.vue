@@ -216,6 +216,9 @@
             <div v-if="hidro.tipo === 'streams'" class="form-group">
               <label>Area contribuinte minima (m2)</label>
               <InputText v-model.number="hidro.minimumArea" type="number" min="0.01" step="1" :disabled="hidro.loading" class="w-full" />
+              <label class="mt-2">Ordem de Strahler minima</label>
+              <InputText v-model.number="hidro.minimumStrahlerOrder" type="number" min="1" max="12" step="1" :disabled="hidro.loading" class="w-full" />
+              <small>Ordem 1 mantém todos os canais; valores maiores removem tributários de baixa ordem para generalizar a rede.</small>
             </div>
             <template v-if="hidro.tipo === 'watershed'">
               <div class="form-group">
@@ -229,6 +232,18 @@
               <div class="form-group">
                 <label>Raio de ajuste ao canal (m)</label>
                 <InputText v-model.number="hidro.snapRadius" type="number" min="0" max="1000" step="1" :disabled="hidro.loading" class="w-full" />
+              </div>
+              <div class="form-group">
+                <label>Hidrografia de referência (opcional)</label>
+                <input type="file" accept=".geojson,.json,.gpkg" :disabled="hidro.loading || hidro.uploading" @change="uploadHydrographyFile" />
+                <small>Carregue linhas de canal/conector em GeoJSON ou GeoPackage para conduzir o D8 pelo traçado conhecido. A superfície original não é alterada.</small>
+                <small v-if="hidro.uploading">Carregando hidrografia...</small>
+                <small v-else-if="hidro.hydrographyName">Arquivo: {{ hidro.hydrographyName }}</small>
+              </div>
+              <div v-if="hidro.hydrographyPath" class="form-group">
+                <label>Rebaixo do traçado (m)</label>
+                <InputText v-model.number="hidro.burnDepth" type="number" min="0" max="20" step="0.01" :disabled="hidro.loading" class="w-full" />
+                <small>O perfil 3D usa as cotas do vetor; linhas 2D interpolam a cota entre as extremidades. Padrão: 0,05 m.</small>
               </div>
               <Button
                 label="Capturar do Mapa"
@@ -253,11 +268,14 @@
               <div class="stat-row"><span>Area contribuinte:</span><strong>{{ hidro.result.area_m2.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) }} m2</strong></div>
               <div class="stat-row"><span>Celulas:</span><strong>{{ hidro.result.watershed_cells.toLocaleString('pt-BR') }}</strong></div>
               <div class="stat-row"><span>Ajuste do exutorio:</span><strong>{{ hidro.result.snapped_outlet.distance_m.toFixed(2) }} m</strong></div>
+              <div v-if="hidro.result.hydrography_conditioning" class="stat-row"><span>Pixels condicionados:</span><strong>{{ hidro.result.hydrography_conditioning.cells_conditioned.toLocaleString('pt-BR') }}</strong></div>
             </div>
             <div v-if="hidro.result && hidro.tipo === 'streams'" class="result-stats">
               <div class="stat-row"><span>Segmentos:</span><strong>{{ hidro.result.feature_count }}</strong></div>
               <div class="stat-row"><span>Comprimento:</span><strong>{{ hidro.result.total_length_m.toFixed(1) }} m</strong></div>
               <div class="stat-row"><span>Limiar:</span><strong>{{ hidro.result.minimum_area_m2.toFixed(1) }} m2</strong></div>
+              <div class="stat-row"><span>Ordem Strahler:</span><strong>{{ hidro.result.minimum_strahler_order }}+</strong></div>
+              <div v-for="(length, order) in hidro.result.order_lengths_m" :key="order" class="stat-row"><span>Comprimento ordem {{ order }}:</span><strong>{{ length.toFixed(1) }} m</strong></div>
             </div>
             <div v-if="hidro.result && hidro.tipo === 'twi'" class="result-stats">
               <div class="stat-row"><span>Min:</span><strong>{{ hidro.result.statistics.band_1.min.toFixed(2) }}</strong></div>
@@ -481,7 +499,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
 import { analysisRasterLayer, analysisVectorLayer } from '../utils/analysisProducts'
-import { runTool, exportLayer } from '../api/client'
+import { runTool, exportLayer, uploadHydrography as uploadHydrographyApi } from '../api/client'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -496,6 +514,21 @@ const mapStore = useMapStore()
 const useTerrainAoi = ref(false)
 watch(() => projectStore.activeProject?.id, () => { useTerrainAoi.value = false; terreno.result = null })
 const activeTab = ref('vegetacao')
+
+function selectForAnalysis(analysis) {
+  const tabs = {
+    vegetacao: 'vegetacao', vegetation: 'vegetacao',
+    terreno: 'terreno', terrain: 'terreno',
+    classificacao: 'classificacao', classification: 'classificacao',
+    hidrologia: 'hidrologia', hydrology: 'hidrologia',
+    mudancas: 'mudancas', mudanca: 'mudancas', elevation_change: 'mudancas',
+    volume: 'volume', recorte: 'recorte',
+  }
+  const tab = tabs[String(analysis?.tipo_analise || '').toLowerCase()]
+  if (tab) activeTab.value = tab
+}
+
+defineExpose({ selectForAnalysis })
 
 const ortoOptions = computed(() =>
   projectStore.ortomapas.map((o) => ({ label: o.nome, value: o.id }))
@@ -570,9 +603,9 @@ watch(() => [terreno.tipo, terreno.ortomapaId, terreno.interval, useTerrainAoi.v
 const useClassAoi = ref(false)
 const classif = reactive({ ortomapaId: null, algorithm: 'kmeans', numClasses: 5, loading: false, result: null, error: '' })
 watch(() => [classif.ortomapaId, classif.algorithm, classif.numClasses, useClassAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { classif.result = null; classif.error = '' })
-const hidro = reactive({ ortomapaId: null, tipo: 'watershed', minimumArea: 50, snapRadius: 5, pourLat: null, pourLon: null, loading: false, result: null, error: '' })
+const hidro = reactive({ ortomapaId: null, tipo: 'watershed', minimumArea: 50, minimumStrahlerOrder: 1, snapRadius: 5, pourLat: null, pourLon: null, hydrographyPath: '', hydrographyName: '', burnDepth: 0.05, uploading: false, loading: false, result: null, error: '' })
 const selectedHydrologySource = computed(() => projectStore.ortomapas.find(item => item.id === hidro.ortomapaId))
-watch(() => [hidro.ortomapaId, hidro.tipo, hidro.minimumArea, hidro.snapRadius, hidro.pourLat, hidro.pourLon], () => { hidro.result = null; hidro.error = '' })
+watch(() => [hidro.ortomapaId, hidro.tipo, hidro.minimumArea, hidro.minimumStrahlerOrder, hidro.snapRadius, hidro.pourLat, hidro.pourLon, hidro.hydrographyPath, hidro.burnDepth], () => { hidro.result = null; hidro.error = '' })
 const useChangeAoi = ref(false)
 const mudanca = reactive({ antesId: null, depoisId: null, threshold: 0.1, loading: false, result: null, error: '' })
 watch(() => [mudanca.antesId, mudanca.depoisId, mudanca.threshold, useChangeAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { mudanca.result = null; mudanca.error = '' })
@@ -580,6 +613,7 @@ const useVolumeAoi = ref(false)
 const volume = reactive({ ortomapaId: null, refElevation: null, loading: false, result: null, error: '' })
 watch(() => [volume.ortomapaId, volume.refElevation, useVolumeAoi.value, JSON.stringify(mapStore.analysisAoi)], () => { volume.result = null; volume.error = '' })
 watch(() => projectStore.activeProject?.id, () => {
+  hidro.hydrographyPath = ''; hidro.hydrographyName = ''; hidro.result = null; hidro.error = ''
   useVolumeAoi.value = false; volume.result = null; volume.error = ''
   useChangeAoi.value = false; mudanca.result = null; mudanca.error = ''
   useVegAoi.value = false; veg.result = null; veg.error = ''
@@ -746,9 +780,10 @@ async function runHidrologia() {
       projeto_id: projectStore.activeProject.id, output_name: `hidrologia_${hidro.tipo}_${Date.now()}`,
     }
     const params = hidro.tipo === 'watershed'
-      ? { ...common, pour_point: { lat: hidro.pourLat, lon: hidro.pourLon }, snap_radius_m: hidro.snapRadius }
+      ? { ...common, pour_point: { lat: hidro.pourLat, lon: hidro.pourLon }, snap_radius_m: hidro.snapRadius,
+          ...(hidro.hydrographyPath ? { hydrography_path: hidro.hydrographyPath, burn_depth_m: hidro.burnDepth } : {}) }
       : hidro.tipo === 'streams'
-        ? { ...common, minimum_area_m2: hidro.minimumArea }
+        ? { ...common, minimum_area_m2: hidro.minimumArea, minimum_strahler_order: hidro.minimumStrahlerOrder }
         : common
     const endpoint = { watershed: 'hydrology/watershed', streams: 'hydrology/streams', twi: 'hydrology/twi' }[hidro.tipo]
     const res = await runTool(endpoint, params)
@@ -759,6 +794,27 @@ async function runHidrologia() {
     hidro.error = e.response?.data?.detail || 'Nao foi possivel executar a analise hidrologica'
   } finally {
     hidro.loading = false
+  }
+}
+
+async function uploadHydrographyFile(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  hidro.uploading = true
+  hidro.error = ''
+  try {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await uploadHydrographyApi(form, projectStore.activeProject.id)
+    hidro.hydrographyPath = response.data.path
+    hidro.hydrographyName = file.name
+  } catch (error) {
+    hidro.hydrographyPath = ''
+    hidro.hydrographyName = ''
+    hidro.error = error.response?.data?.detail || 'Nao foi possivel carregar a hidrografia'
+    event.target.value = ''
+  } finally {
+    hidro.uploading = false
   }
 }
 

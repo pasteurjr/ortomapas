@@ -62,13 +62,19 @@
         </nav>
         <div v-if="!leftCollapsed" class="sidebar-content">
           <template v-if="activeWorkspace === 'dados'">
-            <ProjectList />
+            <ProjectList
+              :search-results="globalSearchResults"
+              :global-search-query="searchQuery"
+              :global-search-loading="globalSearchLoading"
+              :global-search-error="globalSearchError"
+            />
             <LayerPanel />
             <div class="sidebar-section">
             <h3 class="section-title">
               <i class="pi pi-image"></i> Ortomapas
               <Badge :value="projectStore.ortomapas.length" severity="info" />
             </h3>
+            <GeoTiffUpload />
             <OrtomapCard
               v-for="orto in projectStore.ortomapas"
               :key="orto.id"
@@ -86,8 +92,8 @@
           </template>
           <template v-else-if="activeWorkspace === 'analises'">
             <LayerPanel />
-            <ToolsPanel />
-            <AnalysisResults />
+            <ToolsPanel ref="toolsPanelRef" />
+            <AnalysisResults @select-analysis="onSelectAnalysis" />
           </template>
           <template v-else-if="activeWorkspace === 'copiloto'">
             <CopilotChat />
@@ -113,7 +119,6 @@
         </button>
         <div v-if="!rightCollapsed" class="sidebar-content">
           <DrawTools v-if="activeWorkspace === 'dados' || activeWorkspace === 'analises'" />
-          <MeasureTools v-if="activeWorkspace === 'dados'" />
           <div v-if="activeWorkspace === 'odm'" class="workspace-help"><i class="pi pi-cog"></i><div class="workspace-help-copy"><strong>Pipeline ODM</strong><span>Envie fotos, acompanhe o processamento, importe produtos e abra as visualizações 3D.</span></div></div>
           <div v-if="activeWorkspace === 'missoes'" class="workspace-help"><i class="pi pi-send"></i><div class="workspace-help-copy"><strong>Planejamento de voo</strong><span>Crie AOI, exclusões, takeoff, waypoints, grid e exportação para o aplicativo de voo.</span></div></div>
         </div>
@@ -136,9 +141,10 @@
 
     <!-- Modals -->
     <AnalysisForm
-      v-if="showAnalysisForm"
       :visible="showAnalysisForm"
       @close="showAnalysisForm = false"
+      @select-outlet="showAnalysisForm = false"
+      @outlet-selected="showAnalysisForm = true"
     />
     <ExportDialog
       v-if="showExportDialog"
@@ -151,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, provide, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide, watch, nextTick } from 'vue'
 import { useProjectStore } from './stores/projectStore'
 import { useMapStore } from './stores/mapStore'
 import Select from 'primevue/select'
@@ -175,15 +181,50 @@ import LoginView from './components/LoginView.vue'
 import OdmTasks from './components/OdmTasks.vue'
 import MissionPlanner from './components/MissionPlanner.vue'
 import LayerPanel from './components/LayerPanel.vue'
+import GeoTiffUpload from './components/GeoTiffUpload.vue'
+import { searchProjects } from './api/client'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
 
 const leftCollapsed = ref(false)
+const toolsPanelRef = ref(null)
 const compactViewport = window.matchMedia('(max-width: 1100px)')
 const rightCollapsed = ref(compactViewport.matches)
 function onCompactViewport(event) { rightCollapsed.value=event.matches }
 const searchQuery = ref('')
+const globalSearchResults = ref(null)
+const globalSearchLoading = ref(false)
+const globalSearchError = ref(false)
+let searchTimer
+let searchGeneration = 0
+watch(searchQuery, (value) => {
+  const generation = ++searchGeneration
+  clearTimeout(searchTimer)
+  const query = value.trim()
+  if (!query) {
+    globalSearchResults.value = null
+    globalSearchLoading.value = false
+    globalSearchError.value = false
+    return
+  }
+  globalSearchResults.value = []
+  globalSearchLoading.value = true
+  globalSearchError.value = false
+  searchTimer = setTimeout(async () => {
+    try {
+      const response = await searchProjects(query)
+      if (generation === searchGeneration) globalSearchResults.value = response.data.projetos || []
+    } catch {
+      if (generation === searchGeneration) {
+        globalSearchResults.value = []
+        globalSearchError.value = true
+      }
+    } finally {
+      if (generation === searchGeneration) globalSearchLoading.value = false
+    }
+  }, 250)
+})
 const selectedProjectId = ref(null)
 watch(() => projectStore.activeProject?.id, (id) => { selectedProjectId.value = id ?? null }, { immediate: true })
 const showAnalysisForm = ref(false)
@@ -228,6 +269,12 @@ function selectWorkspace(id) {
   if (id === 'missoes') showMissionPlanner.value = true
 }
 
+async function onSelectAnalysis(analysis) {
+  activeWorkspace.value = 'analises'
+  await nextTick()
+  toolsPanelRef.value?.selectForAnalysis(analysis)
+}
+
 function openOrtomapaExport(ortomapa) {
   exportOrtomapaId.value = ortomapa?.id ?? null
   showExportDialog.value = true
@@ -240,7 +287,10 @@ onMounted(() => {
   compactViewport.addEventListener('change',onCompactViewport)
   if (authenticated.value) projectStore.fetchProjects()
 })
-onUnmounted(()=>compactViewport.removeEventListener('change',onCompactViewport))
+onUnmounted(()=>{
+  clearTimeout(searchTimer)
+  compactViewport.removeEventListener('change',onCompactViewport)
+})
 </script>
 
 <style>

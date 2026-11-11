@@ -96,6 +96,8 @@ import Badge from 'primevue/badge'
 import api from '../api/client'
 import { analysisRasterLayer, analysisVectorLayer } from '../utils/analysisProducts'
 
+const emit = defineEmits(['select-analysis'])
+
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
 
@@ -130,6 +132,12 @@ async function downloadResult(analysis) {
 
 function selectAnalise(analise) {
   selectedId.value = analise.id
+  emit('select-analysis', analise)
+
+  const outlet = analise.resultado?.stats?.snapped_outlet || analise.resultado?.stats?.requested_outlet
+  mapStore.hydrologyOutlet = analise.tipo_analise === 'hidrologia' && outlet?.lat != null
+    ? { lat: Number(outlet.lat), lng: Number(outlet.lon ?? outlet.lng) }
+    : null
 
   const raster = analysisVectorLayer(analise) || analysisRasterLayer(analise)
   if (raster) mapStore.addLayer(raster)

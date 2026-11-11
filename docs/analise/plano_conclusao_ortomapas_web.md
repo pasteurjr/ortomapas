@@ -180,15 +180,15 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 | 3. NodeODM ponta a ponta | Concluída no escopo | Ciclo fotogramétrico real e cenários de robustez; fixture identificada como tal | [Relatório, 19 capturas reais e complemento Playwright](../validacao/ortomapas_conclusao/etapa-03/relatorio.md) | Aprovada no escopo; limites explicitados |
 | 4. Mapa 2D e exportação | Executada | Ortofoto, DSM/DTM, camadas, comparação e GeoTIFF de origem em dados reais | [Relatório e 9 capturas da Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md) | Aprovada no escopo raster; comparação não temporal; demais formatos/serviços não reexecutados |
 | 5. Visualização 3D | Executada | DSM, DTM, GLB e LAZ reais; metadados, extensão, controles e seleção conferidos | [Relatório e 5 capturas da Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md) | Aprovada na pré-visualização; grade DSM/DTM reduzida; GLB sem aceite de georreferenciamento |
-| 6. Análises espaciais | Cobertura desigual; UC-020 parcial | Cada análise de escopo com entrada/saída/reference e aceite explícito | A preencher na execução | Pendente |
+| 6. Análises espaciais | Executada como auditoria da matriz UC-005–012 | Produtos persistidos conferidos, recálculos independentes, oito telas Playwright e limites de aceite por caso de uso | [Relatório, manifesto e capturas da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md) | Executada; UC-009 parcial (sem campanhas reais independentes), UC-010 sem acurácia semântica e UC-011 demonstrativo sem referência hidrográfica local; restante aprovado no escopo matemático/visual |
 | 7. Copiloto | Parcial / escopo precisa reconciliação | Contexto, isolamento, ferramentas e aprovações aprovados | A preencher na execução | Pendente |
 | 8. Robustez e aceite final | Planejada | Roteiro repetível e matriz final sem falhas críticas | A preencher na execução | Pendente |
 
 ## 6. Próxima etapa
 
-**Fases 1 a 5 de 8 concluídas no escopo documentado:** o ciclo fotogramétrico real, a robustez do contrato ODM, o mapa raster 2D/exportação e os visualizadores 3D foram validados. Consulte os relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md), [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md), [Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md) e [Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md).
+**Fases 1 a 6 de 8 executadas no escopo documentado:** as análises espaciais foram auditadas com dados reais e limites de aceite por UC. As pendências de verdade de campo e validação temporal/hidrológica permanecem expressas; consulte o [relatório da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md), além dos relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md), [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md), [Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md) e [Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md).
 
-**Próxima etapa: Fase 6 de 8 — Análises espaciais e qualidade dos resultados.** Validar cada análise da matriz com a entrada real exigida, bandas, CRS/unidades, parâmetros, saída persistida, referência independente e telas específicas.
+**Próxima etapa: Fase 7 de 8 — Copiloto, conversas e ferramentas.** Testar contexto e histórico isolados por usuário, vínculo com projeto, ferramentas com entrada/saída real, confirmação antes de escrita e respostas que não inventem resultados.
 
 ## 7. Referências internas
 
@@ -202,3 +202,4 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 - [Matriz de rastreabilidade da Fase 1](matriz_rastreabilidade_ortomapas_fase1.md)
 - [Relatório de validação da Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md)
 - [Relatório de validação da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md)
+- [Relatório de validação da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md)
