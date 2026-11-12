@@ -1,0 +1,76 @@
+# Fase 8 de 8 — Robustez e aceite final
+
+**Execução:** 12/11/2026
+**Estado:** validação de robustez parcial aprovada; aceite operacional geral ainda não concedido.
+**Projeto de teste:** “Guarajuba - Condomínio Paraíso (Demonstração)”, ID 51.
+**Chamadas ao modelo de linguagem:** zero.
+
+## Objetivo e limites
+
+Esta rodada cobre falhas de autenticação, upload inválido, indisponibilidade simulada da API e recuperação, com captura de tela. A indisponibilidade 503 foi injetada no navegador para uma requisição de listagem; não derrubei o backend nem o PostgreSQL. O produto de Guarajuba segue sendo um projeto de demonstração e não valida a precisão de produtos fotogramétricos locais.
+
+O plano da Fase 8 ainda exige um percurso integrado final reproduzível, incluindo produtos/mapa/análise/exportação, falhas de processamento prolongado e revisão final da matriz. Por isso, os testes abaixo aprovam estes cenários, mas não fecham sozinhos o aceite operacional do sistema.
+
+## Cenários, esperado e obtido
+
+| ID | Resultado esperado | Resultado obtido | Situação |
+|---|---|---|---|
+| F8-01 — sessão válida | Login, projeto carregado e mapa visível | `/api/projetos` respondeu HTTP 200; projeto 51 e mapa carregaram | Aprovado |
+| F8-02 — token inválido | API nega acesso sem dados privados | `/auth/me` respondeu HTTP 401 | Aprovado |
+| F8-03 — upload inválido | GeoTIFF corrompido é rejeitado e limpo | HTTP 400; contagem de ortomapas ficou 4 → 4; nenhum arquivo órfão | Aprovado |
+| F8-04 — API indisponível | Mensagem diferencia falha de lista vazia e permite retentar | 503 simulado; aviso acionável apareceu; botão “Tentar novamente” recuperou projeto sem reload | Aprovado após correção |
+| F8-05 — sessão expirada | Token removido, tela de login apresentada e usuário informado | Token inválido foi limpo; login reapareceu com aviso “Sua sessão expirou”; zero erros JS | Aprovado após correção |
+| F8-06 — prontidão/telemetria | API e dependências reportam estado observável | `/health/ready`: database=true e language_model=true. `/health/metrics`: 303 requisições, 0 erros 5xx, latência média 245,76 ms naquele instante | Aprovado como fotografia local; métricas são acumuladas em memória |
+
+Os números de telemetria são uma observação pontual deste processo local, não uma garantia de monitoramento persistente. O dashboard/Prometheus e a retenção após reinício não foram reavaliados nesta rodada.
+
+## Defeitos encontrados e correções
+
+1. **401 sem encerramento da sessão:** com token inválido, a API negava acesso, mas o frontend mantinha o shell autenticado e o token. O cliente agora remove o token e emite evento de sessão inválida; a aplicação valida a sessão antes de montar o mapa e retorna ao login com aviso. Isso também evita uma corrida do Leaflet durante desmontagem inicial.
+2. **503 apresentado como lista vazia:** a lista de projetos agora separa falha de carregamento de estado vazio, apresenta alerta e botão de nova tentativa. O retry recuperou o projeto após retirar a falha simulada.
+3. **Upload GeoTIFF inválido:** o endpoint já rejeitou o conteúdo antes de gravar metadados e removeu o arquivo temporário; a prova comparou banco e diretório antes/depois.
+
+## Evidências e reprodução
+
+O resultado estruturado do roteiro está em [fase8_result.json](fase8_result.json), e o Playwright reproduz os cenários sem chamar o LLM em [capture_fase8_resilience.py](../../../../tests/e2e/playwright/capture_fase8_resilience.py).
+
+### Tela 1 — login antes da autenticação
+
+![Tela de login](f8_01_login.png)
+
+### Tela 2 — projeto carregado e mapa visível
+
+![Projeto e mapa](f8_02_projeto_operacional.png)
+
+### Tela 3 — API indisponível, aviso e ação de retry
+
+![Falha 503 mostrada como erro acionável](f8_03_api_indisponivel.png)
+
+### Tela 4 — projeto recuperado pelo retry
+
+![Aplicação recuperada após retry](f8_04_recuperacao_api.png)
+
+### Tela 5 — sessão expirada e aviso ao usuário
+
+![Login com aviso de sessão expirada](f8_05_sessao_expirada.png)
+
+## Verificações técnicas
+
+- `npm run build`: passou com 427 módulos; continua o aviso Vite de bundle JavaScript acima de 500 kB.
+- Playwright: todos os cinco cenários deste recorte passaram; `page_errors` vazio.
+- Nenhum uso do Sonnet/LM Studio ocorreu.
+- A verificação do pytest da fase anterior continua limitada porque pytest não está instalado no Conda do projeto nem no ambiente `stats`.
+
+## Conclusão provisória e pendências da Fase 8
+
+**Aprovado:** os cenários F8-01 a F8-06 no escopo acima e as correções de sessão/retry. O backend e PostgreSQL estavam prontos durante a execução.
+
+**Aceite operacional integral permanece pendente:**
+
+- executar roteiro integrado final em projeto de validação controlado, juntando produtos ODM, visualização 2D/3D, análise e exportação em sequência única e repetir abertura/recarga;
+- testar timeout e recuperação de tarefa longa contra fixture NodeODM (há evidência específica na Fase 3, mas não foi reexecutada nesta rodada);
+- validar a publicação/continuidade do monitoramento após reinício, sem depender apenas de métricas em memória;
+- executar o conjunto automatizado Python após disponibilizar pytest no ambiente definido, sem atualizar dependências durante esta rodada;
+- reconciliar cada UC obrigatório com evidência das fases 1–8 e registrar explicitamente exclusões/limitações de dados sintéticos, acurácia e RAG.
+
+**Próxima subetapa:** Fase 8 de 8 — consolidar o roteiro integrado, reexecutar as verificações de processamento/retomada e concluir a matriz final de aceite. Até concluir essa subetapa, o Ortomapas não deve ser declarado operacionalmente aceito em sua totalidade.

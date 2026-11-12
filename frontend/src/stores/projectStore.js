@@ -20,6 +20,7 @@ export const useProjectStore = defineStore('project', {
     agentTasks: [],
     loading: false,
     error: null,
+    projectsError: null,
     pollInterval: null,
   }),
 
@@ -47,11 +48,13 @@ export const useProjectStore = defineStore('project', {
   actions: {
     async fetchProjects() {
       this.loading = true
+      this.projectsError = null
       try {
         const res = await getProjects()
         this.projects = res.data.projetos || res.data
       } catch (e) {
         this.error = e.message
+        this.projectsError = e.message
       } finally {
         this.loading = false
       }
@@ -118,9 +121,11 @@ export const useProjectStore = defineStore('project', {
     },
 
     async pollAgentTasks() {
+      if (!this.activeProject) return
+      const projectId=this.activeProject.id
       try {
-        const res = await getAgentTasks('em_fila,processando')
-        this.agentTasks = res.data
+        const res = await getAgentTasks('em_fila,processando',projectId)
+        if (this.activeProject?.id === projectId) this.agentTasks = res.data.analises || res.data
       } catch (e) {
         // silent polling failure
       }

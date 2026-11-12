@@ -17,6 +17,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401 && localStorage.getItem('ortomapas_token')) {
+      localStorage.removeItem('ortomapas_token')
+      window.dispatchEvent(new Event('ortomapas:unauthorized'))
+    }
     console.error('API Error:', error.response?.data || error.message)
     return Promise.reject(error)
   }
@@ -86,8 +90,14 @@ export function login(data) {
   return api.post('/auth/login', data)
 }
 
+export function getCurrentUser() { return api.get('/auth/me') }
+
 export function registerUser(data) {
   return api.post('/auth/register', data)
+}
+
+export function getGeoServerCapabilities(service = 'WMS', projetoId) {
+  return api.get('/geoserver/capabilities', { params: { service, projeto_id: projetoId }, timeout: 30000 })
 }
 
 // Voos (Flights)
@@ -137,6 +147,22 @@ export function getOdmProducts(projetoId) {
   return api.get('/odm/produtos', { params: { projeto_id: projetoId } })
 }
 
+export function getGeoServerPublications(projetoId) {
+  return api.get('/geoserver/publicacoes', { params: { projeto_id: projetoId } })
+}
+
+export function publishGeoServerProduct(productId) {
+  return api.post(`/geoserver/produtos/${productId}/publicar`)
+}
+
+export function unpublishGeoServerPublication(publicationId) {
+  return api.delete(`/geoserver/publicacoes/${publicationId}`)
+}
+
+export function getGeoServerTileAccess(productId, service = 'WMS') {
+  return api.post(`/geoserver/produtos/${productId}/tile-access`, null, { params: { service } })
+}
+
 export function getPointCloud(productId, maxPoints = 100000, bbox = {}) {
   return api.get(`/odm/produtos/${productId}/points`, { params: { max_points: maxPoints, ...bbox }, timeout: 120000 })
 }
@@ -167,6 +193,7 @@ export function createCopilotThread(data) { return api.post('/copilot/threads', 
 export function listCopilotThreads(projectId) { return api.get('/copilot/threads', { params: { projeto_id: projectId } }) }
 export function getCopilotThread(id) { return api.get(`/copilot/threads/${id}`) }
 export function addCopilotMessage(id, data) { return api.post(`/copilot/threads/${id}/messages`, data) }
+export function summarizeCopilotThread(id) { return api.post(`/copilot/threads/${id}/summarize`) }
 export function listCopilotMemories(projectId) { return api.get('/copilot/memories', { params: { projeto_id: projectId } }) }
 export function saveCopilotMemory(data) { return api.put('/copilot/memories', data) }
 export function deleteCopilotMemory(id) { return api.delete(`/copilot/memories/${id}`) }
@@ -180,9 +207,18 @@ export function getOrtomapa(id) {
   return api.get(`/ortomapas/${id}`)
 }
 
-export function uploadOrtomapa(formData, { projeto_id, tipo } = {}) {
+export function uploadOrtomapa(formData, { projeto_id, tipo, nome, onUploadProgress } = {}) {
   return api.post('/ortomapas/upload', formData, {
-    params: { projeto_id, tipo },
+    params: { projeto_id, tipo, nome: nome || undefined },
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
+    onUploadProgress,
+  })
+}
+
+export function uploadHydrography(formData, projeto_id) {
+  return api.post('/tools/hydrology/hydrography-upload', formData, {
+    params: { projeto_id },
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 300000,
   })
@@ -236,8 +272,8 @@ export function runTool(toolName, params) {
 }
 
 // Agent Tasks
-export function getAgentTasks(status) {
-  return api.get('/analises', { params: { status } })
+export function getAgentTasks(status, projetoId) {
+  return api.get('/analises', { params: { status, projeto_id: projetoId } })
 }
 
 // Export

@@ -31,6 +31,17 @@
       />
     </div>
 
+    <div v-if="globalSearchQuery" class="search-feedback" role="status" aria-live="polite">
+      <span v-if="globalSearchLoading">Buscando “{{ globalSearchQuery }}”...</span>
+      <span v-else-if="globalSearchError">Não foi possível concluir a busca. Verifique a conexão e tente novamente.</span>
+      <span v-else>{{ filteredProjects.length }} projeto(s) para “{{ globalSearchQuery }}”</span>
+    </div>
+
+    <div v-if="projectStore.projectsError && !projectStore.loading" class="project-load-error" role="alert">
+      <span>Não foi possível carregar os projetos. Verifique a conexão e tente novamente.</span>
+      <Button label="Tentar novamente" size="small" severity="secondary" @click="projectStore.fetchProjects()" />
+    </div>
+
     <div v-if="projectStore.loading" class="loading-state">
       <ProgressSpinner style="width: 24px; height: 24px" strokeWidth="4" />
       <span>Carregando...</span>
@@ -65,8 +76,8 @@
       />
     </div>
 
-    <div v-if="!projectStore.loading && projectStore.projects.length === 0" class="empty-state">
-      Nenhum projeto encontrado
+    <div v-if="!projectStore.loading && !projectStore.projectsError && !globalSearchLoading && filteredProjects.length === 0" class="empty-state">
+      {{ globalSearchError ? 'Resultados indisponíveis' : globalSearchQuery ? 'Nenhum projeto corresponde à busca' : 'Nenhum projeto encontrado' }}
     </div>
 
     <!-- New Project Dialog -->
@@ -107,6 +118,12 @@ import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import ProgressSpinner from 'primevue/progressspinner'
 
+const props = defineProps({
+  searchResults: { type: Array, default: null },
+  globalSearchQuery: { type: String, default: '' },
+  globalSearchLoading: { type: Boolean, default: false },
+  globalSearchError: { type: Boolean, default: false },
+})
 const projectStore = useProjectStore()
 const showNewProject = ref(false)
 const newProject = ref({ nome: '', descricao: '', area_estudo: '' })
@@ -123,7 +140,7 @@ const statusOptions = [
 ]
 
 const filteredProjects = computed(() => {
-  let list = projectStore.projects
+  let list = props.searchResults ?? projectStore.projects
   if (filterStatus.value) {
     list = list.filter((p) => p.status === filterStatus.value)
   }
@@ -203,6 +220,12 @@ async function createProject() {
   padding: 12px;
   color: var(--text-dim);
   font-size: 0.85rem;
+}
+
+.search-feedback {
+  padding: 2px 8px 7px;
+  color: var(--text-dim);
+  font-size: 0.72rem;
 }
 
 .project-item {

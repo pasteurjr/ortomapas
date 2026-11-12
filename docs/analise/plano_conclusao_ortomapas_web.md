@@ -182,13 +182,13 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 | 5. Visualização 3D | Executada | DSM, DTM, GLB e LAZ reais; metadados, extensão, controles e seleção conferidos | [Relatório e 5 capturas da Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md) | Aprovada na pré-visualização; grade DSM/DTM reduzida; GLB sem aceite de georreferenciamento |
 | 6. Análises espaciais | Executada como auditoria da matriz UC-005–012 | Produtos persistidos conferidos, recálculos independentes, oito telas Playwright e limites de aceite por caso de uso | [Relatório, manifesto e capturas da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md) | Executada; UC-009 parcial (sem campanhas reais independentes), UC-010 sem acurácia semântica e UC-011 demonstrativo sem referência hidrográfica local; restante aprovado no escopo matemático/visual |
 | 7. Copiloto | Executada com Playwright e Anthropic Sonnet 5.5 | Medição e contexto corretos, buffer só persiste após aprovação, histórico/memória e privacidade | [Relatório, JSON e 13 capturas](../validacao/ortomapas_conclusao/etapa-07/relatorio.md) | Aprovada no escopo executado; 8 chamadas no total incluindo tentativa exploratória; custo estimado US$ 0,088184; produtos de Guarajuba são sintéticos; RAG e robustez ampla seguem pendentes |
-| 8. Robustez e aceite final | Planejada | Roteiro repetível e matriz final sem falhas críticas | A preencher na execução | Pendente |
+| 8. Robustez e aceite final | Em execução; recorte de resiliência aprovado | Sessão inválida, erro de upload, 503/retry e health/metrics validados visualmente; roteiro integrado e aceite final ainda pendentes | [Relatório, JSON e capturas da Fase 8](../validacao/ortomapas_conclusao/etapa-08/relatorio.md) | Parcial; aceite integral retido até concluir a subetapa integrada descrita no relatório |
 
 ## 6. Próxima etapa
 
-**Fases 1 a 7 de 8 executadas no escopo documentado.** A Fase 7 validou o Copiloto com interação real, evidência de medição, contexto, aprovação de escrita, histórico, memória e isolamento entre contas. Produtos do projeto de demonstração de Guarajuba são sintéticos; a validação não afirma acurácia de voo local. Consulte o [relatório da Fase 7](../validacao/ortomapas_conclusao/etapa-07/relatorio.md), além do [relatório da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md) e os relatórios anteriores.
+**Fases 1 a 7 executadas no escopo descrito; Fase 8 em execução parcial.** A rodada atual aprovou recuperação de API, rejeição de upload corrompido, expiração de sessão com retorno ao login e health/metrics. O aceite geral continua retido até o roteiro integrado e a reconciliação final da matriz. Consulte os relatórios da [Fase 7](../validacao/ortomapas_conclusao/etapa-07/relatorio.md) e da [Fase 8](../validacao/ortomapas_conclusao/etapa-08/relatorio.md).
 
-**Próxima etapa: Fase 8 de 8 — Robustez e aceite final.** Executar fluxos completos repetíveis, testar falhas/retomada e telemetria, reconciliar matriz e interface, registrar pendências e determinar aceite operacional com critérios explícitos.
+**Próxima subetapa: Fase 8 de 8 — concluir aceite integrado.** Executar processamento/retomada, produtos, mapa, análise e exportação em roteiro único, conferir monitoramento após reinício e fechar a matriz de casos de uso com evidências atuais.
 
 ## 7. Referências internas
 
@@ -204,3 +204,4 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 - [Relatório de validação da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md)
 - [Relatório de validação da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md)
 - [Relatório de validação da Fase 7](../validacao/ortomapas_conclusao/etapa-07/relatorio.md)
+- [Relatório parcial da Fase 8](../validacao/ortomapas_conclusao/etapa-08/relatorio.md)

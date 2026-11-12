@@ -1,0 +1,44 @@
+{
+  "started_at": "2026-11-12T13:14:52.554317-03:00",
+  "checks": [
+    {
+      "id": "F8-01",
+      "expected": "login, sessão válida e mapa carregado",
+      "obtained": "HTTP 200 em /projetos; projeto selecionado e mapa renderizado",
+      "status": "passed",
+      "screenshot": "f8_02_projeto_operacional.png"
+    },
+    {
+      "id": "F8-02",
+      "expected": "token inválido recebe 401",
+      "obtained": "HTTP 401; API não autorizou a sessão inválida",
+      "status": "passed"
+    },
+    {
+      "id": "F8-03",
+      "expected": "upload corrompido rejeitado e sem registro/arquivo residual",
+      "obtained": "HTTP 400; registros 4->4; arquivos órfãos 0",
+      "status": "passed"
+    },
+    {
+      "id": "F8-04",
+      "expected": "503 aparece como erro acionável; retry recupera projetos sem recarregar página",
+      "obtained": "1 chamada(s) receberam 503 simulado; alerta explícito e retry carregou o projeto",
+      "status": "passed",
+      "screenshots": [
+        "f8_03_api_indisponivel.png",
+        "f8_04_recuperacao_api.png"
+      ]
+    }
+  ],
+  "llm_calls": 0,
+  "cleanup": {},
+  "expired_token_ui": {
+    "login_visible": true,
+    "token_retained": false,
+    "screenshot": "f8_05_sessao_expirada.png",
+    "status": "passed"
+  },
+  "page_errors": [],
+  "finished_at": "2026-11-12T13:14:57.041399-03:00"
+}

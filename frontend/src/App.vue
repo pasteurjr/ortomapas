@@ -1,5 +1,6 @@
 <template>
-  <LoginView v-if="!authenticated" @authenticated="onAuthenticated" />
+  <div v-if="authChecking" class="auth-checking" role="status">Verificando sessão…</div>
+  <LoginView v-else-if="!authenticated" :notice="sessionExpired ? 'Sua sessão expirou. Entre novamente para continuar.' : ''" @authenticated="onAuthenticated" />
   <div v-else class="app-layout">
     <!-- Top Toolbar -->
     <header class="toolbar">
@@ -182,7 +183,7 @@ import OdmTasks from './components/OdmTasks.vue'
 import MissionPlanner from './components/MissionPlanner.vue'
 import LayerPanel from './components/LayerPanel.vue'
 import GeoTiffUpload from './components/GeoTiffUpload.vue'
-import { searchProjects } from './api/client'
+import { getCurrentUser, searchProjects } from './api/client'
 
 const projectStore = useProjectStore()
 const mapStore = useMapStore()
@@ -231,7 +232,9 @@ const showAnalysisForm = ref(false)
 const showExportDialog = ref(false)
 const exportOrtomapaId = ref(null)
 const showMissionPlanner = ref(false)
-const authenticated = ref(Boolean(localStorage.getItem('ortomapas_token')))
+const authenticated = ref(false)
+const sessionExpired = ref(false)
+const authChecking = ref(Boolean(localStorage.getItem('ortomapas_token')))
 const activeWorkspace = ref('dados')
 const workspaceItems = [
   { id: 'dados', label: 'Dados e mapa', icon: 'pi pi-map' },
@@ -248,7 +251,15 @@ const workspaceSubitems = {
   copiloto: [{ label: 'Conversas do projeto', icon: 'pi pi-comments' }, { label: 'Ferramentas executadas', icon: 'pi pi-wrench' }],
 }
 
-function onAuthenticated() { authenticated.value = true; projectStore.fetchProjects() }
+function onAuthenticated() { authenticated.value = true; sessionExpired.value = false; authChecking.value = false; projectStore.fetchProjects() }
+
+function onUnauthenticated() {
+  sessionExpired.value = true
+  authenticated.value = false
+  authChecking.value = false
+  projectStore.projects = []
+  projectStore.setActiveProject(null)
+}
 
 const projectOptions = computed(() =>
   projectStore.projects.map((p) => ({ label: p.nome, value: p.id }))
@@ -285,11 +296,18 @@ provide('showExportDialog', showExportDialog)
 
 onMounted(() => {
   compactViewport.addEventListener('change',onCompactViewport)
-  if (authenticated.value) projectStore.fetchProjects()
+  window.addEventListener('ortomapas:unauthorized', onUnauthenticated)
+  if (authChecking.value) {
+    getCurrentUser()
+      .then(() => { if (localStorage.getItem('ortomapas_token')) { authenticated.value = true; projectStore.fetchProjects() } })
+      .catch(() => { sessionExpired.value = true; authenticated.value = false; localStorage.removeItem('ortomapas_token') })
+      .finally(() => { authChecking.value = false })
+  }
 })
 onUnmounted(()=>{
   clearTimeout(searchTimer)
   compactViewport.removeEventListener('change',onCompactViewport)
+  window.removeEventListener('ortomapas:unauthorized', onUnauthenticated)
 })
 </script>
 
@@ -596,4 +614,5 @@ html, body, #app { width: 100%; height: 100%; overflow: clip; }
   color: #e8f0f2 !important;
 }
 .p-dialog .p-dialog-content label { color: #c9d6dc; }
+.auth-checking { min-height: 100vh; display: grid; place-items: center; color: #d6e3e8; background: #0f1720; font: 1rem sans-serif; }
 </style>

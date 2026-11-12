@@ -3,6 +3,7 @@
     <form class="login-panel" @submit.prevent="submit">
       <div class="login-brand"><i class="pi pi-map"></i><span>Ortomapas</span></div>
       <h1>Entrar</h1>
+      <Message v-if="notice" severity="warn" :closable="false">{{ notice }}</Message>
       <label for="email">E-mail</label>
       <InputText id="email" v-model="email" type="email" autocomplete="username" required />
       <label for="senha">Senha</label>
@@ -22,6 +23,7 @@ import Message from 'primevue/message'
 import { login } from '../api/client'
 
 const emit = defineEmits(['authenticated'])
+defineProps({ notice: { type: String, default: '' } })
 const email = ref('')
 const senha = ref('')
 const loading = ref(false)
