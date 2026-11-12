@@ -120,7 +120,10 @@
             <span class="hint">A saída é uma rede potencial D8. Prefira um DTM; a análise usa uma grade generalizada de até 256 pixels por lado.</span>
           </div>
           <div v-if="params.hydro_type === 'watershed'" class="form-group outlet-picker">
-            <button type="button" class="btn-pick-outlet" @click="pickOutlet">{{ params.outlet ? 'Alterar exutório no mapa' : 'Escolher exutório no mapa' }}</button>
+            <button type="button" class="btn-pick-outlet" @click="pickOutlet">
+              <i class="pi pi-map-marker" aria-hidden="true"></i>
+              {{ params.outlet ? 'Alterar exutório no mapa' : 'Escolher exutório no mapa' }}
+            </button>
             <span v-if="params.outlet" class="hint">Ponto selecionado: {{ params.outlet.lat.toFixed(6) }}, {{ params.outlet.lng.toFixed(6) }}</span>
             <span v-else class="hint">Clique no botão e marque no mapa o ponto de saída da bacia.</span>
             <label>Raio para ajustar o ponto ao canal (m)</label>
@@ -553,6 +556,35 @@ async function submit() {
   resize: vertical;
   font-family: monospace;
   font-size: 0.72rem;
+}
+
+.btn-pick-outlet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(137, 180, 250, 0.45);
+  border-radius: 6px;
+  background: rgba(137, 180, 250, 0.12);
+  color: #cdd6f4;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-pick-outlet:hover {
+  border-color: #89b4fa;
+  background: rgba(137, 180, 250, 0.2);
+  color: #fff;
+}
+
+.btn-pick-outlet:focus-visible {
+  outline: 2px solid #89b4fa;
+  outline-offset: 2px;
 }
 
 .slider {

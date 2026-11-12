@@ -1,0 +1,161 @@
+{
+  "started_at": "2026-11-12T15:34:32.958468-03:00",
+  "project_id": 88,
+  "source_dtm_id": 72,
+  "scope": "Rede de drenagem e bacia D8 via UI/API autenticadas, sem Copiloto/LLM.",
+  "authentication_note": "Token de acesso efemero assinado pelo modulo local de autenticacao para o usuario de validacao id 60; nao houve login visual nesta subetapa. O login por credenciais foi validado na 9.2.",
+  "operations": [
+    {
+      "operation": "drainage",
+      "task_id": 37,
+      "post_status": 202,
+      "input": {
+        "minimum_area_m2": 1000,
+        "minimum_strahler_order": 1
+      },
+      "analysis_id": 155,
+      "status": "concluida",
+      "output_extension": ".geojson",
+      "result_path_present": true,
+      "result_summary": {
+        "stream_cells": 1198,
+        "feature_count": 21,
+        "pixel_area_m2": 2.116388643009484,
+        "total_length_m": 1975.0230697346383,
+        "candidate_cells": 1198,
+        "minimum_area_m2": 1000.0,
+        "order_lengths_m": {
+          "1": 1312.9533682040817,
+          "2": 503.4785671403059,
+          "3": 158.59113439025057
+        },
+        "threshold_cells": 473,
+        "maximum_strahler_order": 3,
+        "minimum_strahler_order": 1
+      },
+      "feature_count": 21,
+      "geometry_types": [
+        "LineString"
+      ],
+      "tile_statuses": [],
+      "rendered_vector_path_count": 21,
+      "exports": [
+        {
+          "format": "GeoJSON",
+          "bytes": 95762,
+          "sha256": "6fee4fe1acd739f5489abcb439d561c152fd5ffcbd983845831c49eb6f80944b"
+        },
+        {
+          "format": "KML",
+          "bytes": 38813,
+          "sha256": "85594f5481525c938c558ac3ae7574981b7b08bbbb5dba3e51a85c7b9214c079"
+        }
+      ]
+    },
+    {
+      "operation": "watershed",
+      "task_id": 38,
+      "post_status": 202,
+      "input": {
+        "snap_radius_m": 100
+      },
+      "analysis_id": 156,
+      "status": "concluida",
+      "output_extension": ".tif",
+      "result_path_present": true,
+      "result_summary": {
+        "area_ha": 1.1477704708201182,
+        "area_m2": 11477.704708201181,
+        "working_grid": {
+          "scale": 0.06873405826285407,
+          "cell_size_m": 0.7273906520930626,
+          "source_shape": [
+            5906,
+            7449
+          ],
+          "pixel_area_m2": 0.5290971607523709,
+          "working_shape": [
+            406,
+            512
+          ],
+          "smoothing_sigma_cells": 1
+        },
+        "pixel_area_m2": 0.5290971607523709,
+        "snapped_outlet": {
+          "lat": 41.3034743099534,
+          "lon": -81.75256658984993,
+          "radius_m": 100.0,
+          "strategy": "maximum_accumulation_within_center_radius",
+          "distance_m": 85.99889181600598,
+          "accumulation_cells": 21685
+        },
+        "watershed_cells": 21693,
+        "requested_outlet": {
+          "lat": 41.30418707861119,
+          "lon": -81.7521643638611
+        },
+        "hydrography_conditioning": null
+      },
+      "requested_outlet": {
+        "lat": 41.30418707861119,
+        "lon": -81.7521643638611
+      },
+      "snapped_outlet": {
+        "lat": 41.3034743099534,
+        "lon": -81.75256658984993,
+        "radius_m": 100.0,
+        "strategy": "maximum_accumulation_within_center_radius",
+        "distance_m": 85.99889181600598,
+        "accumulation_cells": 21685
+      },
+      "watershed_cells": 21693,
+      "area_m2": 11477.704708201181,
+      "tile_http_200_count": 25
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "04_drenagem_formulario.png",
+      "description": "DTM #72, rede D8, area contribuinte minima 1000 m2, ordem Strahler minima 1 e fila ativa."
+    },
+    {
+      "file": "04_drenagem_resultado_mapa.png",
+      "description": "Rede D8 vetorial concluida, legenda/camada no mapa e estatisticas da rede."
+    },
+    {
+      "file": "05_bacia_sem_exutorio_validacao.png",
+      "description": "O formulário bloqueia o envio quando não há exutório; nenhuma análise é criada."
+    },
+    {
+      "file": "05_bacia_escolha_exutorio.png",
+      "description": "Mapa em modo de escolha; banner instrui o clique para marcar o exutorio."
+    },
+    {
+      "file": "05_bacia_formulario_exutorio.png",
+      "description": "Exutorio marcado no mapa, raio de ajuste 100 m e execução por fila habilitada."
+    },
+    {
+      "file": "05_bacia_resultado_mapa.png",
+      "description": "Bacia D8 renderizada; marcador/ajuste do exutorio e estatisticas visiveis."
+    }
+  ],
+  "page_errors": [],
+  "llm_calls": 0,
+  "project": {
+    "name": "Aceite NodeODM Aukerman 20261112-163150"
+  },
+  "source": {
+    "id": 72,
+    "type": "dtm",
+    "name": "ODM dtm ad503e1b"
+  },
+  "authenticated_user": {
+    "id": 60,
+    "profile": "pesquisador"
+  },
+  "watershed_without_outlet": {
+    "blocked": true,
+    "error": "Escolha o exutório no mapa antes de enfileirar a delimitação da bacia."
+  },
+  "finished_at": "2026-11-12T15:34:48.312916-03:00"
+}

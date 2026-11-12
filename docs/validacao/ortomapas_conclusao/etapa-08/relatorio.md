@@ -332,3 +332,49 @@ Capturas adicionais de cada formulário e login, mais o [manifesto Playwright](.
 Portanto, 9.2 fecha a lacuna anterior de “sem teste visual/sem persistência do endpoint” para estas três operações. Isso não aprova o algoritmo hidrológico para decisão de engenharia, nem fecha UC-020: drenagem/bacia, outras ferramentas enfileiradas e referências independentes ainda precisam de tratamento documentado.
 
 **Estado:** subetapas 9.1 e 9.2 concluídas para direção D8, acumulação D8 e TWI; UC-020 continua parcial. **Próxima subetapa 9.3 de 9:** validar e corrigir o fluxo enfileirado de rede de drenagem e delimitação de bacia (com exutório), usando o mesmo DTM real, conferir parâmetros/unidades, GeoJSON/GeoTIFF, tiles/forma resultante e interação do mapa; para alegação de qualidade hidrológica, antes estabelecer uma referência independente apropriada.
+
+## Etapa 9 de 9 — subetapa 9.3: rede de drenagem e bacia por exutório
+
+**Data:** 12/11/2026. **UC:** UC-020 (fila de análise hidrológica) e UC-011 (análise de bacia/rede D8). **Entrada:** projeto ODM #88, DTM #72, conjunto público Aukerman/Westerville, Ohio, EPSG:32617, 7.449 × 5.906 pixels. A entrada é produto fotogramétrico real do NodeODM, mas a área foi generalizada pelo worker; não existe referência de campo nesta execução.
+
+### Percurso e resultado observado
+
+| Critério | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Rede D8 — submissão | Formulário DTM/hidrologia, área mínima e Strahler; API aceita fila | DTM #72, limiar 1.000 m², Strahler mínimo 1; HTTP 202, análise #155/tarefa #37 | Aprovado |
+| Rede D8 — processamento | Saída vetorial persistida com segmentos LineString | Concluída como `.geojson`: 21 feições LineString, 1.198 células de canal, 1,975 km acumulados; ordem máxima 3 | Aprovado funcionalmente |
+| Rede D8 — visual/exportação | Rede visível no mapa e exportável em formatos previstos | 21 caminhos SVG do Leaflet; download GeoJSON 95.762 bytes e KML 38.813 bytes, ambos lidos e validados pelo roteiro | Aprovado para apresentação/exportação |
+| Bacia — validação de entrada | Fila não deve aceitar bacia sem exutório | Formulário bloqueou a ação e exibiu mensagem; não ocorreu POST de análise | Aprovado |
+| Bacia — ponto e ajuste | Clique marca ponto; célula de canal fica dentro do raio configurado | Ponto solicitado `41.304187, -81.752164`; raio configurado 100 m; ajuste D8 a `41.303474, -81.752567`, distância 85,999 m e acumulação 21.685 células | Aprovado para o raio informado |
+| Bacia — produto/mapa | GeoTIFF persistido, área positiva, tiles acessíveis e feição visual | HTTP 202, análise #156/tarefa #38 concluída; 21.693 células, 11.477,705 m² (1,14777 ha), 25 tiles HTTP 200; raster azul e marcador visíveis | Aprovado funcionalmente |
+| Integridade do navegador | Sem exceções JS e sem chamadas ao Copiloto/LLM | `page_errors=[]`, `llm_calls=0` | Aprovado |
+
+O processamento de drenagem usou grade de 256 × 203, pixel de 2,116 m²; por isso 1.000 m² correspondeu ao limiar de 473 células. As 21 feições totalizaram 1.312,953 m de ordem 1, 503,479 m de ordem 2 e 158,591 m de ordem 3. A bacia usou grade 512 × 406, célula de 0,5291 m². Como o ponto clicado ficou longe de uma célula de maior acumulação, o raio de 100 m moveu o exutório em 86 m; o default do formulário é 5 m. Essa distância aparece no resultado e no marcador. Não deve ser confundida com erro de posicionamento medido em campo.
+
+### Correção visual feita durante a etapa
+
+A captura inicial mostrou que o botão “Escolher exutório no mapa” aparecia como botão HTML sem estilo. Foi aplicado estilo visual consistente com o modal e ícone de localização. A captura atualizada mostra o controle legível e com foco visual. Também foi verificado o estado sem ponto: a interface informa que o exutório precisa ser escolhido antes da fila e não envia a análise.
+
+A primeira versão do roteiro tentou abrir o resultado recém-concluído antes de atualizar a lista e não encontrou as feições no mapa. A leitura da análise persistida confirmou 21 feições; ao usar o botão de atualização já disponível e esperar o SVG do Leaflet, a tela montou todas as 21 linhas. Não houve alteração no endpoint nem no algoritmo por causa dessa falha do roteiro.
+
+### Capturas e arquivos reproduzíveis
+
+![Formulário D8 com parâmetros de área e ordem](../etapa-09/playwright/04_drenagem_formulario.png)
+
+![Rede D8 vetorial, resultado e legenda na aplicação](../etapa-09/playwright/04_drenagem_resultado_mapa.png)
+
+![Interface bloqueia a bacia sem exutório](../etapa-09/playwright/05_bacia_sem_exutorio_validacao.png)
+
+![Mapa aguardando o clique que define o exutório](../etapa-09/playwright/05_bacia_escolha_exutorio.png)
+
+![Exutório selecionado e raio de ajuste preenchido](../etapa-09/playwright/05_bacia_formulario_exutorio.png)
+
+![Bacia D8 renderizada junto do marcador do exutório](../etapa-09/playwright/05_bacia_resultado_mapa.png)
+
+O [manifesto completo](../etapa-09/playwright/hydrology_network_manifest.json) registra parâmetros, IDs, estatísticas, resposta da validação de entrada, exports e captura sem credenciais. Os arquivos [GeoJSON exportado](../etapa-09/playwright/04_drenagem_exportada.geojson) e [KML exportado](../etapa-09/playwright/04_drenagem_exportada.kml), junto do [roteiro Playwright](../../../../tests/e2e/playwright/validate_hydro_network_phase9.py), acompanham as telas. Nesta subetapa, um JWT efêmero foi assinado pelo módulo local para o usuário de validação id 60 e fornecido somente via ambiente ao Playwright; o login por e-mail/senha foi demonstrado na subetapa 9.2, mas não foi repetido aqui.
+
+### Conclusão e limite operacional
+
+**Aprovado funcionalmente:** DTM → fila → rede vetorial e bacia raster → persistência → mapa → exportação da rede. A saída D8 não foi confrontada com uma rede hidrográfica oficial, levantamento de campo ou outro DTM independente. A escala do processamento e a escolha do raio influenciam a geometria; portanto, UC-011 e o aceite hidrológico de UC-020 continuam **parciais**, sem recomendação para decisões de drenagem/engenharia.
+
+**Próxima subetapa 9.4 de 9:** montar uma comparação independente para hidrologia na área do DTM: obter uma referência hidrográfica pública, reprojetar e recortar com critério registrado, parear redes por ordem/tipo de feição e quantificar coincidência, distância e divergências. A comparação deve tratar a resolução de 0,727 m do watershed e a grade mais grossa da drenagem, sem equiparar pixels generalizados a observações de campo. Se não houver referência pública de escala/licença adequadas, registrar a limitação e não aprovar acurácia por consistência interna.
