@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-12",
+  "scope": "Etapa 9.1: fila hidrol\u00f3gica D8/TWI",
+  "focused_tests": {
+    "command": "pytest tests/test_hydrology_queue_agent.py tests/test_hydrology_products.py tests/test_analysis_products.py",
+    "passed": 23,
+    "warnings": 34,
+    "seconds": 0.78
+  },
+  "full_suite": {
+    "command": "ORTOMAPAS_DB_INTEGRATION=0 ./.conda-env/bin/python -m pytest -q --disable-warnings -o faulthandler_timeout=60 tests/test_*.py",
+    "passed": 148,
+    "skipped": 1,
+    "warnings": 1890,
+    "seconds": 3.82,
+    "exit_code": 0
+  },
+  "frontend_build": {
+    "command": "npm run build",
+    "status": "passed",
+    "modules": 427,
+    "bundle_warning": "main JavaScript chunk 1622.63 kB exceeds 500 kB"
+  },
+  "live_playwright": "not run: PostgreSQL localhost:5432 did not respond; API localhost:8888 and frontend localhost:5176 did not respond; no Docker containers listed active.",
+  "llm_calls": 0
+}

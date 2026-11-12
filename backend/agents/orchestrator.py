@@ -9,6 +9,7 @@ import traceback
 from datetime import datetime
 import sys
 import os
+from threading import Event
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -18,6 +19,11 @@ from backend.agents.detection_agent import DetectionAgent
 from backend.agents.classification_agent import ClassificationAgent
 from backend.agents.change_agent import ChangeAgent
 from backend.agents.report_agent import ReportAgent
+from backend.agents.classification_queue_agent import QueuedClassificationAgent
+from backend.agents.raster_queue_agent import QueuedRasterAnalysisAgent
+from backend.agents.terrain_queue_agent import QueuedTerrainAnalysisAgent
+from backend.agents.hydrology_queue_agent import QueuedHydrologyAnalysisAgent
+from psycopg2.extras import Json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,7 +34,10 @@ logger = logging.getLogger("orchestrator")
 AGENTS = {
     "agente_vegetacao": VegetationAgent,
     "agente_deteccao": DetectionAgent,
-    "agente_classificacao": ClassificationAgent,
+    "agente_classificacao": QueuedClassificationAgent,
+    "agente_analise_raster": QueuedRasterAnalysisAgent,
+    "agente_analise_terreno": QueuedTerrainAnalysisAgent,
+    "agente_analise_hidrologia": QueuedHydrologyAnalysisAgent,
     "agente_mudanca": ChangeAgent,
     "agente_relatorio": ReportAgent,
 }
@@ -55,13 +64,14 @@ class Orchestrator:
                     SELECT *
                       FROM tarefas_agentes
                      WHERE status = 'pendente'
-                     ORDER BY prioridade ASC, created_at ASC
+                     ORDER BY prioridade ASC, criado_em ASC
                      LIMIT 1
-                     FOR UPDATE
+                     FOR UPDATE SKIP LOCKED
                     """,
                 )
                 task = cursor.fetchone()
                 if task is None:
+                    conn.rollback()
                     return None
 
                 cursor.execute(
@@ -73,6 +83,13 @@ class Orchestrator:
                     """,
                     (datetime.now(), task["id"]),
                 )
+                params=task.get("parametros") or {}
+                if isinstance(params,str):
+                    try: params=json.loads(params)
+                    except ValueError: params={}
+                analysis_id=params.get("_analysis_id") if isinstance(params,dict) else None
+                if analysis_id:
+                    cursor.execute("UPDATE analises SET status='processando',observacoes=NULL,atualizado_em=now() WHERE id=%s",(analysis_id,))
                 conn.commit()
                 return task
             finally:
@@ -120,7 +137,7 @@ class Orchestrator:
                    fim_execucao  = %s
              WHERE id = %s
             """,
-            (json.dumps(result, ensure_ascii=False, default=str), datetime.now(), task["id"]),
+            (Json(result,dumps=lambda value: json.dumps(value,ensure_ascii=False,default=str)), datetime.now(), task["id"]),
             commit=True,
         )
 
@@ -141,6 +158,15 @@ class Orchestrator:
             (new_status, error_msg, tentativas, datetime.now(), task["id"]),
             commit=True,
         )
+        params=task.get("parametros") or {}
+        if isinstance(params,str):
+            try: params=json.loads(params)
+            except ValueError: params={}
+        analysis_id=params.get("_analysis_id") if isinstance(params,dict) else None
+        if analysis_id:
+            status="em_fila" if new_status=="pendente" else "erro"
+            execute_query("UPDATE analises SET status=%s,observacoes=%s,atualizado_em=now() WHERE id=%s",
+                          (status,error_msg,analysis_id),commit=True)
 
     def _mark_error(self, task, error_msg):
         execute_query(
@@ -154,14 +180,23 @@ class Orchestrator:
             (error_msg, datetime.now(), task["id"]),
             commit=True,
         )
+        params=task.get("parametros") or {}
+        if isinstance(params,str):
+            try: params=json.loads(params)
+            except ValueError: params={}
+        analysis_id=params.get("_analysis_id") if isinstance(params,dict) else None
+        if analysis_id:
+            execute_query("UPDATE analises SET status='erro',observacoes=%s,atualizado_em=now() WHERE id=%s",
+                          (error_msg,analysis_id),commit=True)
 
     # ------------------------------------------------------------------
     # Main loop
     # ------------------------------------------------------------------
-    def run(self, poll_interval=10):
+    def run(self, poll_interval=10, stop_event: Event | None = None):
         """Poll forever, dispatching tasks as they appear."""
         logger.info("Orchestrator started. Polling every %ds", poll_interval)
-        while True:
+        logger.info("Registered agents: %s", ", ".join(sorted(AGENTS)))
+        while stop_event is None or not stop_event.is_set():
             try:
                 task = self.fetch_next_task()
                 if task:
@@ -169,14 +204,19 @@ class Orchestrator:
                         "Processing task %d: %s", task["id"], task["tipo_tarefa"]
                     )
                     self.execute_task(task)
-                else:
+                elif stop_event is None:
                     time.sleep(poll_interval)
+                else:
+                    stop_event.wait(poll_interval)
             except KeyboardInterrupt:
                 logger.info("Orchestrator stopped by user.")
                 break
             except Exception:
                 logger.exception("Unexpected error in orchestrator loop")
-                time.sleep(poll_interval)
+                if stop_event is None:
+                    time.sleep(poll_interval)
+                else:
+                    stop_event.wait(poll_interval)
 
 
 if __name__ == "__main__":

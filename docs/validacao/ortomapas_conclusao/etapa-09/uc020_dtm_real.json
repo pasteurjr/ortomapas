@@ -1,0 +1,100 @@
+{
+  "source": {
+    "path": "data/ortomapas/odm_21_dtm.tif",
+    "crs": "EPSG:32617",
+    "width": 7449,
+    "height": 5906,
+    "bounds": [
+      436847.28,
+      4572650.850000001,
+      437219.73,
+      4572946.15
+    ],
+    "dtype": "float32"
+  },
+  "operations": [
+    {
+      "operation": "flow_direction",
+      "output": "queue_flow_direction_900_078d169063.tif",
+      "width": 256,
+      "height": 203,
+      "crs": "EPSG:32617",
+      "dtype": "int16",
+      "valid_cells": 41861,
+      "min": 1.0,
+      "max": 128.0,
+      "mean": 27.290676285803016,
+      "sha256": "2dc037c0b4cfddce63740092d95b61fc64d73cbb5167ae033257722aed7962f5",
+      "working_grid": {
+        "source_shape": [
+          5906,
+          7449
+        ],
+        "working_shape": [
+          203,
+          256
+        ],
+        "scale": 0.034367029131427036,
+        "pixel_area_m2": 2.116388643009484,
+        "cell_size_m": 1.4547813041861255,
+        "smoothing_sigma_cells": 1
+      }
+    },
+    {
+      "operation": "flow_accumulation",
+      "output": "queue_flow_accumulation_901_6ac526fc99.tif",
+      "width": 256,
+      "height": 203,
+      "crs": "EPSG:32617",
+      "dtype": "int32",
+      "valid_cells": 51968,
+      "min": 1.0,
+      "max": 13358.0,
+      "mean": 72.89853371305419,
+      "sha256": "096f4db0cceeda77610d782eed392141fb174c8dda461704fa4a4d65790d60ff",
+      "working_grid": {
+        "source_shape": [
+          5906,
+          7449
+        ],
+        "working_shape": [
+          203,
+          256
+        ],
+        "scale": 0.034367029131427036,
+        "pixel_area_m2": 2.116388643009484,
+        "cell_size_m": 1.4547813041861255,
+        "smoothing_sigma_cells": 1
+      }
+    },
+    {
+      "operation": "twi",
+      "output": "queue_twi_902_eda43156b5.tif",
+      "width": 256,
+      "height": 203,
+      "crs": "EPSG:32617",
+      "dtype": "float32",
+      "valid_cells": 41637,
+      "min": -0.6530828475952148,
+      "max": 16.705387115478516,
+      "mean": 4.554563999176025,
+      "sha256": "7969d1916c9d2e9b79abb818577665c8bc7b2d1501965f19c6beded6a2a64a49",
+      "working_grid": {
+        "source_shape": [
+          5906,
+          7449
+        ],
+        "working_shape": [
+          203,
+          256
+        ],
+        "scale": 0.034367029131427036,
+        "pixel_area_m2": 2.116388643009484,
+        "cell_size_m": 1.4547813041861255,
+        "smoothing_sigma_cells": 1
+      }
+    }
+  ],
+  "scope": "execucao do worker e raster usando DTM ODM real, sem gravar no PostgreSQL e sem interface/API; publicacao substituida por capturador local",
+  "llm_calls": 0
+}

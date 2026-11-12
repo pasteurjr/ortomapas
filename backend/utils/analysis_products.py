@@ -33,6 +33,12 @@ STYLES = {
     'twi': {'unit':'indice topografico','method':'bilinear','kind':'twi','min':0,'max':20,
             'legend':[{'label':'Seco','color':'#b45309'},{'label':'Intermediario','color':'#65a30d'},
                       {'label':'Umido','color':'#0369a1'}]},
+    'flow_direction': {'unit':'direcao D8','method':'nearest','kind':'flow_direction','min':1,'max':128,
+                       'legend':[{'label':label,'color':color} for label,color in zip(
+                           ['Leste','Sudeste','Sul','Sudoeste','Oeste','Noroeste','Norte','Nordeste'],
+                           ['#ef4444','#f97316','#eab308','#84cc16','#22c55e','#06b6d4','#3b82f6','#8b5cf6'])]},
+    'flow_accumulation': {'unit':'celulas a montante','method':'nearest','kind':'flow_accumulation','min':1,'max':1,
+                          'legend':[{'label':'Baixa','color':'#fef3c7'},{'label':'Alta','color':'#1d4ed8'}]},
     'streams': {'unit':'rede D8','method':'nearest','kind':'streams','color':'#0284c7','weight':3,
                 'legend':[{'label':'Canal potencial','color':'#0284c7'}]},
 }
@@ -95,7 +101,7 @@ def _raster_percentiles(path):
     return float(low),float(high)
 
 
-def publish_image_analysis(source, operation, output, statistics, parameters, aoi=None, details=None):
+def publish_image_analysis(source, operation, output, statistics, parameters, aoi=None, details=None, analysis_id=None, elapsed_seconds=None):
     """Publish visible-band indices and unsupervised RGB groups."""
     path=data_path(output);details=details or {}
     if operation=='vegetation':
@@ -139,20 +145,38 @@ def publish_image_analysis(source, operation, output, statistics, parameters, ao
                              'mask_rule':'pixel center'}
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True)
-        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
-            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
-            (source['id'],source['projeto_id'],kind,name+(' - area selecionada' if aoi else ''),
-             Json(parameters),str(path),Json(metadata)))
+        if analysis_id is None:
+            cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+                resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+                (source['id'],source['projeto_id'],kind,name+(' - area selecionada' if aoi else ''),
+                 Json(parameters),str(path),Json(metadata)))
+        else:
+            cur.execute('''UPDATE analises SET tipo_analise=%s,nome=%s,descricao=%s,parametros=%s,
+                resultado_path=%s,resultado_json=%s,status='concluida',observacoes=NULL,
+                tempo_processamento_seg=%s,data_analise=now(),atualizado_em=now()
+                WHERE id=%s AND ortomapa_id=%s AND projeto_id=%s RETURNING *''',
+                (kind,name,(f'Classificacao RGB K-Means concluida para {details["n_clusters"]} grupos.'
+                            if operation=='classification'
+                            else f'Indice visivel {index} calculado sobre as bandas RGB.'),
+                 Json(parameters),str(path),Json(metadata),elapsed_seconds,
+                 analysis_id,source['id'],source['projeto_id']))
+            if cur.fetchone() is None:
+                conn.rollback()
+                raise ValueError('Analise enfileirada nao corresponde ao ortomapa/projeto')
+            cur.execute('''SELECT * FROM analises WHERE id=%s''',(analysis_id,))
         row=dict(cur.fetchone());conn.commit()
     return serialize_analysis(row)
 
 
-def publish_hydrology(source, operation, output, details, parameters):
+def publish_hydrology(source, operation, output, details, parameters,
+                      analysis_id=None, elapsed_seconds=None):
     """Publish D8 watershed, stream network or TWI with reproducible provenance."""
     path=data_path(output);style={**STYLES[operation]}
     if operation=='streams':
         metadata={'geojson':details['geojson'],'style':style,
-                  'stats':{key:details[key] for key in ('feature_count','stream_cells','minimum_area_m2','threshold_cells','total_length_m','pixel_area_m2')}}
+                  'stats':{key:details[key] for key in ('feature_count','stream_cells','candidate_cells',
+                      'minimum_area_m2','threshold_cells','minimum_strahler_order',
+                      'maximum_strahler_order','order_lengths_m','total_length_m','pixel_area_m2')}}
         coordinates=[coordinate for feature in details['geojson']['features'] for coordinate in _geometry_coordinates(feature['geometry'])]
         if coordinates:
             xs=[item[0] for item in coordinates];ys=[item[1] for item in coordinates]
@@ -169,15 +193,42 @@ def publish_hydrology(source, operation, output, details, parameters):
             style.update(min=low,max=high,legend=[{'label':f'{low:.2f} Seco','color':'#b45309'},
                 {'label':f'{middle:.2f}','color':'#65a30d'},{'label':f'{high:.2f} Umido','color':'#0369a1'}])
             metadata['style']=style;name='Indice topografico de umidade (TWI)'
+        elif operation=='flow_direction': name='Direcao de fluxo D8'
+        elif operation=='flow_accumulation':
+            low,high=_raster_percentiles(path)
+            style.update(min=low,max=high,legend=[{'label':f'{low:.0f} celulas · baixa acumulação','color':'#fef3c7'},
+                {'label':f'{high:.0f} celulas · alta acumulação','color':'#1d4ed8'}])
+            metadata['style']=style;name='Acumulacao de fluxo D8'
         else: name='Bacia contribuinte D8'
     metadata['provenance']={'source_ortomapa_id':source['id'],'source_path':source['caminho_arquivo'],
         'source_type':source['tipo'],'algorithm':'priority-flood + D8','working_grid':details.get('working_grid'),
-        'created_by':tool_context.get()[0]}
+        'parameters':parameters,'created_by':tool_context.get()[0]}
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True)
-        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
-            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,'hidrologia',%s,%s,%s,%s,'concluida',now()) RETURNING *''',
-            (source['id'],source['projeto_id'],name,Json(parameters),str(path),Json(metadata)))
+        if analysis_id is None:
+            cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+                resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,'hidrologia',%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+                (source['id'],source['projeto_id'],name,Json(parameters),str(path),Json(metadata)))
+        else:
+            descriptions={
+                'watershed':'Bacia contribuinte delimitada a montante do exutorio escolhido usando fluxo D8.',
+                'streams':'Rede de drenagem potencial extraida do modelo de elevacao com fluxo D8.',
+                'flow_direction':'Direcao de fluxo D8 calculada sobre o modelo de elevacao condicionado.',
+                'flow_accumulation':'Numero de celulas contribuintes calculado a partir da direcao de fluxo D8.',
+                'twi':'Indice topografico de umidade calculado a partir da declividade e acumulacao de fluxo D8.',
+            }
+            description=descriptions[operation]
+            cur.execute('''UPDATE analises SET tipo_analise='hidrologia',nome=%s,descricao=%s,
+                parametros=%s,resultado_path=%s,resultado_json=%s,status='concluida',observacoes=NULL,
+                tempo_processamento_seg=%s,data_analise=now(),atualizado_em=now()
+                WHERE id=%s AND ortomapa_id=%s AND projeto_id=%s RETURNING *''',
+                (name,description,
+                 Json(parameters),str(path),Json(metadata),elapsed_seconds,
+                 analysis_id,source['id'],source['projeto_id']))
+            if cur.fetchone() is None:
+                conn.rollback()
+                raise ValueError('Analise hidrologica enfileirada nao corresponde ao DSM/DTM do projeto')
+            cur.execute('SELECT * FROM analises WHERE id=%s',(analysis_id,))
         row=dict(cur.fetchone());conn.commit()
     return serialize_analysis(row)
 
@@ -258,7 +309,8 @@ def publish_elevation_change(before, after, output, statistics, parameters, aoi=
     return serialize_analysis(analysis),comparison_id
 
 
-def publish_terrain(source, operation, output, statistics, parameters, aoi=None):
+def publish_terrain(source, operation, output, statistics, parameters, aoi=None,
+                    analysis_id=None, elapsed_seconds=None):
     path=data_path(output)
     style=STYLES[operation]
     if operation=='volume':
@@ -286,10 +338,25 @@ def publish_terrain(source, operation, output, statistics, parameters, aoi=None)
             metadata['provenance']['scope'] = 'aoi'
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True)
-        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
-            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
-            (source['id'],source['projeto_id'],'volume' if operation=='volume' else 'terreno',NAMES[operation]+(' - area selecionada' if aoi else ''),Json(parameters),str(path),Json(metadata)))
-        row=dict(cur.fetchone());conn.commit()
+        if analysis_id is None:
+            cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+                resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+                (source['id'],source['projeto_id'],'volume' if operation=='volume' else 'terreno',NAMES[operation]+(' - area selecionada' if aoi else ''),Json(parameters),str(path),Json(metadata)))
+            row=dict(cur.fetchone())
+        else:
+            cur.execute('''UPDATE analises SET tipo_analise='terreno',nome=%s,descricao=%s,
+                parametros=%s,resultado_path=%s,resultado_json=%s,status='concluida',observacoes=NULL,
+                tempo_processamento_seg=%s,data_analise=now(),atualizado_em=now()
+                WHERE id=%s AND ortomapa_id=%s AND projeto_id=%s RETURNING *''',
+                (NAMES[operation],f'Produto de terreno {operation} calculado sobre o modelo de elevacao.',
+                 Json(parameters),str(path),Json(metadata),elapsed_seconds,
+                 analysis_id,source['id'],source['projeto_id']))
+            saved=cur.fetchone()
+            if saved is None:
+                conn.rollback()
+                raise ValueError('Analise de terreno enfileirada nao corresponde ao DSM/DTM do projeto')
+            row=dict(saved)
+        conn.commit()
     return serialize_analysis(row)
 
 
@@ -299,18 +366,33 @@ def serialize_analysis(row):
     return row
 
 
-def publish_contours(source, output, metadata, parameters):
+def publish_contours(source, output, metadata, parameters, analysis_id=None, elapsed_seconds=None):
     metadata['provenance'] = {'source_ortomapa_id':source['id'], 'source_path':source['caminho_arquivo'],
                               'operation':'contours','vertical_units_assumed':'m',
                               'scope':'aoi' if metadata.get('aoi') else 'full raster',
                               'algorithm':'GDAL contour + vector intersection','created_by':tool_context.get()[0]}
     with get_connection() as conn:
         cur = conn.cursor(dictionary=True)
-        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
-            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
-            (source['id'],source['projeto_id'],'terreno','Curvas de nivel'+(' - area selecionada' if metadata.get('aoi') else ''),
-             Json(parameters),str(data_path(output)),Json(metadata)))
-        row=dict(cur.fetchone());conn.commit()
+        if analysis_id is None:
+            cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+                resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,%s,%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+                (source['id'],source['projeto_id'],'terreno','Curvas de nivel'+(' - area selecionada' if metadata.get('aoi') else ''),
+                 Json(parameters),str(data_path(output)),Json(metadata)))
+            row=dict(cur.fetchone())
+        else:
+            cur.execute('''UPDATE analises SET tipo_analise='terreno',nome=%s,descricao=%s,
+                parametros=%s,resultado_path=%s,resultado_json=%s,status='concluida',observacoes=NULL,
+                tempo_processamento_seg=%s,data_analise=now(),atualizado_em=now()
+                WHERE id=%s AND ortomapa_id=%s AND projeto_id=%s RETURNING *''',
+                ('Curvas de nivel',f'Curvas topograficas geradas a cada {parameters["interval"]} m.',
+                 Json(parameters),str(data_path(output)),Json(metadata),elapsed_seconds,
+                 analysis_id,source['id'],source['projeto_id']))
+            saved=cur.fetchone()
+            if saved is None:
+                conn.rollback()
+                raise ValueError('Analise de curvas enfileirada nao corresponde ao DSM/DTM do projeto')
+            row=dict(saved)
+        conn.commit()
     return serialize_analysis(row)
 
 
@@ -343,6 +425,21 @@ def colorize(values, valid, style):
         palette=np.array([[180,83,9],[101,163,13],[3,105,161]])
         middle=(style['min']+style['max'])/2
         rgb=np.stack([np.interp(values,[style['min'],middle,style['max']],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)
+    elif style['kind']=='flow_direction':
+        palette=np.array([[239,68,68],[249,115,22],[234,179,8],[132,204,22],
+                          [34,197,94],[6,182,212],[59,130,246],[139,92,246]],dtype=np.uint8)
+        indexes=np.full(values.shape,-1,dtype=np.int16)
+        for index,code in enumerate((1,2,4,8,16,32,64,128)):
+            indexes[values==code]=index
+        rgb=np.zeros((*values.shape,3),dtype=np.uint8)
+        mapped=indexes>=0
+        rgb[mapped]=palette[indexes[mapped]]
+        valid=valid & mapped
+    elif style['kind']=='flow_accumulation':
+        palette=np.array([[254,243,199],[29,78,216]],dtype=np.uint8)
+        low,high=style['min'],style['max']
+        fraction=np.zeros(values.shape,dtype=np.float64) if high<=low else np.clip((values-low)/(high-low),0,1)
+        rgb=np.stack([np.interp(fraction,[0,1],palette[:,channel]) for channel in range(3)],axis=-1).astype(np.uint8)
     else:
         palette=np.array([[int(item['color'][i:i+2],16) for i in (1,3,5)] for item in STYLES['slope']['legend']])
         rgb=np.stack([np.interp(values,[0,10,30,60,90],palette[:,i]) for i in range(3)],axis=-1).astype(np.uint8)

@@ -106,13 +106,26 @@
             <select v-model="params.hydro_type">
               <option value="flow_direction">Direcao de Fluxo</option>
               <option value="flow_accumulation">Acumulacao de Fluxo</option>
+              <option value="twi">Indice Topografico de Umidade (TWI)</option>
               <option value="watershed">Bacia Hidrografica</option>
               <option value="drainage">Rede de Drenagem</option>
             </select>
           </div>
           <div v-if="params.hydro_type === 'drainage'" class="form-group">
-            <label>Limiar de acumulacao</label>
-            <input type="number" v-model.number="params.accumulation_threshold" min="10" step="10" />
+            <label>Área contribuinte mínima (m²)</label>
+            <input type="number" v-model.number="params.minimum_area_m2" min="1" max="1000000000" step="100" />
+            <label>Ordem de Strahler mínima</label>
+            <input type="number" v-model.number="params.minimum_strahler_order" min="1" max="12" step="1" />
+            <span class="hint">Ordem 1 preserva a rede completa; ordens maiores removem tributários de menor hierarquia.</span>
+            <span class="hint">A saída é uma rede potencial D8. Prefira um DTM; a análise usa uma grade generalizada de até 256 pixels por lado.</span>
+          </div>
+          <div v-if="params.hydro_type === 'watershed'" class="form-group outlet-picker">
+            <button type="button" class="btn-pick-outlet" @click="pickOutlet">{{ params.outlet ? 'Alterar exutório no mapa' : 'Escolher exutório no mapa' }}</button>
+            <span v-if="params.outlet" class="hint">Ponto selecionado: {{ params.outlet.lat.toFixed(6) }}, {{ params.outlet.lng.toFixed(6) }}</span>
+            <span v-else class="hint">Clique no botão e marque no mapa o ponto de saída da bacia.</span>
+            <label>Raio para ajustar o ponto ao canal (m)</label>
+            <input type="number" v-model.number="params.snap_radius_m" min="0" max="1000" step="1" />
+            <span class="hint">Dentro do raio, o algoritmo usa a célula de maior acumulação D8.</span>
           </div>
         </template>
 
@@ -180,12 +193,15 @@
           </div>
         </template>
 
-        <div class="form-group queue-task-group">
+        <div v-if="queueEligible" class="form-group queue-task-group">
           <label class="checkbox-label">
             <input type="checkbox" v-model="form.queue_task" />
             <span>Executar via Agente de IA</span>
           </label>
-          <span class="hint">Quando ativado, a analise sera enfileirada para processamento automatico por agente de IA</span>
+          <span class="hint">{{ queueHelp }}</span>
+        </div>
+        <div v-else-if="queueUnavailableHint" class="form-group queue-task-group queue-unavailable">
+          <span class="hint">{{ queueUnavailableHint }}</span>
         </div>
 
         <div v-if="error" class="error-message">
@@ -205,15 +221,59 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
+import { useMapStore } from '../stores/mapStore'
 import { createAnalise } from '../api/client'
 
 const props = defineProps({ visible: Boolean })
-const emit = defineEmits(['close', 'created'])
+const emit = defineEmits(['close', 'created', 'select-outlet', 'outlet-selected'])
 
 const projectStore = useProjectStore()
+const mapStore = useMapStore()
 const ortomapas = computed(() => projectStore.ortomapas)
+const selectedSource = computed(() => ortomapas.value.find(item => String(item.id) === String(form.ortomapa_id)))
+const sourceType = computed(() => String(selectedSource.value?.tipo || '').toLowerCase())
+const queueOperationCandidate = computed(() => ['classificacao_solo', 'indice_vegetacao', 'terreno', 'hidrologia'].includes(form.tipo_analise))
+const queueOperationSupported = computed(() =>
+  (form.tipo_analise === 'classificacao_solo' && params.algorithm === 'kmeans') ||
+  form.tipo_analise === 'indice_vegetacao' ||
+  (form.tipo_analise === 'terreno' && ['slope', 'aspect', 'hillshade', 'contours'].includes(params.terrain_type)) ||
+  (form.tipo_analise === 'hidrologia' && ['flow_direction', 'flow_accumulation', 'twi', 'drainage', 'watershed'].includes(params.hydro_type))
+)
+const sourceSupportsQueueOperation = computed(() => {
+  if (['terreno', 'hidrologia'].includes(form.tipo_analise)) return ['dsm', 'dtm'].includes(sourceType.value)
+  return ['ortomosaico', 'rgb', 'multispectral'].includes(sourceType.value)
+})
+const queueEligible = computed(() => queueOperationSupported.value && sourceSupportsQueueOperation.value)
+const queueUnavailableHint = computed(() => {
+  if (!queueOperationCandidate.value) return ''
+  if (form.tipo_analise === 'terreno' && !['slope', 'aspect', 'hillshade', 'contours'].includes(params.terrain_type))
+    return 'A fila de terreno cobre declividade, orientacao, hillshade e curvas de nivel.'
+  if (form.tipo_analise === 'hidrologia' && !['flow_direction', 'flow_accumulation', 'twi', 'drainage', 'watershed'].includes(params.hydro_type))
+    return 'Operação hidrológica indisponível na fila.'
+  if (form.tipo_analise === 'classificacao_solo' && params.algorithm !== 'kmeans')
+    return 'A fila por agente cobre K-Means. Random Forest e SVM continuam no fluxo de classificacao existente.'
+  if (!selectedSource.value) return 'Selecione um raster compatível para habilitar a fila.'
+  if (form.tipo_analise === 'terreno' && !sourceSupportsQueueOperation.value)
+    return 'A fila de terreno requer um DSM ou DTM; selecione um desses produtos acima.'
+  if (form.tipo_analise === 'hidrologia' && !sourceSupportsQueueOperation.value)
+    return 'A fila hidrológica requer um DSM ou DTM; selecione um desses produtos acima.'
+  if (form.tipo_analise !== 'terreno' && !sourceSupportsQueueOperation.value)
+    return 'A fila RGB requer um ortomosaico ou raster multiespectral com pelo menos três bandas.'
+  return ''
+})
+const queueHelp = computed(() => {
+  if (form.tipo_analise === 'indice_vegetacao')
+    return 'Enfileira VARI, TGI, ExG ou GLI em ortomosaico RGB; calcula o GeoTIFF e as estatisticas em segundo plano.'
+  if (form.tipo_analise === 'terreno')
+    return 'Enfileira declividade, orientacao, hillshade ou curvas (intervalo em metros) em DSM/DTM; o resultado aparece no mapa.'
+  if (form.tipo_analise === 'hidrologia')
+    if (params.hydro_type === 'watershed') return 'Delimita a bacia D8 a montante do exutório. A grade é generalizada; confira a resolução informada no resultado.'
+    if (params.hydro_type === 'drainage') return 'Extrai a rede potencial D8 usando área contribuinte mínima; o resultado vetorial aparece no mapa.'
+    return 'Enfileira direção D8, acumulação de fluxo ou TWI sobre DSM/DTM. O produto será salvo e exibido no mapa.'
+  return 'Enfileira a classificacao RGB K-Means (2 a 12 grupos) em raster com CRS projetado, para calcular areas e processar em segundo plano.'
+})
 const loading = ref(false)
 const error = ref(null)
 
@@ -239,7 +299,10 @@ const params = reactive({
   altitude: 45,
   // Hidrologia
   hydro_type: 'flow_direction',
-  accumulation_threshold: 100,
+  minimum_area_m2: 1000,
+  minimum_strahler_order: 1,
+  outlet: null,
+  snap_radius_m: 5,
   // Mudancas
   reference_id: null,
   change_method: 'difference',
@@ -256,7 +319,43 @@ const params = reactive({
 
 function onTipoChange() {
   error.value = null
+  if (!queueEligible.value) form.queue_task = false
 }
+
+function pickOutlet() {
+  const source = selectedSource.value
+  if (source) {
+    const layerId = `orto-${source.id}`
+    const activeLayer = mapStore.activeLayers.find((layer) => layer.id === layerId)
+    if (!activeLayer) {
+      mapStore.addLayer({ id: layerId, name: source.nome, type: 'ortomapa', sourceId: source.id })
+    } else {
+      activeLayer.visible = true
+    }
+    mapStore.requestLayerFit(layerId)
+  }
+  mapStore.setPourPointCallback((lat, lng) => {
+    params.outlet = { lat, lng }
+    emit('outlet-selected')
+  })
+  emit('select-outlet')
+}
+
+watch(() => params.algorithm, (algorithm) => {
+  if (algorithm !== 'kmeans') form.queue_task = false
+})
+
+watch(() => params.terrain_type, (terrainType) => {
+  if (!['slope', 'aspect', 'hillshade', 'contours'].includes(terrainType)) form.queue_task = false
+})
+
+watch(() => params.hydro_type, (hydroType) => {
+  if (!['flow_direction', 'flow_accumulation', 'twi', 'drainage', 'watershed'].includes(hydroType)) form.queue_task = false
+})
+
+watch(() => form.ortomapa_id, () => {
+  if (!queueEligible.value) form.queue_task = false
+})
 
 function getRelevantParams() {
   const tipo = form.tipo_analise
@@ -279,7 +378,14 @@ function getRelevantParams() {
     }
     case 'hidrologia': {
       const hp = { hydro_type: params.hydro_type }
-      if (params.hydro_type === 'drainage') hp.accumulation_threshold = params.accumulation_threshold
+      if (params.hydro_type === 'drainage') {
+        hp.minimum_area_m2 = params.minimum_area_m2
+        hp.minimum_strahler_order = params.minimum_strahler_order
+      }
+      if (params.hydro_type === 'watershed') {
+        hp.outlet = params.outlet
+        hp.snap_radius_m = params.snap_radius_m
+      }
       return hp
     }
     case 'deteccao_mudancas':
@@ -308,6 +414,10 @@ function getRelevantParams() {
 async function submit() {
   if (!form.ortomapa_id || !form.nome) {
     error.value = 'Preencha o ortomapa e o nome da analise.'
+    return
+  }
+  if (form.queue_task && form.tipo_analise === 'hidrologia' && params.hydro_type === 'watershed' && !params.outlet) {
+    error.value = 'Escolha o exutório no mapa antes de enfileirar a delimitação da bacia.'
     return
   }
   loading.value = true

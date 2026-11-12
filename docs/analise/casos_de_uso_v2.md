@@ -210,10 +210,12 @@ Localizar rapidamente um projeto especifico na lista utilizando filtro de texto 
 - Os filtros permanecem ativos ate serem limpos
 
 ### Elementos de UI Envolvidos
-- InputText de filtro (placeholder "Filtrar por area...", classe `.filter-input`)
-- Select de status (placeholder "Status", classe `.filter-select`, opcoes: Todos, Ativo, Planejado, Em andamento, Concluido, Arquivado)
-- Lista de `.project-item` filtrada
-- Mensagem "Nenhum projeto encontrado" (`.empty-state`) quando nao ha resultados
+- InputText de busca global na barra superior (placeholder "Buscar...", classe `.search-input`), com pesquisa por nome, descricao ou area de estudo via endpoint autenticado.
+- InputText de filtro local (placeholder "Filtrar por area...", classe `.filter-input`), aplicado aos projetos atualmente listados.
+- Select de status (placeholder "Status", classe `.filter-select`, opcoes: Todos, Ativo, Planejado, Em andamento, Concluido, Arquivado).
+- Lista de `.project-item` filtrada e selecionável; selecionar um resultado ativa o projeto.
+- Estado de carregamento, total de correspondencias, mensagem de falha de rede e mensagem "Nenhum projeto corresponde à busca" quando uma consulta global nao encontra resultados.
+- Limpar a busca global restaura a lista de projetos acessiveis ao usuario.
 
 ### Fluxo Principal
 
@@ -438,9 +440,9 @@ Selecionar um projeto existente na lista para que seus ortomapas, analises, anot
 Enviar um arquivo GeoTIFF para o sistema, vincula-lo ao projeto ativo, e visualiza-lo como camada de tiles no mapa interativo Leaflet.
 
 ### Pre-condicoes
-- Um projeto esta selecionado (ativo) no sistema
-- O usuario possui um arquivo GeoTIFF valido no disco local
-- O backend suporta upload via endpoint POST `/api/ortomapas/upload`
+- Um projeto esta selecionado (ativo) e o usuario tem permissao de edicao
+- O usuario possui GeoTIFF `.tif` ou `.tiff` valido com sistema de coordenadas
+- A API de upload esta acessivel
 
 ### Pos-condicoes
 - O arquivo GeoTIFF foi armazenado no servidor
@@ -449,36 +451,43 @@ Enviar um arquivo GeoTIFF para o sistema, vincula-lo ao projeto ativo, e visuali
 - Tiles do ortomapa podem ser carregadas no mapa
 
 ### Elementos de UI Envolvidos
-- O sistema utiliza upload via API (o frontend pode ter uma interface de upload ou usa a AnalysisForm)
-- OrtomapCard na sidebar apos o upload
-- Botao de visibilidade no OrtomapCard
-- MapViewer com tiles renderizadas
+- Botao "Importar GeoTIFF" na secao Ortomapas da sidebar
+- Dialogo com tipo do raster, nome opcional, seletor de arquivo, progresso, erro e metadados retornados
+- OrtomapCard na sidebar apos o upload, com thumbnail e tipo
+- Camada do raster ativada automaticamente no MapViewer
 
 ### Fluxo Principal
 
-#### Passo 1 - Preparar o upload via interface
-- **Acao do ator:** Interage com a interface de upload (via API client `uploadOrtomapa`)
-- **Contexto visual anterior:** Projeto ativo selecionado, secao Ortomapas visivel
-- **Elemento de UI utilizado:** Input file ou drag-and-drop area (se disponivel via AnalysisForm ou funcionalidade de upload)
-- **Resposta imediata do sistema:** Indicador de progresso e exibido
-- **Processamento funcional:** Cria um FormData com o arquivo. Chama `uploadOrtomapa(formData, { projeto_id, tipo })` que faz POST para `/api/ortomapas/upload` com `Content-Type: multipart/form-data` e timeout de 300 segundos
-- **Efeito observavel na UI:** Indicador de carregamento/progresso
-- **Evidencia esperada:** Screenshot mostrando estado de upload em progresso
-- **Criterio de aceitacao:** A requisicao de upload deve ser enviada com o arquivo correto e parametros `projeto_id` e `tipo`
-- **Seletor Playwright:** `page.locator('input[type="file"]')`
+#### Passo 1 - Abrir o formulario de importacao
+- **Acao do ator:** Clica em "Importar GeoTIFF" na secao Ortomapas.
+- **Contexto visual anterior:** Projeto editavel ativo, secao Ortomapas visivel.
+- **Elemento de UI utilizado:** Botao `Importar GeoTIFF` e Dialog `Importar GeoTIFF`.
+- **Resposta imediata do sistema:** Dialog mostra projeto ativo, tipo, nome opcional e seletor `.tif/.tiff`.
+- **Efeito observavel na UI:** O usuario consegue escolher produto e arquivo antes de enviar.
+- **Evidencia esperada:** Captura do formulario de upload.
+- **Criterio de aceitacao:** O dialog identifica corretamente o projeto ativo e oferece os campos previstos.
+- **Seletor Playwright:** `page.getByRole('button', { name: 'Importar GeoTIFF' })`
 
-#### Passo 2 - Aguardar processamento do backend
+#### Passo 2 - Enviar um GeoTIFF
+- **Acao do ator:** Seleciona arquivo, tipo e nome opcional e clica "Enviar e adicionar ao mapa".
+- **Processamento funcional:** Envia `multipart/form-data` para `/api/ortomapas/upload` com `projeto_id`, `tipo` e, quando informado, `nome`; exibe progresso.
+- **Efeito observavel na UI:** Formulario informa sucesso com dimensoes, CRS e tamanho do arquivo.
+- **Evidencia esperada:** Captura do resultado e resposta HTTP 201.
+- **Criterio de aceitacao:** O registro fica ligado ao projeto; voo e opcional; metadados espaciais e thumbnail sao gravados.
+- **Seletor Playwright:** `page.locator('#geotiff-file')` e botao `Enviar e adicionar ao mapa`
+
+#### Passo 3 - Aguardar processamento do backend
 - **Acao do ator:** Aguarda a conclusao do upload e processamento
 - **Contexto visual anterior:** Upload em progresso
 - **Elemento de UI utilizado:** Spinner ou indicador de progresso
 - **Resposta imediata do sistema:** O backend recebe o arquivo e processa
-- **Processamento funcional:** O backend: (1) Salva o arquivo no diretorio de dados. (2) Le metadados do GeoTIFF (CRS, bbox, resolucao, bandas). (3) Gera thumbnail. (4) Gera piramide de tiles. (5) Cria registro no banco com metadados. (6) Retorna JSON com dados do ortomapa criado
+- **Processamento funcional:** O backend salva o arquivo, le CRS, bbox, resolucao e bandas, gera thumbnail e registra metadados no PostgreSQL. Os tiles XYZ sao renderizados sob demanda quando o mapa requisita cada tile; nao ha piramide pre-computada neste fluxo.
 - **Efeito observavel na UI:** O indicador de progresso muda para estado completo
 - **Evidencia esperada:** Screenshot apos conclusao do upload
 - **Criterio de aceitacao:** A API deve retornar status 200/201 com dados do ortomapa incluindo `id`, `nome`, `tipo`, `caminho_arquivo`
 - **Seletor Playwright:** `page.waitForResponse(resp => resp.url().includes('/api/ortomapas/upload'))`
 
-#### Passo 3 - Verificar ortomapa na lista da sidebar
+#### Passo 4 - Verificar ortomapa na lista da sidebar
 - **Acao do ator:** Observa a secao Ortomapas na sidebar
 - **Contexto visual anterior:** Upload concluido
 - **Elemento de UI utilizado:** Componente OrtomapCard com `.card-thumbnail`, `.card-title`, `.card-meta` (Badge de tipo, resolucao)
@@ -489,18 +498,14 @@ Enviar um arquivo GeoTIFF para o sistema, vincula-lo ao projeto ativo, e visuali
 - **Criterio de aceitacao:** O OrtomapCard deve exibir nome correto e tipo correto
 - **Seletor Playwright:** `page.locator('.ortomapa-card').last()`
 
-#### Passo 4 - Ativar visibilidade do ortomapa
-- **Acao do ator:** Clica no botao de visibilidade (icone olho) do novo OrtomapCard
-- **Contexto visual anterior:** OrtomapCard visivel, botao com icone `pi-eye-slash`
-- **Elemento de UI utilizado:** `.action-btn` com `pi pi-eye-slash` dentro de `.card-actions`
-- **Resposta imediata do sistema:** Icone muda para `pi-eye`, botao ganha classe `.active`
-- **Processamento funcional:** `mapStore.addLayer({ id: 'orto-{id}', name, type: 'ortomapa', sourceId: id })`. MapViewer renderiza `l-tile-layer` com URL `/api/ortomapas/{id}/tile/{z}/{x}/{y}.png`
-- **Efeito observavel na UI:** Tiles do ortomapa aparecem sobrepostas ao mapa base
-- **Evidencia esperada:** Screenshot do mapa com ortomapa visivel
-- **Criterio de aceitacao:** Tiles devem ser carregadas sem erros 404. O ortomapa deve cobrir a area geografica correta
-- **Seletor Playwright:** `page.locator('.ortomapa-card .card-actions .action-btn').first()`
+#### Passo 5 - Mostrar o ortomapa
+- **Acao do sistema:** Apos upload bem-sucedido, adiciona o ortomapa como camada visivel no mapa.
+- **Processamento funcional:** `mapStore.addLayer({ id: 'orto-{id}', name, type: 'ortomapa', sourceId: id })`. MapViewer solicita tiles autenticadas em `/api/ortomapas/{id}/tile/{z}/{x}/{y}.png`.
+- **Efeito observavel na UI:** O card aparece com thumbnail e o raster e sobreposto ao mapa base; controles de opacidade continuam disponiveis.
+- **Evidencia esperada:** Captura do mapa, card, thumbnail e respostas de tiles.
+- **Criterio de aceitacao:** Tiles e thumbnail respondem HTTP 200 e o mapa enquadra a extensao do raster.
 
-#### Passo 5 - Ajustar opacidade da camada
+#### Passo 6 - Ajustar opacidade da camada
 - **Acao do ator:** Usa o controle de opacidade no mapa (`.layer-controls`)
 - **Contexto visual anterior:** Ortomapa visivel no mapa, controles de camada aparecem no canto superior direito
 - **Elemento de UI utilizado:** Slider `input[type=range]` em `.layer-control-item` dentro de `.layer-controls`
@@ -1315,6 +1320,8 @@ Agrupar pixels de um ortomapa RGB por similaridade espectral com KMeans, definin
 
 ### Objetivo
 Extrair canais potenciais a partir de um DTM projetado, com limiar de area contribuinte em m2, e visualizar a rede vetorial persistida sobre a ortofoto. A mesma aba permite delimitar uma bacia por exutorio e calcular TWI.
+
+**Posicionamento no produto:** UC-011 e uma analise especializada adicional, executada depois que um produto de elevacao estiver disponivel. Nao recebe fotos brutas e nao faz parte do processamento fotogrametrico. O DTM pode ter sido produzido pelo ODM e importado no projeto (UC-025), ou pode vir de outra fonte, desde que esteja georreferenciado em CRS projetado com unidades metricas. O DSM e aceito com ressalva, pois vegetacao e construcoes podem alterar o escoamento modelado. Os resultados sao estimativas derivadas do relevo e exigem avaliacao adequada ao uso; a existencia de um DTM nao implica validacao hidrologica de campo.
 
 ### Pre-condicoes
 - Projeto ativo com DTM georreferenciado em CRS projetado; DSM permitido com aviso sobre sua adequacao
@@ -2674,9 +2681,9 @@ Um caso de uso somente pode ser marcado como **Aderente** quando possui: (a) req
 | ID | Status v2.0 | Fundamentacao |
 |---|---|---|
 | UC-001 | Aderente | Dialog Novo, POST/GET e lista persistida |
-| UC-002 | Parcial | Filtro da sidebar funciona; busca global da toolbar nao esta conectada |
+| UC-002 | Aderente | Busca global da toolbar executa endpoint autenticado, filtra a lista, permite abrir projeto, informa zero resultados e restaura a lista ao limpar; Playwright com dois projetos Aukerman reais em 06/11/2026. |
 | UC-003 | Aderente | Selecao de projeto, cards e camadas |
-| UC-004 | Parcial | API GeoTIFF existe; falta seletor visual dedicado |
+| UC-004 | Aderente | Formulario Importar GeoTIFF, metadados, thumbnail e ativacao automatica no mapa validados via Playwright; arquivo invalido rejeitado com HTTP 400. |
 | UC-005 | Aderente | Aba Veg e indices RGB |
 | UC-006 | Aderente | Aba Terreno, slope/aspect |
 | UC-007 | Aderente | Aba Terreno, intervalo e GeoJSON |
@@ -2687,21 +2694,66 @@ Um caso de uso somente pode ser marcado como **Aderente** quando possui: (a) req
 | UC-012 | Aderente | Aba Volume e cota de referencia |
 | UC-013 | Aderente | DrawTools poligono + formulario |
 | UC-014 | Aderente | DrawTools ponto + formulario |
-| UC-015 | Parcial | MeasureTools existe, mas falta comando para abrir distancia |
-| UC-016 | Parcial | MeasureTools existe, mas falta comando para abrir area |
-| UC-017 | Parcial | CompareView existe, mas falta acionador `setCompareMode(true)` |
+| UC-015 | Aderente | Comando visivel no mapa; linha medida, segmentos, desfazer e limpeza validados via Playwright em 06/11/2026. |
+| UC-016 | Aderente | Comando visivel no mapa; poligono, area/perimetro, limpar e fechar validados via Playwright em 06/11/2026. |
+| UC-017 | Aderente | Comando Comparar no mapa; duas ortofotos selecionadas, modos deslizante/lado a lado e retorno validados via Playwright em 06/11/2026. |
 | UC-018 | Aderente | Aba Exp, formato, CRS e download |
 | UC-019 | Aderente | Dialog de voo, fotos e configuracao ODM |
-| UC-020 | Aderente | Copiloto, thread por projeto e ferramentas |
+| UC-020 | Parcial (escopo de fila limitado) | K-Means RGB, índices RGB, slope/aspect/hillshade, curvas, rede D8 e bacia por exutório passaram pelas evidências de 06/11. Na etapa 9.1, direção D8, acumulação D8 e TWI foram conectados à fila e processados pelo worker sobre o DTM ODM real #21 (EPSG:32617); os artefatos e checksums estão em `docs/validacao/ortomapas_conclusao/etapa-09/uc020_dtm_real.json`. Suíte do worker usa banco/publicador simulados; API e UI com banco real ainda aguardam validação Playwright. A bacia é sensível à escala e requer calibração externa. Permanecem mudança, volume, segmentação e classificadores supervisionados na fila; também falta completar o aceite visual/API dos três produtos novos. |
 
 ## Alteracoes obrigatorias para fechar os parciais
 
-1. Conectar `searchQuery` da barra superior ao endpoint de busca e ao `ProjectList`.
-2. Adicionar upload GeoTIFF na interface, com projeto, tipo e exibicao do thumbnail/metadados.
-3. Adicionar botoes visiveis “Medir distancia” e “Medir area” no mapa.
-4. Adicionar um comando “Comparar” que ative o `CompareView`.
-5. Criar um diagrama formal versionado (Mermaid ou PlantUML) com Usuario, Administrador, Copiloto IA, NodeODM e PostgreSQL/PostGIS.
+1. Concluido em 06/11/2026: busca global conectada ao endpoint e à lista, incluindo estado sem resultados e limpeza; ver [relatorio e evidencias UC-002](../validacao/uc002_busca_global_2026-11-06/relatorio.md).
+2. Concluido em 06/11/2026: upload GeoTIFF via UI, metadata, thumbnail, selecao de tipo e camada visivel; ver [relatorio e evidencias UC-004](../validacao/uc004_upload_geotiff_2026-11-06/relatorio.md).
+3. Concluido em 06/11/2026: barra de medicao no mapa, estado compartilhado, pontos, linha/poligono, desfazer e limpar; ver relatorio Playwright UC-015/016.
+4. Concluido em 06/11/2026: comando Comparar, seleção inicial de produtos do mesmo tipo e retorno ao mapa; ver relatorio Playwright UC-017.
+5. Concluido em 06/11/2026: [diagrama de atores, casos de uso e componentes](diagrama_atores_casos_de_uso_v2.mmd).
+6. Expandir UC-020 para os outros tipos de análise enfileirável descritos. K-Means RGB, índices RGB, slope/aspect, hillshade, curvas, rede D8 e bacia por exutório passaram pelo fluxo de fila. Continuam pendentes direção/acumulação autônomas, TWI, mudanças, volume, segmentação e classificadores supervisionados; também falta calibrar a bacia contra referência independente.
 
 ## Criterio de aceite da v2.0
 
-Os cinco casos parciais permanecem deliberadamente abertos e devem gerar testes de falha ate que os acionadores sejam implementados. A suite atual de 17/17 aprovacoes continua valida para os fluxos que ela cobre, mas nao promove automaticamente os cinco parciais.
+Um item permanece parcial na matriz: o escopo ampliado do UC-020, que deve ser validado conforme seus criterios antes do aceite final. No aceite de 29/10/2026, UC-020 era bloqueante: uma chamada de aceite ao endpoint com projeto `62`, ortomapa `42` e `queue_task=true` retornou HTTP 422 (`Fila de analise nao disponivel neste endpoint`). A contagem de `analises` permaneceu 98 e a de `tarefas_agentes` permaneceu 0, antes e depois. Isso prova que a tarefa nao foi enfileirada e que nenhuma gravacao ocorreu. O teste de chat do Copiloto valida outra capacidade e nao deve ser usado como evidência de UC-020. A suite anterior de 17/17 aprovacoes continua valida somente para os fluxos cobertos, sem promover automaticamente casos parciais.
+
+
+### Adendo de revalidação — 06/11/2026
+
+Na primeira revalidação de 06/11, o POST retornou HTTP 202 e três tarefas K-Means RGB concluíram; o raster da análise 120 foi exibido com 26 tiles HTTP 200 e sem erros JavaScript. Naquele ponto, apenas K-Means estava coberto pela fila. As extensões posteriores do mesmo dia estão registradas abaixo e ampliaram o escopo. Consulte [relatório da etapa K-Means](../validacao/uc020_revalidacao_2026-11-06/relatorio.md). A rejeição do DTM de 1 banda naquela validação foi comportamento correto.
+
+
+### Adendo — validação UC-015/016 em 06/11/2026
+
+As ferramentas de distância e área foram adicionadas à barra do mapa e validadas visualmente com Playwright: três pontos produziram dois segmentos e 3,509 km; desfazer removeu um segmento; quatro vértices geraram polígono, área e perímetro; limpar e fechar restauraram o mapa. Foi removida uma duplicação do painel no workspace de dados. Consulte [relatório e capturas UC-015/016](../validacao/medicao_uc015_016_2026-11-06/relatorio.md).
+
+
+### Adendo — validação UC-017 em 06/11/2026
+
+O comando Comparar foi adicionado à barra do mapa. Playwright abriu o comparador, selecionou duas ortofotos Aukerman do mesmo tipo, carregou tiles HTTP 200 em modos deslizante e lado a lado e fechou retornando ao mapa. Ver [relatório e evidências UC-017](../validacao/uc017_comparacao_2026-11-06/relatorio.md). O diagrama de atores e casos de uso foi versionado em [diagrama_atores_casos_de_uso_v2.mmd](diagrama_atores_casos_de_uso_v2.mmd).
+
+
+### Adendo — revalidação UC-020, fila mult tipo, em 06/11/2026
+
+A fila foi ampliada para classificação RGB K-Means e índices RGB VARI, TGI, ExG e GLI. Em fluxo iniciado pela interface com raster de demonstração sintético reprojetado, Playwright enfileirou K-Means com 3 grupos e VARI. As análises 128 e 129 concluíram, os resultados foram publicados como GeoTIFF e carregados no mapa; 75 respostas de tile foram HTTP 200, sem erros JavaScript. O painel AgentStatus apresentou as duas tarefas concluídas. O conjunto temporário foi removido e a limpeza foi confirmada no PostgreSQL. Ver [relatório e capturas do lote RGB](../validacao/uc020_fila_multitipo_2026-11-06/relatorio.md).
+
+Em seguida, a fila foi ampliada com declividade e orientação a partir de DSM/DTM. Playwright usou o DSM ODM real já cadastrado no projeto Aukerman (7.448 × 5.907, banda única, EPSG:32617): as análises 130 e 131 concluíram, 18 tiles foram HTTP 200 e não houve erros JavaScript. A execução visual capturou o estado inicial `em_fila`, o estado `processando` no AgentStatus e a conclusão. Ver [relatório e capturas de terreno](../validacao/uc020_terreno_queue_2026-11-06/relatorio.md).
+
+Na sequência, hillshade e curvas de nível foram implementados na fila e executados sobre o mesmo DSM real. As análises 132 e 133 concluíram; o mapa serviu 25 tiles de hillshade HTTP 200 e renderizou 1.573 feições de curvas de nível. Entradas inválidas foram recusadas com HTTP 422 sem gravar tarefa, e não houve erros JavaScript. O relatório contém parâmetros, resultados, critérios e capturas.
+
+A fila hidrológica foi estendida para rede potencial de drenagem D8. Playwright usou o DTM real produto 36, EPSG:32617, com área contribuinte mínima de 1.000 m². A análise 138/tarefa 21 concluiu, publicou GeoJSON com 8 feições e a tela mostrou os 8 caminhos vetoriais. A API reiniciada registrou o agente hidrológico; a tarefa 23/análise 140 concluiu depois do reinício. As recusas de entradas incompatíveis e área inválida retornaram HTTP 422. A precisão da drenagem não foi comparada a levantamento de campo. Consulte [relatório da fila hidrológica](../validacao/uc020_hidrologia_queue_2026-11-06/relatorio.md).
+
+
+
+#### Adendo — bacia por exutório no mapa, UC-020, 06/11/2026
+
+A interface passou a oferecer escolha de exutório diretamente no mapa e enfileiramento da delimitação D8. Ao iniciar a seleção, carrega e enquadra automaticamente o DTM e mostra uma instrução de clique. A análise 143/tarefa 26 usou o DTM ODM real 36, concluiu em 5,39 s, publicou GeoTIFF 406 × 512 em EPSG:32617 com 1.711 células (905,16 m²), exibiu a máscara e o marcador e recebeu 25 respostas HTTP 200 nos tiles da análise. Exutório ausente e raio acima de 1.000 m foram recusados com HTTP 422 sem novas tarefas. A calibração comparativa encontrou forte sensibilidade à grade; a área é demonstrativa, não certificada para decisão técnica. As análises de calibração 141/142 e seus arquivos foram removidos, preservando a auditoria das tarefas. Evidências e limitações estão no [relatório detalhado](../validacao/uc020_hidrologia_queue_2026-11-06/relatorio.md).
+
+Resumo atualizado na etapa 9.1: UC-020 permanece **parcial**. A fila também calcula direção D8, acumulação D8 e TWI e os workers foram executados sobre o DTM real #21; ainda não houve teste visual via API/DB ativo. Permanecem mudança, volume, segmentação e classificadores supervisionados fora da fila. A estimativa da bacia não foi aferida em campo. Consulte o [relatório UC-020](../validacao/uc020_hidrologia_queue_2026-11-06/relatorio.md) e a [evidência com o DTM real da etapa 9.1](../validacao/ortomapas_conclusao/etapa-09/uc020_dtm_real.json).
+
+
+### Adendo — validação UC-002 em 06/11/2026
+
+A busca da barra superior foi ligada ao endpoint autenticado `/api/projetos/search` e os resultados passaram a controlar a lista de projetos. Playwright validou dois projetos Aukerman retornados por HTTP 200, abertura do projeto escolhido, mensagem explícita para termo sem resultados e restauração dos 51 projetos ao limpar a busca; não houve erros JavaScript. Ver [relatório e capturas UC-002](../validacao/uc002_busca_global_2026-11-06/relatorio.md).
+
+
+### Adendo — validacao UC-004 em 06/11/2026
+
+O upload ganhou formulario proprio na secao Ortomapas, metadados de sucesso e ativacao automatica no mapa. Playwright criou projeto temporario, recusou arquivo `.txt` com HTTP 400, importou o GeoTIFF demo Guarajuba (256×256, 3 bandas, EPSG:4326) sem voo, recebeu HTTP 201, carregou thumbnail PNG de 512 px e 25 tiles HTTP 200. Projeto, registro e arquivos de teste foram removidos ao final. A rodada corrigiu a obrigatoriedade indevida de `voo_id` no schema PostgreSQL e a ausencia de proxy Vite para `/data`. O raster de exemplo e sintetico e serve para demonstrar a importacao; nao representa foto capturada por drone. Ver [relatorio e evidencias UC-004](../validacao/uc004_upload_geotiff_2026-11-06/relatorio.md).
