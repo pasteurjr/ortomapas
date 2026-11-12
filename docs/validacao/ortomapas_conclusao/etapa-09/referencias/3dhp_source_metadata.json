@@ -1,0 +1,32 @@
+{
+  "source": "USGS 3D Hydrography Program (3DHP), Flowline FeatureServer layer 50",
+  "service_url": "https://3dhp.nationalmap.gov/arcgis/rest/services/usgs_3dhp_all/FeatureServer/50",
+  "query_endpoint": "https://3dhp.nationalmap.gov/arcgis/rest/services/usgs_3dhp_all/FeatureServer/50/query",
+  "retrieved_on": "2026-11-12",
+  "query": {
+    "where": "1=1",
+    "geometry_wgs84_envelope": [-81.76, 41.3, -81.748, 41.308],
+    "geometry_type": "esriGeometryEnvelope",
+    "spatial_relation": "esriSpatialRelIntersects",
+    "out_fields": "*",
+    "return_geometry": true,
+    "out_sr": 4326,
+    "maximum_record_count": 2000,
+    "format": "GeoJSON"
+  },
+  "response_file": "3dhp_flowlines_aukerman.geojson",
+  "response_feature_count": 4,
+  "observed_feature_types": {"1": "Channel Line", "streamorder": [1, 2]},
+  "geometry_note": "The four returned features are candidates in the query envelope. None intersects the project DTM footprint after projection/clipping in EPSG:32617.",
+  "data_rights": "USGS 3DHP data are public US government data; verify current service metadata and applicable USGS attribution/terms before redistribution or production use.",
+  "limitations": [
+    "The service represents mapped hydrography and is not field truth for the tested ODM surface.",
+    "Source date and lineage may differ from the DTM acquisition date.",
+    "The USGS advises users to understand product limitations and not use flowline products as site-specific regulatory determinations without additional review."
+  ],
+  "references": [
+    "https://www.usgs.gov/3d-hydrography-program/access-3dhp-data-products",
+    "https://www.usgs.gov/ngp-standards-and-specifications/3d-hydrography-program-3dhpall-flowline",
+    "https://www.usgs.gov/3d-hydrography-program/3dhp-flow-network-derivatives"
+  ]
+}

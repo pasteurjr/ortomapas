@@ -378,3 +378,37 @@ O [manifesto completo](../etapa-09/playwright/hydrology_network_manifest.json) r
 **Aprovado funcionalmente:** DTM → fila → rede vetorial e bacia raster → persistência → mapa → exportação da rede. A saída D8 não foi confrontada com uma rede hidrográfica oficial, levantamento de campo ou outro DTM independente. A escala do processamento e a escolha do raio influenciam a geometria; portanto, UC-011 e o aceite hidrológico de UC-020 continuam **parciais**, sem recomendação para decisões de drenagem/engenharia.
 
 **Próxima subetapa 9.4 de 9:** montar uma comparação independente para hidrologia na área do DTM: obter uma referência hidrográfica pública, reprojetar e recortar com critério registrado, parear redes por ordem/tipo de feição e quantificar coincidência, distância e divergências. A comparação deve tratar a resolução de 0,727 m do watershed e a grade mais grossa da drenagem, sem equiparar pixels generalizados a observações de campo. Se não houver referência pública de escala/licença adequadas, registrar a limitação e não aprovar acurácia por consistência interna.
+
+## Etapa 9 de 9 — subetapa 9.4: tentativa de comparação independente com 3DHP
+
+**Data:** 12/11/2026. **Vínculo:** UC-011 (rede de drenagem) e UC-020 (fila hidrológica). **Objetivo:** comparar a rede potencial derivada pelo Ortomapas com uma fonte hidrográfica pública, recortando ambas ao mesmo DTM e pareando por ordem Strahler e tipo.
+
+### Dados, origem e método
+
+- Rede prevista: export GeoJSON real da análise D8 #155, feita no projeto #88 a partir do DTM ODM #72. São 21 LineStrings, com ordens 1–3, limiar de área contribuinte 1.000 m². O DTM está em EPSG:32617, 7.449 × 5.906 pixels, extensão projetada `436847.28, 4572650.85, 437219.73, 4572946.15`.
+- Referência: USGS 3D Hydrography Program (3DHP), serviço público Flowline, camada 50. A consulta espacial em WGS84 cobriu `[-81.760, 41.300, -81.748, 41.308]` e retornou quatro linhas `featuretype=1` (“Channel Line”), ordens Strahler 1 ou 2, com data de feição 2023-09-14. O [manifesto da consulta](../etapa-09/referencias/3dhp_source_metadata.json) registra URL, parâmetros, data e ressalvas; o GeoJSON baixado e seu SHA-256 acompanham o relatório.
+- Método reproduzível: reprojetar as linhas para EPSG:32617, recortar pela extensão do DTM, contar feições por ordem/tipo e calcular métricas somente para classes presentes nos dois lados. Se houvesse pares, o script calcularia distâncias entre linhas amostradas a cada 1 m e cobertura em tolerâncias de 2, 5 e 10 m. Não converte essas métricas em certificado de acurácia.
+
+Fontes oficiais consultadas: [catálogo e acesso aos produtos 3DHP](https://www.usgs.gov/3d-hydrography-program/access-3dhp-data-products), [esquema da camada Flowline](https://www.usgs.gov/ngp-standards-and-specifications/3d-hydrography-program-3dhpall-flowline) e [derivados da rede e ordem de fluxo](https://www.usgs.gov/3d-hydrography-program/3dhp-flow-network-derivatives). A ordem de fluxo existe no esquema 3DHP; o rótulo observado no retorno para `featuretype=1` foi “Channel Line”.
+
+### Esperado versus obtido
+
+| Critério | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Referência independente | Feições hidrográficas da mesma área do DTM | Quatro candidatas na janela de consulta; zero intersectam a extensão do DTM | **Não atendido** |
+| Pareamento por classe | Comparar somente tipo/ordem existentes em ambos os conjuntos | Zero pares válidos; ordens disponíveis na rede D8: 1, 2, 3; ordens de referência dentro do DTM: nenhuma | **Não comparável** |
+| Recorte e transparência | Mostrar as duas redes sobre a mesma extensão | O mapa exibe D8 azul/rosa/verde dentro do retângulo DTM e candidatas USGS tracejadas fora dele | Aprovado como diagnóstico espacial |
+| Distâncias | Reportar similaridade apenas com sobreposição/extensão comum | Candidata 3DHP mais próxima está 34,130 m da borda do DTM; distância mínima até a rede D8 é 75,088 m | Apenas distância a feições próximas; não é métrica de erro |
+| Reprodutibilidade | Script, fontes, entradas e resultado registráveis | Script executado, GeoJSON bruto/recortado, JSON de métricas e figura salvos | Aprovado para reprodução da tentativa |
+
+![Comparação espacial: rede D8 do DTM e linhas USGS externas ao DTM; não há par para comparação](../etapa-09/referencias/comparacao_rede_d8_3dhp.png)
+
+O [resultado JSON](../etapa-09/referencias/comparacao_3dhp_d8.json) marca `not_comparable_reference_does_not_intersect_dtm`, com `orders_compared=[]`, `valid_pairs=0` e `by_order={}`. A versão inicial da figura omitia as linhas D8 porque o laço de desenho estava limitado às ordens comparáveis; corrigi isso e inspecionei a figura regenerada: as 21 linhas D8 aparecem agora dentro do retângulo do DTM, enquanto as quatro candidatas 3DHP ficam fora. Essa correção foi exclusivamente de visualização; não alterou as entradas ou os números espaciais.
+
+### Conclusão
+
+A etapa **não valida nem reprova a acurácia** da rede D8. Ela demonstra que a fonte pública próxima não serve como referência comum para esse DTM. O dado oficial consultado é cartografia hidrográfica com data/linhagem diferentes, não verdade de campo; a generalização do worker (célula de aproximadamente 1,455 m na drenagem) também limita interpretação de detalhe. A alegação de qualidade hidrológica e o aceite UC-011/UC-020 permanecem parciais. Para concluir esta comparação é necessário um DTM com hidrografia oficial intersectante adequada, dados de campo compatíveis, ou declarar explicitamente a ausência de validação externa.
+
+**Artefatos:** [roteiro reproduzível](../../../../scripts/compare_hydrology_reference_9_4.py), [resposta USGS](../etapa-09/referencias/3dhp_flowlines_aukerman.geojson), [recorte ao DTM (vazio por não interseção)](../etapa-09/referencias/3dhp_flowlines_dtm_clip.geojson), [metadados da consulta](../etapa-09/referencias/3dhp_source_metadata.json), [resultado quantitativo](../etapa-09/referencias/comparacao_3dhp_d8.json) e [mapa comparativo](../etapa-09/referencias/comparacao_rede_d8_3dhp.png).
+
+**Próxima subetapa 9.5 de 9:** localizar um conjunto público em que DTM/DEM e hidrografia oficial cubram a mesma área, ou formalizar uma validação interna sem alegar acurácia externa. Registrar licenças, resolução, CRS e limitações; executar comparação pareada apenas quando existir interseção espacial real. Em paralelo, continuar a matriz dos UCs parciais UC-009, UC-010, UC-024, UC-026 e UC-029. O aceite operacional global continua retido.

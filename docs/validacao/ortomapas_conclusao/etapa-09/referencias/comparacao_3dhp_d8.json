@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-11-12T15:48:45.104689-03:00",
+  "source_dtm": {
+    "project_id": 88,
+    "asset_id": 72,
+    "crs": "EPSG:32617",
+    "bounds_projected_m": [
+      436847.28,
+      4572650.850000001,
+      437219.73,
+      4572946.15
+    ],
+    "source_grid": [
+      7449,
+      5906
+    ],
+    "analysis_working_grid_drainage": {
+      "source_shape": [
+        5906,
+        7449
+      ],
+      "working_shape": [
+        203,
+        256
+      ],
+      "scale": 0.034367029131427036,
+      "pixel_area_m2": 2.116388643009484,
+      "cell_size_m": 1.4547813041861255,
+      "smoothing_sigma_cells": 1
+    }
+  },
+  "predicted_input": {
+    "path": "docs/validacao/ortomapas_conclusao/etapa-09/playwright/04_drenagem_exportada.geojson",
+    "sha256": "6fee4fe1acd739f5489abcb439d561c152fd5ffcbd983845831c49eb6f80944b",
+    "features": 21,
+    "algorithm": "priority-flood + D8",
+    "parameters": {
+      "minimum_area_m2": 1000,
+      "minimum_strahler_order": 1
+    }
+  },
+  "reference_input": {
+    "path": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/3dhp_flowlines_aukerman.geojson",
+    "sha256": "ba8911dfcc47aa65a9e3928f6dafd46b8be12886241b3f76720a12d871540e5f",
+    "metadata_path": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/3dhp_source_metadata.json",
+    "service_layer": 50,
+    "query_envelope_wgs84": [
+      -81.76,
+      41.3,
+      -81.748,
+      41.308
+    ],
+    "feature_count_returned": 4,
+    "featuretype_counts_in_query": {
+      "1": 4
+    },
+    "features_inside_dtm": 0,
+    "featuretype_counts_inside_dtm": {},
+    "clip_crs": "EPSG:32617",
+    "nearest_candidate_to_dtm_edge_m": 34.12978659505215,
+    "nearest_d8_to_candidate_network_m": 75.0876922113413
+  },
+  "comparison_status": "not_comparable_reference_does_not_intersect_dtm",
+  "pairing": {
+    "key": "Strahler order + feature type",
+    "predicted_class": "modeled potential D8 channels (type not stored by result)",
+    "reference_class": "USGS 3DHP featuretype=1 River/Channel Line",
+    "predicted_orders_available": [
+      1,
+      2,
+      3
+    ],
+    "reference_orders_inside_dtm": [],
+    "orders_compared": [],
+    "valid_pairs": 0
+  },
+  "distance_sampling": "uniform 1 m samples on the metric polylines; reports nearest-network distance, not point positional accuracy",
+  "tolerance_sensitivity_m": [
+    2.0,
+    5.0,
+    10.0
+  ],
+  "by_order": {},
+  "limits": [
+    "3DHP is a public reference dataset, not field truth; its 2023 featuredate and acquisition/source lineage may not match the ODM DTM.",
+    "The USGS describes 3DHP flowline data as not intended for site-specific regulatory determinations or critical use without awareness of limitations.",
+    "The application network is a generalized DTM-derived potential drainage network; the worker grid is coarser than the source DTM.",
+    "Network coverage within 2/5/10 m is a spatial similarity measure, not a hydrological accuracy certification."
+  ],
+  "artifacts": {
+    "clipped_reference": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/3dhp_flowlines_dtm_clip.geojson",
+    "comparison_map": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/comparacao_rede_d8_3dhp.png"
+  }
+}
