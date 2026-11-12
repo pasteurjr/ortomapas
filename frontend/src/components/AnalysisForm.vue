@@ -196,7 +196,7 @@
         <div v-if="queueEligible" class="form-group queue-task-group">
           <label class="checkbox-label">
             <input type="checkbox" v-model="form.queue_task" />
-            <span>Executar via Agente de IA</span>
+            <span>Enviar para fila de processamento</span>
           </label>
           <span class="hint">{{ queueHelp }}</span>
         </div>

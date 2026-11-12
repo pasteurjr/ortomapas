@@ -276,3 +276,59 @@ Não foi possível executar Playwright contra a aplicação neste momento: `pg_i
 A grade hidrológica generaliza o raster ODM original de aproximadamente 5 cm para cerca de 1,455 m por célula. Isso reduz custo e torna a execução demonstrável, mas perde detalhe e, junto à sensibilidade D8 já medida, impede aceitar esses resultados como hidrologia operacional. Não foram comparados a rede oficial, pontos de controle ou medições de campo.
 
 **Estado da etapa 9:** subetapa 9.1 concluída para integração do código e execução do worker; UC-020 segue parcial. **Próxima subetapa 9.2:** disponibilizar PostgreSQL, API, frontend e worker nesta cópia; então usar Playwright para selecionar o DTM, enfileirar cada uma das três operações, acompanhar estado, abrir cada camada e conferir CRS, legenda, tiles e estatísticas contra os GeoTIFFs. Em seguida continuar os casos UC-009/010/011/024/026/029 e as funções de UC-020 ainda ausentes.
+
+## Etapa 9 de 9 — subetapa 9.2: validação visual da fila hidrológica
+
+**Data:** 12/11/2026. **UC:** UC-020 (fila de análises espaciais) e interface de visualização do UC-003. **Objetivo:** provar o fluxo autenticado de seleção do projeto/DTM, submissão pela interface, conclusão da tarefa, persistência do resultado e exibição do mapa/estatísticas para as três operações adicionadas na 9.1.
+
+### Ambiente e dados usados
+
+- Projeto #88, “Aceite NodeODM Aukerman 20261112-163150”, acessado pela conta proprietária de teste; DTM #72 (“ODM dtm ad503e1b”), criado pelo processamento fotogramétrico NodeODM do conjunto público Aukerman.
+- Raster de origem real do processamento: 7.449 × 5.906 pixels, EPSG:32617. Não é captura de Guarajuba nem validação de campo.
+- PostgreSQL/PostGIS, API e frontend locais ativos; a API foi reiniciada isoladamente para carregar a versão em validação. PostgreSQL, NodeODM e demais contêineres não foram reiniciados.
+- Execução visual via Chrome headless/Playwright, com sessão autenticada. Nenhuma chamada ao Copiloto/LLM foi feita (`llm_calls=0`). O teste não registra senha, token ou segredo no manifesto.
+
+### Roteiro executado e esperado versus obtido
+
+| Passo | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Login e contexto | Autenticar e abrir o projeto correto | Login HTTP/UI concluído; projeto #88 e produto DTM #72 selecionados | Aprovado |
+| Preenchimento | Formulário indica DTM, análise hidrológica, tipo e opção de fila | Repetido para direção D8, acumulação D8 e TWI; o texto foi corrigido para “Enviar para fila de processamento”, sem sugerir uso de IA | Aprovado |
+| Submissão | UI recebe HTTP 202 com IDs de análise/tarefa | Direção: análise #148/tarefa #30; acumulação: #149/#31; TWI: #150/#32 | Aprovado |
+| Execução/persistência | Tarefa termina e produto persiste com referência à fonte | As três análises ficaram `concluida`, com caminho de resultado persistido | Aprovado para as três tarefas |
+| Tiles e mapa | Camada selecionada solicita tiles HTTP 200 e aparece com legenda própria | 25/25 tiles HTTP 200 por produto; camada e painel de estatísticas visíveis nas três telas | Aprovado no percurso visual executado |
+| Integridade da página | Sem exceções de JavaScript | `page_errors=[]`; nenhum erro de console fatal capturado | Aprovado |
+
+O worker generalizou cada DTM para grade de 256 × 203 células (passo aproximado de 1,455 m, a partir da fonte de cerca de 5 cm). Resultados registrados: direção D8 com 41.861 células válidas e códigos 1–128; acumulação com 51.968 células válidas, mínimo 1 e máximo 13.358 células contribuintes; TWI com 41.637 células válidas, mínimo −0,653, máximo 16,705 e média 4,555. O mapa mostra a camada escolhida e a respectiva legenda. A escala reduzida e a ausência de referência hidrográfica/controle de campo limitam os resultados a demonstração funcional e algorítmica, sem aceite hidrológico operacional.
+
+As três análises permaneceram no projeto #88 para permitir inspeção posterior pela aplicação. O manifesto compactado registra IDs, estados, CRS, dimensões, estatísticas essenciais, contagem/status dos tiles e escopo, sem histogramas extensos nem caminhos locais. O teste criou registros de demonstração no PostgreSQL e arquivos derivados; não houve limpeza desses resultados.
+
+### Capturas da execução real
+
+As capturas abaixo são imagens produzidas pelo Playwright nesta execução, não ilustrações sintéticas. Os formulários mostram a entrada selecionada; as telas de resultado mostram a camada renderizada, a legenda, o projeto e o painel estatístico.
+
+![Projeto de validação autenticado, no menu Análises](../etapa-09/playwright/00_projeto_analises.png)
+
+![Formulário real com DTM #72, TWI e execução por fila](../etapa-09/playwright/03_twi_formulario.png)
+
+![Direção de fluxo D8 renderizada sobre o DTM](../etapa-09/playwright/01_direcao_fluxo_resultado_mapa.png)
+
+![Acumulação de fluxo D8 renderizada no mapa](../etapa-09/playwright/02_acumulacao_fluxo_resultado_mapa.png)
+
+![Índice topográfico de umidade renderizado no mapa](../etapa-09/playwright/03_twi_resultado_mapa.png)
+
+Capturas adicionais de cada formulário e login, mais o [manifesto Playwright](../etapa-09/playwright/manifest.json) e o [script reproduzível](../../../../tests/e2e/playwright/validate_hydro_queue_phase9.py), ficam junto das evidências. As imagens `tiles/` são tiles de resultado gerados pela aplicação e não capturas de tela.
+
+### Avaliação e limite de aceite
+
+| Critério | Resultado | Conclusão |
+|---|---|---|
+| Seleção do projeto/produto e envio pela interface autenticada | 3 operações executadas com HTTP 202 | Aprovado |
+| Worker, persistência e reabertura do mapa | 3 tarefas concluídas; produto consultado pela UI; 25 tiles HTTP 200 cada | Aprovado funcionalmente |
+| Legenda/estatísticas próprias por resultado | Direção categórica, acumulação contínua e TWI contínuo visíveis; métricas compatíveis com o manifesto | Aprovado para demonstração |
+| Acurácia hidrológica | Sem rede de drenagem independente, pontos de controle ou validação de campo; grade generalizada | **Não avaliada; UC-011/UC-020 continuam parciais** |
+| UX sem ambiguidade de camadas anteriores | A camada ativa e a legenda mudam por seleção; a lista mantém histórico das análises | Aceito para esta execução; revisão de UX da lista pode ser feita separadamente |
+
+Portanto, 9.2 fecha a lacuna anterior de “sem teste visual/sem persistência do endpoint” para estas três operações. Isso não aprova o algoritmo hidrológico para decisão de engenharia, nem fecha UC-020: drenagem/bacia, outras ferramentas enfileiradas e referências independentes ainda precisam de tratamento documentado.
+
+**Estado:** subetapas 9.1 e 9.2 concluídas para direção D8, acumulação D8 e TWI; UC-020 continua parcial. **Próxima subetapa 9.3 de 9:** validar e corrigir o fluxo enfileirado de rede de drenagem e delimitação de bacia (com exutório), usando o mesmo DTM real, conferir parâmetros/unidades, GeoJSON/GeoTIFF, tiles/forma resultante e interação do mapa; para alegação de qualidade hidrológica, antes estabelecer uma referência independente apropriada.

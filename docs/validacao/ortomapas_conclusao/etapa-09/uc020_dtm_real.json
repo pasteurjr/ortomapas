@@ -1,6 +1,9 @@
 {
   "source": {
-    "path": "data/ortomapas/odm_21_dtm.tif",
+    "project_id": 88,
+    "processing_source": "odm_21_dtm.tif",
+    "asset_id": 72,
+    "asset_type": "dtm",
     "crs": "EPSG:32617",
     "width": 7449,
     "height": 5906,
@@ -15,7 +18,6 @@
   "operations": [
     {
       "operation": "flow_direction",
-      "output": "queue_flow_direction_900_078d169063.tif",
       "width": 256,
       "height": 203,
       "crs": "EPSG:32617",
@@ -42,7 +44,6 @@
     },
     {
       "operation": "flow_accumulation",
-      "output": "queue_flow_accumulation_901_6ac526fc99.tif",
       "width": 256,
       "height": 203,
       "crs": "EPSG:32617",
@@ -69,7 +70,6 @@
     },
     {
       "operation": "twi",
-      "output": "queue_twi_902_eda43156b5.tif",
       "width": 256,
       "height": 203,
       "crs": "EPSG:32617",
@@ -95,6 +95,53 @@
       }
     }
   ],
-  "scope": "execucao do worker e raster usando DTM ODM real, sem gravar no PostgreSQL e sem interface/API; publicacao substituida por capturador local",
-  "llm_calls": 0
+  "scope": "DTM/asset e metadados consultados no PostgreSQL ativo (somente leitura); worker executado em pasta tempor\u00e1ria; publica\u00e7\u00e3o simulada para n\u00e3o gravar resultado/tarefa no banco. Tiles PNG renderizados pelo render_analysis_tile usado pela API; n\u00e3o s\u00e3o screenshots Playwright.",
+  "llm_calls": 0,
+  "rendered_tiles": [
+    {
+      "operation": "flow_direction",
+      "tile_path": "09_01_direcao_fluxo_d8.png",
+      "zoom": 16,
+      "x": 17885,
+      "y": 24497,
+      "tile_size": [
+        256,
+        256
+      ],
+      "nontransparent_pixels": 27567,
+      "png_bytes": 17660,
+      "sha256": "63cc9a8fadf9b1ea97bc2460ebe090f4ef8ac57ff0401cd10ea366ed9cb0d8cd",
+      "style_kind": "flow_direction"
+    },
+    {
+      "operation": "flow_accumulation",
+      "tile_path": "09_02_acumulacao_fluxo_d8.png",
+      "zoom": 16,
+      "x": 17885,
+      "y": 24497,
+      "tile_size": [
+        256,
+        256
+      ],
+      "nontransparent_pixels": 34197,
+      "png_bytes": 29275,
+      "sha256": "23ef522a525da116b4d2743249167813b6b4b278adcf756146d5cee144fc1c3d",
+      "style_kind": "flow_accumulation"
+    },
+    {
+      "operation": "twi",
+      "tile_path": "09_03_twi.png",
+      "zoom": 16,
+      "x": 17885,
+      "y": 24497,
+      "tile_size": [
+        256,
+        256
+      ],
+      "nontransparent_pixels": 27421,
+      "png_bytes": 57567,
+      "sha256": "22a783460e3f9cdd01570fc929f17d4fafd4742bcb844f6c40ca301565786b96",
+      "style_kind": "twi"
+    }
+  ]
 }

@@ -1,0 +1,417 @@
+{
+  "started_at": "2026-11-12T15:16:38.417255-03:00",
+  "project_id": 88,
+  "source_dtm_id": 72,
+  "operations": [
+    {
+      "type": "flow_direction",
+      "name": "Direcao de fluxo D8",
+      "analysis_id": 148,
+      "task_id": 30,
+      "post_status": 202,
+      "status": "concluida",
+      "result_path_present": true,
+      "result": {
+        "crs": "EPSG:32617",
+        "stats": {
+          "valid_cells": 41861,
+          "direction_codes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            32,
+            64,
+            128
+          ],
+          "working_grid": {
+            "scale": 0.034367029131427036,
+            "cell_size_m": 1.4547813041861255,
+            "source_shape": [
+              5906,
+              7449
+            ],
+            "pixel_area_m2": 2.116388643009484,
+            "working_shape": [
+              203,
+              256
+            ],
+            "smoothing_sigma_cells": 1
+          }
+        },
+        "style": {
+          "max": 128,
+          "min": 1,
+          "kind": "flow_direction",
+          "unit": "direcao D8",
+          "legend": [
+            {
+              "color": "#ef4444",
+              "label": "Leste"
+            },
+            {
+              "color": "#f97316",
+              "label": "Sudeste"
+            },
+            {
+              "color": "#eab308",
+              "label": "Sul"
+            },
+            {
+              "color": "#84cc16",
+              "label": "Sudoeste"
+            },
+            {
+              "color": "#22c55e",
+              "label": "Oeste"
+            },
+            {
+              "color": "#06b6d4",
+              "label": "Noroeste"
+            },
+            {
+              "color": "#3b82f6",
+              "label": "Norte"
+            },
+            {
+              "color": "#8b5cf6",
+              "label": "Nordeste"
+            }
+          ],
+          "method": "nearest"
+        },
+        "width": 256,
+        "height": 203,
+        "bbox_sul": 41.30284336907439,
+        "bbox_leste": -81.74992244829566,
+        "bbox_norte": 41.305532201279064,
+        "bbox_oeste": -81.75440172230921,
+        "provenance": {
+          "algorithm": "priority-flood + D8",
+          "source_type": "dtm",
+          "source_ortomapa_id": 72,
+          "parameters": {
+            "hydro_type": "flow_direction",
+            "max_dimension": 256,
+            "source_ortomapa_id": 72
+          },
+          "working_grid": {
+            "scale": 0.034367029131427036,
+            "cell_size_m": 1.4547813041861255,
+            "source_shape": [
+              5906,
+              7449
+            ],
+            "pixel_area_m2": 2.116388643009484,
+            "working_shape": [
+              203,
+              256
+            ],
+            "smoothing_sigma_cells": 1
+          }
+        }
+      },
+      "tile_statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "tile_200_count": 25,
+      "map_layer_visible": true,
+      "stats_panel_visible": true
+    },
+    {
+      "type": "flow_accumulation",
+      "name": "Acumulacao de fluxo D8",
+      "analysis_id": 149,
+      "task_id": 31,
+      "post_status": 202,
+      "status": "concluida",
+      "result_path_present": true,
+      "result": {
+        "crs": "EPSG:32617",
+        "stats": {
+          "valid_cells": 51968,
+          "minimum_cells": 1,
+          "maximum_cells": 13358,
+          "working_grid": {
+            "scale": 0.034367029131427036,
+            "cell_size_m": 1.4547813041861255,
+            "source_shape": [
+              5906,
+              7449
+            ],
+            "pixel_area_m2": 2.116388643009484,
+            "working_shape": [
+              203,
+              256
+            ],
+            "smoothing_sigma_cells": 1
+          }
+        },
+        "style": {
+          "max": 631.0,
+          "min": 1.0,
+          "kind": "flow_accumulation",
+          "unit": "celulas a montante",
+          "legend": [
+            {
+              "color": "#fef3c7",
+              "label": "1 celulas · baixa acumulação"
+            },
+            {
+              "color": "#1d4ed8",
+              "label": "631 celulas · alta acumulação"
+            }
+          ],
+          "method": "nearest"
+        },
+        "width": 256,
+        "height": 203,
+        "bbox_sul": 41.30284336907439,
+        "bbox_leste": -81.74992244829566,
+        "bbox_norte": 41.305532201279064,
+        "bbox_oeste": -81.75440172230921,
+        "provenance": {
+          "algorithm": "priority-flood + D8",
+          "source_type": "dtm",
+          "source_ortomapa_id": 72,
+          "parameters": {
+            "hydro_type": "flow_accumulation",
+            "max_dimension": 256,
+            "source_ortomapa_id": 72
+          },
+          "working_grid": {
+            "scale": 0.034367029131427036,
+            "cell_size_m": 1.4547813041861255,
+            "source_shape": [
+              5906,
+              7449
+            ],
+            "pixel_area_m2": 2.116388643009484,
+            "working_shape": [
+              203,
+              256
+            ],
+            "smoothing_sigma_cells": 1
+          }
+        }
+      },
+      "tile_statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "tile_200_count": 25,
+      "map_layer_visible": true,
+      "stats_panel_visible": true
+    },
+    {
+      "type": "twi",
+      "name": "Indice topografico de umidade (TWI)",
+      "analysis_id": 150,
+      "task_id": 32,
+      "post_status": 202,
+      "status": "concluida",
+      "result_path_present": true,
+      "result": {
+        "crs": "EPSG:32617",
+        "stats": {
+          "total_pixels": 51968,
+          "valid_pixels": 41637,
+          "min": -0.6530828475952148,
+          "max": 16.705387115478516,
+          "mean": 4.554564189421292,
+          "median": 4.163067817687988,
+          "std": 2.474774550454864,
+          "working_grid": {
+            "scale": 0.034367029131427036,
+            "cell_size_m": 1.4547813041861255,
+            "source_shape": [
+              5906,
+              7449
+            ],
+            "pixel_area_m2": 2.116388643009484,
+            "working_shape": [
+              203,
+              256
+            ],
+            "smoothing_sigma_cells": 1
+          }
+        },
+        "style": {
+          "max": 11.60168212890625,
+          "min": 0.9216031742095947,
+          "kind": "twi",
+          "unit": "indice topografico",
+          "legend": [
+            {
+              "color": "#b45309",
+              "label": "0.92 Seco"
+            },
+            {
+              "color": "#65a30d",
+              "label": "6.26"
+            },
+            {
+              "color": "#0369a1",
+              "label": "11.60 Umido"
+            }
+          ],
+          "method": "bilinear"
+        },
+        "width": 256,
+        "height": 203,
+        "bbox_sul": 41.30284336907439,
+        "bbox_leste": -81.74992244829566,
+        "bbox_norte": 41.305532201279064,
+        "bbox_oeste": -81.75440172230921,
+        "provenance": {
+          "algorithm": "priority-flood + D8",
+          "source_type": "dtm",
+          "source_ortomapa_id": 72,
+          "parameters": {
+            "hydro_type": "twi",
+            "max_dimension": 256,
+            "source_ortomapa_id": 72
+          },
+          "working_grid": {
+            "scale": 0.034367029131427036,
+            "cell_size_m": 1.4547813041861255,
+            "source_shape": [
+              5906,
+              7449
+            ],
+            "pixel_area_m2": 2.116388643009484,
+            "working_shape": [
+              203,
+              256
+            ],
+            "smoothing_sigma_cells": 1
+          }
+        }
+      },
+      "tile_statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "tile_200_count": 25,
+      "map_layer_visible": true,
+      "stats_panel_visible": true
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "00_login.png",
+      "description": "Tela de login antes de autenticar no Ortomapas."
+    },
+    {
+      "file": "00_projeto_analises.png",
+      "description": "Projeto #88 autenticado, workspace Análises e mapa disponíveis."
+    },
+    {
+      "file": "01_direcao_fluxo_formulario.png",
+      "description": "Formulário preenchido com DTM #72, Direcao de fluxo D8 e execução enfileirada."
+    },
+    {
+      "file": "01_direcao_fluxo_resultado_mapa.png",
+      "description": "Resultado Direcao de fluxo D8 concluído, selecionado e solicitado no mapa."
+    },
+    {
+      "file": "02_acumulacao_fluxo_formulario.png",
+      "description": "Formulário preenchido com DTM #72, Acumulacao de fluxo D8 e execução enfileirada."
+    },
+    {
+      "file": "02_acumulacao_fluxo_resultado_mapa.png",
+      "description": "Resultado Acumulacao de fluxo D8 concluído, selecionado e solicitado no mapa."
+    },
+    {
+      "file": "03_twi_formulario.png",
+      "description": "Formulário preenchido com DTM #72, Indice topografico de umidade (TWI) e execução enfileirada."
+    },
+    {
+      "file": "03_twi_resultado_mapa.png",
+      "description": "Resultado Indice topografico de umidade (TWI) concluído, selecionado e solicitado no mapa."
+    }
+  ],
+  "page_errors": [],
+  "llm_calls": 0,
+  "scope": "Operacoes da fila iniciadas pela interface, sobre o DTM ODM persistido; sem chamar o copiloto/LLM.",
+  "project": {
+    "name": "Aceite NodeODM Aukerman 20261112-163150"
+  },
+  "source": {
+    "id": 72,
+    "type": "dtm",
+    "name": "ODM dtm ad503e1b"
+  },
+  "finished_at": "2026-11-12T15:17:11.143604-03:00"
+}
