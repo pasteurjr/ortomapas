@@ -73,4 +73,53 @@ O resultado estruturado do roteiro está em [fase8_result.json](fase8_result.jso
 - executar o conjunto automatizado Python após disponibilizar pytest no ambiente definido, sem atualizar dependências durante esta rodada;
 - reconciliar cada UC obrigatório com evidência das fases 1–8 e registrar explicitamente exclusões/limitações de dados sintéticos, acurácia e RAG.
 
-**Próxima subetapa:** Fase 8 de 8 — consolidar o roteiro integrado, reexecutar as verificações de processamento/retomada e concluir a matriz final de aceite. Até concluir essa subetapa, o Ortomapas não deve ser declarado operacionalmente aceito em sua totalidade.
+**Próxima subetapa:** Fase 8 de 8 — executar o roteiro ponta a ponta em um novo projeto controlado e concluir a matriz final. Até concluir essa subetapa, o Ortomapas não deve ser declarado operacionalmente aceito em sua totalidade.
+
+## Reexecução integrada sobre produtos persistidos
+
+Depois dos cenários de resiliência, reexecutei os roteiros existentes de mapa 2D/exportação, visualização 3D e auditoria numérica. Eles são somente leitura: os produtos vieram do dataset público ODM Aukerman e permaneceram nos projetos 62 e 64; os dois projetos contêm produtos do mesmo conjunto público, mas **não são um único projeto integrado recém-criado**.
+
+| Ramo | Esperado | Obtido | Evidência |
+|---|---|---|---|
+| Mapa 2D e comparação — projeto 62 | Ortofoto/DSM/DTM com tiles, opacidade e dois modos de comparação | 25/25 tiles HTTP 200; opacidade 45%; deslizador e lado a lado passaram; console JS sem erros na repetição diagnóstica | [Manifesto e capturas](integracao-2d/manifest.json) |
+| Exportação — projeto 62 | GeoTIFF íntegro, CRS e limites preservados | HTTP 200; 93.824.935 bytes; 7.470 × 5.924 px, 4 bandas, EPSG:32617; erro de bounds 0 m e aviso de sucesso na interface | [Captura da exportação](integracao-2d/07_resultado_exportacao_na_interface.png) |
+| Visualizadores — projeto 64/processamento 15 | Abrir GLB, DSM, DTM e LAZ; confrontar dados com fontes | Quatro visualizadores passaram; 264.860 triângulos/56 materiais no GLB; DSM/DTM EPSG:32617; LAZ com 15.953.257 pontos totais e amostra de 119.950; nenhum erro JS | [Manifesto 3D e capturas](integracao-3d/manifest.json) |
+| Análises persistidas | Resultado coerente com cálculo independente e grade/unidades | Auditoria read-only aprovada; detalhes numéricos abaixo | [Manifesto da auditoria](integracao-analises/manifest.json) |
+
+Na primeira repetição 2D, iniciada enquanto o Vite acabava de reconstruir o frontend, o navegador reportou erros Leaflet e chamadas que excederam timeout. Após o HMR estabilizar, uma reexecução diagnóstica do mesmo roteiro concluiu com `browser_errors` vazio e todos os checks aprovados. Foram registrados 19 tiles OSM abortados ao mudar o enquadramento e duas consultas de análises canceladas ao encerrar a página; os 25 tiles do produto e a exportação retornaram com sucesso. Este comportamento deve ser confirmado no roteiro final com a aplicação iniciada de forma estável.
+
+### Resultado numérico independente das análises
+
+- **VARI RGB:** 317 amostras válidas; erro absoluto máximo `1.395e-8`; NDVI sem banda NIR foi rejeitado. A saída de recálculo ficou em diretório temporário.
+- **Declividade:** 204/240 amostras válidas na fonte 47, erro máximo `3.694e-6 graus`; 195/240 na fonte 48, erro máximo `3.265e-6 graus`; grade e EPSG:32617 preservados.
+- **Volume:** saída raster comparada célula a célula à diferença da superfície pela cota de referência de 241 m; erro máximo `0 m`; volumes independentes: 1.457,400 m³ acima e 6.817,207 m³ abaixo.
+- **Curvas:** 1.573 feições persistidas e equidistância de 10 m, com cotas de 220 a 270 m.
+- **Bacia D8:** 1.711 células × 0,529026 m² = 905,164 m², igual ao valor persistido. **Ainda sem referência hidrográfica independente local**, portanto permanece demonstração, não aceite hidrológico operacional.
+- **K-means:** rótulos 1 a 5 e pixels conferidos; **acurácia semântica não avaliada** por falta de rótulos de campo.
+- **Mudança de elevação:** fixture controlada confere sinal, AOI e contas, mas não demonstra detecção temporal entre duas datas reais.
+
+As capturas suplementares da sequência aparecem a seguir. Para a tela da bacia, a geometria é um produto demonstrativo no Parque Aukerman; ela não representa Guarajuba.
+
+### 6. Ortofoto ODM real no mapa 2D
+
+![Ortofoto e extent no mapa 2D](integracao-2d/02_ortofoto_no_mapa_e_enquadramento.png)
+
+### 7. Superfície DSM 3D
+
+![DSM em 3D](integracao-3d/03_dsm_superficie_3d.png)
+
+### 8. Nuvem de pontos LAZ 3D
+
+![Nuvem LAZ em 3D](integracao-3d/05_nuvem_laz_3d.png)
+
+### 9. Produto de bacia D8 exibido no mapa
+
+![Bacia D8 e entradas da análise](../etapa-06/ui_analise_143.png)
+
+## Estado atualizado da Fase 8
+
+**Aprovado:** resiliência F8-01–06; fluxo visual 2D, exportação e controles; visualizadores 3D; rechecagem matemática independente das análises no escopo declarado. Os roteiros repetidos não chamaram o modelo.
+
+**Ainda pendente para aceite final:** não foi criada uma nova missão ODM neste recorte. A evidência de novo projeto e processamento real existe na Fase 3, enquanto a repetição 2D, 3D e auditoria analítica usa os projetos 62 e 64 separadamente. Falta uma sessão única, limpa e reproduzível que percorra o mesmo projeto novo desde imagens/NodeODM até produto, visualização, análise e exportação. Também falta verificar métricas persistentes depois de reiniciar a API/stack e executar pytest no ambiente de automação definido.
+
+**Próxima subetapa: Fase 8 de 8 — aceite ponta a ponta em um novo projeto controlado e reconciliação final da matriz.** Usar o conjunto público Aukerman (identificado como dataset de teste, não Guarajuba), concluir o ciclo ODM e então verificar produto derivado, mapa, análise e exportação no mesmo projeto; fechar o aceite somente após as verificações de retomada/monitoramento.

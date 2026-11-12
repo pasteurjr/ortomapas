@@ -1,0 +1,175 @@
+{
+  "status": "passed",
+  "read_only_database": true,
+  "source_dataset": "ODM Aukerman (ortho/DSM/DTM real); sem fotos de Guarajuba",
+  "analyses": {
+    "63": {
+      "status": "concluida",
+      "type": "volume",
+      "source_id": 34,
+      "output": "data/analises/projetos/62/61b000608a634fdb99142dc82a89f924_volume_1791793148156.tif",
+      "output_bytes": 3158064
+    },
+    "81": {
+      "status": "concluida",
+      "type": "mudancas",
+      "source_id": 35,
+      "output": "data/analises/projetos/62/97b39ce4da9c4be29c8e7d54ddfc9b66_mudanca_elevacao_1791881195435.tif",
+      "output_bytes": 303104
+    },
+    "116": {
+      "status": "concluida",
+      "type": "terreno",
+      "source_id": 47,
+      "output": "data/analises/projetos/64/6375efbcd02142bbbf809f0981bfa144_terreno_slope_1793891725022.tif",
+      "output_bytes": 119652623
+    },
+    "117": {
+      "status": "concluida",
+      "type": "terreno",
+      "source_id": 48,
+      "output": "data/analises/projetos/64/e467c7df5736442f85451943f24612d2_terreno_slope_1793891729930.tif",
+      "output_bytes": 153794630
+    },
+    "120": {
+      "status": "concluida",
+      "type": "classificacao",
+      "source_id": 30,
+      "output": "data/analises/class_queue_120_241d1fd2f8.tif",
+      "output_bytes": 6190012
+    },
+    "130": {
+      "status": "concluida",
+      "type": "terreno",
+      "source_id": 35,
+      "output": "data/analises/projetos/62/queue_slope_130_9a778e39ab.tif",
+      "output_bytes": 125868537
+    },
+    "131": {
+      "status": "concluida",
+      "type": "terreno",
+      "source_id": 35,
+      "output": "data/analises/projetos/62/queue_aspect_131_3b615e7077.tif",
+      "output_bytes": 112806952
+    },
+    "132": {
+      "status": "concluida",
+      "type": "terreno",
+      "source_id": 35,
+      "output": "data/analises/projetos/62/queue_hillshade_132_eb8414e929.tif",
+      "output_bytes": 111453947
+    },
+    "133": {
+      "status": "concluida",
+      "type": "terreno",
+      "source_id": 35,
+      "output": "data/analises/projetos/62/queue_contours_133_89f6ac5b52.geojson",
+      "output_bytes": 14558318
+    },
+    "143": {
+      "status": "concluida",
+      "type": "hidrologia",
+      "source_id": 36,
+      "output": "data/analises/projetos/62/queue_watershed_143_9eaf696e09.tif",
+      "output_bytes": 5221
+    }
+  },
+  "vari_real_rgb_recheck": {
+    "source_id": 46,
+    "width": 7479,
+    "height": 5890,
+    "crs": "EPSG:32617",
+    "bands": 1,
+    "units": "índice RGB adimensional",
+    "valid_formula_samples": 317,
+    "max_abs_error": 1.3950023247666365e-08,
+    "ndvi_without_nir_rejected": true,
+    "output_temporary_only": true
+  },
+  "slope_samples": {
+    "116": {
+      "analysis_id": 116,
+      "source_id": 47,
+      "crs": "EPSG:32617",
+      "units": "graus de inclinação",
+      "valid_samples": 204,
+      "max_abs_error_deg": 3.6939301679694836e-06,
+      "samples": 240,
+      "grid_preserved": true
+    },
+    "117": {
+      "analysis_id": 117,
+      "source_id": 48,
+      "crs": "EPSG:32617",
+      "units": "graus de inclinação",
+      "valid_samples": 195,
+      "max_abs_error_deg": 3.265286437681425e-06,
+      "samples": 240,
+      "grid_preserved": true
+    }
+  },
+  "classification": {
+    "analysis_id": 120,
+    "source_id": 30,
+    "crs": "EPSG:32617",
+    "labels": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "pixel_counts": [
+      9637327,
+      6403886,
+      12676121,
+      4729019,
+      2091733
+    ],
+    "valid_pixels": 35538086,
+    "semantic_class_accuracy": "not assessed; no field labels"
+  },
+  "contours": {
+    "analysis_id": 133,
+    "source_id": 35,
+    "crs_output": "EPSG:4326",
+    "features": 1573,
+    "interval_m": 10,
+    "elevation_values_m": [
+      220.0,
+      230.0,
+      240.0,
+      250.0,
+      260.0,
+      270.0
+    ]
+  },
+  "volume_independent": {
+    "analysis_id": 63,
+    "source_id": 34,
+    "crs": "EPSG:32617",
+    "pixel_area_m2": 0.0024999999999966126,
+    "reference_elevation_m": 241.0,
+    "valid_pixels": 3479162,
+    "volume_above_m3": 1457.4002579478545,
+    "volume_below_m3": 6817.206875143351,
+    "max_abs_pixel_error_m": 0.0,
+    "output_matches_source_minus_plane": true
+  },
+  "hydrology_demonstration": {
+    "analysis_id": 143,
+    "source_id": 36,
+    "cells": 1711,
+    "pixel_area_m2": 0.5290261314651339,
+    "recomputed_area_m2": 905.163710936844,
+    "saved_area_m2": 905.163710936844,
+    "independent_hydrographic_reference": "not found for this extent; not operationally certified"
+  },
+  "change_analysis": {
+    "analysis_id": 81,
+    "before_id": 34,
+    "after_id": 35,
+    "controlled_change_fixture": true,
+    "interpretation": "validates sign, AOI, pixel alignment and volume math; does not prove temporal change detection on two real dates"
+  }
+}

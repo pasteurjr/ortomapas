@@ -40,5 +40,57 @@
     "status": "passed"
   },
   "page_errors": [],
-  "finished_at": "2026-11-12T13:14:57.041399-03:00"
+  "finished_at": "2026-11-12T13:14:57.041399-03:00",
+  "phase_status": "partial_acceptance_withheld",
+  "integrated_rerun": {
+    "llm_calls": 0,
+    "read_only_database": true,
+    "map_2d": {
+      "status": "passed",
+      "project_id": 62,
+      "tiles_successful": 25,
+      "checks": [
+        [
+          "tiles e enquadramento 2D",
+          "PASS"
+        ],
+        [
+          "opacidade",
+          "PASS"
+        ],
+        [
+          "comparação",
+          "PASS"
+        ],
+        [
+          "GeoTIFF export",
+          "PASS"
+        ],
+        [
+          "feedback da exportação",
+          "PASS"
+        ],
+        [
+          "preservar CRS de origem",
+          "PASS"
+        ]
+      ],
+      "browser_errors": []
+    },
+    "viewers_3d": {
+      "status": "passed",
+      "project_id": 64,
+      "processing_id": 15,
+      "browser_errors": []
+    },
+    "analysis_audit": {
+      "status": "passed",
+      "read_only_database": true,
+      "vari_max_abs_error": 1.3950023247666365e-08,
+      "slope_max_abs_error_deg": 3.6939301679694836e-06,
+      "volume_max_abs_pixel_error_m": 0.0,
+      "watershed_reference": "not found for this extent; not operationally certified"
+    },
+    "single_new_project_end_to_end": "pending"
+  }
 }
