@@ -1,0 +1,407 @@
+{
+  "started_at": "2026-11-12T16:31:50.077928+00:00",
+  "ui": "http://127.0.0.1:5176",
+  "api": "http://127.0.0.1:8888",
+  "dataset": "/mnt/data1/progpython/ortomapas/data/odm_test/odm_data_aukerman-master/images",
+  "image_count": 77,
+  "dataset_note": "Imagens públicas Aukerman do ODM; não representam Guarajuba nem voo executado nesta validação.",
+  "project_name": "Aceite NodeODM Aukerman 20261112-163150",
+  "test_user_email": "aceite-odm-20261112-163150@example.test",
+  "flight_name": "Dataset público Aukerman — validação fotogramétrica",
+  "screenshots": [
+    {
+      "file": "01_aplicativo_logado.png",
+      "description": "Login realizado na interface com uma conta de validação recém-criada."
+    },
+    {
+      "file": "02_novo_projeto_preenchido.png",
+      "description": "Formulário de projeto preenchido antes de salvar; a área está identificada como dataset de teste."
+    },
+    {
+      "file": "03_projeto_novo_vazio.png",
+      "description": "Projeto #88 selecionado, ainda sem voos ou ortomapas."
+    },
+    {
+      "file": "04_novo_voo_preenchido.png",
+      "description": "Cadastro do voo de teste com origem do dataset explicitada e 77 fotos esperadas."
+    },
+    {
+      "file": "05_voo_cadastrado.png",
+      "description": "Voo de teste #34 registrado no projeto."
+    },
+    {
+      "file": "06_fotos_selecionadas.png",
+      "description": "As 77 fotografias reais do dataset estão selecionadas; opções completas de reconstrução habilitadas."
+    },
+    {
+      "file": "07_tarefa_nodeodm_enviada.png",
+      "description": "Upload aceito pelo NodeODM; UUID ad503e1b-b88d-55d7-ad2b-6ddcdd78902b."
+    },
+    {
+      "file": "08_processamento_em_andamento.png",
+      "description": "Tarefa real em processamento no NodeODM: etapa None, progresso 0%."
+    },
+    {
+      "file": "09_progresso_25.png",
+      "description": "NodeODM processando; progresso reportado pelo serviço 42%."
+    },
+    {
+      "file": "10_progresso_75.png",
+      "description": "NodeODM processando; progresso reportado pelo serviço 77%."
+    },
+    {
+      "file": "11_processamento_concluido.png",
+      "description": "NodeODM marcou a tarefa como concluída; duração total desde o upload: 27.96 min."
+    },
+    {
+      "file": "12_catalogo_produtos_importados.png",
+      "description": "Catálogo após importação de ortofoto, DSM, DTM, relatório, nuvem de pontos e modelo texturizado, conforme disponibilidade do processamento."
+    },
+    {
+      "file": "13_ortomosaico_no_mapa.png",
+      "description": "Ortomosaico real adicionado ao mapa; tiles carregados: 50."
+    },
+    {
+      "file": "14_modelo_texturizado_3d.png",
+      "description": "Modelo GLB real renderizado em WebGL; rodapé informa métricas de geometria e materiais."
+    }
+  ],
+  "events": [],
+  "project_id": 88,
+  "project_created": true,
+  "voo_id": 34,
+  "flight_created": true,
+  "invalid_upload_test": {
+    "expected_http": 400,
+    "observed_http": 400,
+    "message": "Formato nao suportado: .txt",
+    "processing_count_before": 0,
+    "processing_count_after": 0
+  },
+  "task_id": "ad503e1b-b88d-55d7-ad2b-6ddcdd78902b",
+  "processing_id": 21,
+  "accepted_images": 77,
+  "geotagged_images": 77,
+  "upload_seconds": 2.98,
+  "processing_started_at": "2026-11-12T16:31:56.370194+00:00",
+  "processing_latest": {
+    "status": "concluido",
+    "progress": 100.0,
+    "stage": null,
+    "checked_at": "2026-11-12T16:59:50.742758+00:00"
+  },
+  "processing_terminal": {
+    "status": "concluido",
+    "progress": 100,
+    "stage": null,
+    "duration_minutes": 27.96
+  },
+  "imported_products": [
+    {
+      "id": 52,
+      "tipo": "ortomosaico",
+      "caminho": "ortomapas/odm_21_ortomosaico.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 88.60640239715576
+    },
+    {
+      "id": 53,
+      "tipo": "dsm",
+      "caminho": "ortomapas/odm_21_dsm.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 60.704423904418945
+    },
+    {
+      "id": 54,
+      "tipo": "dtm",
+      "caminho": "ortomapas/odm_21_dtm.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 71.28825855255127
+    },
+    {
+      "id": 55,
+      "tipo": "relatorio",
+      "caminho": "exports/odm_21_relatorio.pdf",
+      "formato": "PDF",
+      "tamanho_arquivo_mb": 15.086278915405273
+    },
+    {
+      "id": 56,
+      "tipo": "nuvem_pontos",
+      "caminho": "exports/odm_21_nuvem_pontos.laz",
+      "formato": "LAZ",
+      "tamanho_arquivo_mb": 56.61606788635254
+    },
+    {
+      "id": 57,
+      "tipo": "modelo_3d",
+      "caminho": "exports/odm_21_modelo_3d.glb",
+      "formato": "GLB",
+      "tamanho_arquivo_mb": 44.829036712646484
+    }
+  ],
+  "product_types": [
+    "dsm",
+    "dtm",
+    "modelo_3d",
+    "nuvem_pontos",
+    "ortomosaico",
+    "relatorio"
+  ],
+  "product_type_coverage": {
+    "dsm": true,
+    "dtm": true,
+    "modelo_3d": true,
+    "nuvem_pontos": true,
+    "ortomosaico": true,
+    "relatorio": true
+  },
+  "ortho_tiles_loaded": 50,
+  "textured_model_state": "loaded",
+  "textured_model_footer": "268.775 triângulos\n59 materiais/texturas\nArraste para orbitar · roda do mouse para aproximar",
+  "outcome": "passed_with_harness_corrections",
+  "resume_screenshots": [
+    {
+      "file": "21_painel_analises_terreno.png",
+      "description": "Painel de análise de terreno e seletores apresentados para o projeto processado."
+    },
+    {
+      "file": "22_analise_declividade_resultado.png",
+      "description": "Declividade calculada sobre o DSM; estatísticas e registro persistido visíveis no projeto."
+    },
+    {
+      "file": "23_declividade_exportada.png",
+      "description": "GeoTIFF da declividade exportado pela ação de download da análise; manifesto inclui metadados e comparação numérica independente."
+    },
+    {
+      "file": "14_modelo_texturizado_3d.png",
+      "description": "Modelo GLB renderizado em WebGL; métricas de malha e materiais visíveis."
+    },
+    {
+      "file": "16_dsm_superficie_3d_corrigida.png",
+      "description": "DSM aberto como superfície 3D."
+    },
+    {
+      "file": "17_dtm_terreno_3d_corrigida.png",
+      "description": "DTM aberto como terreno 3D."
+    },
+    {
+      "file": "18_nuvem_pontos_3d.png",
+      "description": "Nuvem LAZ em 3D; contagem total e quantidade de pontos amostrados visíveis."
+    },
+    {
+      "file": "19_diferenca_dsm_dtm.png",
+      "description": "Diferença DSM–DTM com estatísticas e CRS visíveis."
+    },
+    {
+      "file": "20_qualidade_do_processamento.png",
+      "description": "Resultado da avaliação ODM visível no cartão da tarefa."
+    }
+  ],
+  "quality_text": "Qualidade: 100%\nBOM\nProdutos principais presentes; revisar o relatório ODM para validação final.",
+  "analysis_workspace_active": "Análises",
+  "tool_button_texts": [
+    " Veg",
+    " Ter",
+    " Cls",
+    " Hid",
+    " Mud",
+    " Vol",
+    " Rec",
+    " Exp",
+    "",
+    "Calcular Indice",
+    "Gerar Analise",
+    "Gerar Grupos",
+    "Capturar do Mapa",
+    "Executar",
+    "Comparar Elevacoes",
+    "Calcular Volume",
+    "Desenhar Poligono de Recorte",
+    "",
+    "Recortar",
+    "Exportar"
+  ],
+  "analysis_tab_selects": [
+    "ODM ortomosaico ad503e1b (ortomosaico)",
+    "VARI - Visible Atmospherically Resistant Index",
+    "ODM dsm ad503e1b (dsm)",
+    "Declividade (Slope)",
+    "ODM ortomosaico ad503e1b (ortomosaico)",
+    "K-Means RGB (Nao Supervisionado)",
+    "ODM dtm ad503e1b (dtm)",
+    "Bacias Hidrograficas (Watershed)",
+    "ODM dsm ad503e1b (dsm)",
+    "DSM/DTM posterior...",
+    "ODM dsm ad503e1b (dsm)",
+    "ODM ortomosaico ad503e1b",
+    "Selecionar...",
+    "GeoTIFF",
+    "EPSG:4326 (WGS 84)"
+  ],
+  "analysis_form_text": "FERRAMENTAS DE ANALISE\n Veg\n Ter\n Cls\n Hid\n Mud\n Vol\n Rec\n Exp\nModelo (DSM/DTM)\nODM dsm ad503e1b (dsm)\nAnalise\nDeclividade (Slope)\nLimitar a area\nGerar Analise",
+  "resume_page_errors": [],
+  "slope_result_ui": "Min:\n0.00\nMax:\n89.90\nMedia aritmetica:\n25.93\nGraus. Resultado salvo e publicado.",
+  "slope_analysis_http": 200,
+  "slope_analysis_api": {
+    "http": 200,
+    "total": 1,
+    "analises": [
+      {
+        "id": 144,
+        "ortomapa_id": 71,
+        "projeto_id": 88,
+        "tipo_analise": "terreno",
+        "nome": "Declividade",
+        "input_path": "ortomapas/odm_21_dsm.tif",
+        "result_path": "/mnt/data1/progpython/ortomapas/data/analises/projetos/88/1c41e1b1636c4e7fb2ff23d8e48ab190_terreno_slope_1794503409128.tif",
+        "crs": "EPSG:32617",
+        "stats": {
+          "min": 0.0,
+          "max": 89.89537811279297,
+          "mean": 25.9304581550535,
+          "median": 15.658164978027344,
+          "std": 25.320399702904396
+        },
+        "total_pixels": null,
+        "valid_pixels": null
+      }
+    ]
+  },
+  "slope_export_ui": {
+    "filename": "1c41e1b1636c4e7fb2ff23d8e48ab190_terreno_slope_1794503409128.tif",
+    "saved_file": "declividade_projeto88.tif",
+    "http_download": "browser download event observed",
+    "verification": {
+      "analysis_id": 144,
+      "source": {
+        "width": 7448,
+        "height": 5905,
+        "crs": "EPSG:32617",
+        "bounds": [
+          436847.29000000004,
+          4572650.885,
+          437219.69,
+          4572946.135
+        ],
+        "transform": [
+          0.04999999999999531,
+          0.0,
+          436847.29000000004,
+          0.0,
+          -0.05,
+          4572946.135
+        ]
+      },
+      "export": {
+        "width": 7448,
+        "height": 5905,
+        "count": 1,
+        "dtype": "float32",
+        "crs": "EPSG:32617",
+        "bounds": [
+          436847.29000000004,
+          4572650.885,
+          437219.69,
+          4572946.135
+        ],
+        "nodata": -9999.0,
+        "size_bytes": 126580809
+      },
+      "valid_pixels_compared": 35461895,
+      "max_abs_error_degrees": 0.0,
+      "mean_abs_error_degrees": 0.0,
+      "quality": "passed"
+    }
+  },
+  "product_reconciliation_api": [
+    {
+      "id": 52,
+      "tipo": "ortomosaico",
+      "caminho": "ortomapas/odm_21_ortomosaico.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 88.61
+    },
+    {
+      "id": 53,
+      "tipo": "dsm",
+      "caminho": "ortomapas/odm_21_dsm.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 60.7
+    },
+    {
+      "id": 54,
+      "tipo": "dtm",
+      "caminho": "ortomapas/odm_21_dtm.tif",
+      "formato": "GeoTIFF",
+      "tamanho_arquivo_mb": 71.29
+    },
+    {
+      "id": 55,
+      "tipo": "relatorio",
+      "caminho": "exports/odm_21_relatorio.pdf",
+      "formato": "PDF",
+      "tamanho_arquivo_mb": 15.09
+    },
+    {
+      "id": 56,
+      "tipo": "nuvem_pontos",
+      "caminho": "exports/odm_21_nuvem_pontos.laz",
+      "formato": "LAZ",
+      "tamanho_arquivo_mb": 56.62
+    },
+    {
+      "id": 57,
+      "tipo": "modelo_3d",
+      "caminho": "exports/odm_21_modelo_3d.glb",
+      "formato": "GLB",
+      "tamanho_arquivo_mb": 44.83
+    }
+  ],
+  "initial_harness_failure": {
+    "status": "corrigido na retomada",
+    "cause": "O roteiro tentou fechar o modal GLB com Escape (sem suporte no componente), manteve o canvas sobre a página e rotulou indevidamente a captura seguinte como DSM.",
+    "corrective_action": "Usar o botão explícito title=Fechar e aguardar o modal sair do DOM; ajustar seletores DOM de DSM/DTM, LAZ, diferença e qualidade.",
+    "impact": "Falha de automação/captura, não erro funcional observado. A captura incorreta foi removida; as capturas 16–19 foram refeitas e inspecionadas visualmente."
+  },
+  "ponta_a_ponta_result": {
+    "status": "passed_with_harness_corrections",
+    "project_id": 88,
+    "flight_id": 34,
+    "processing_id": 21,
+    "nodeodm_task_uuid": "ad503e1b-b88d-55d7-ad2b-6ddcdd78902b",
+    "processing_minutes": 27.96,
+    "products_imported": 6,
+    "invalid_upload_rejected_without_task": true,
+    "visual_checks": [
+      "ortomosaico 2D",
+      "modelo GLB",
+      "DSM 3D",
+      "DTM 3D",
+      "nuvem LAZ 3D",
+      "diferença DSM-DTM",
+      "qualidade ODM"
+    ],
+    "quality_ui": "Qualidade: 100%\nBOM\nProdutos principais presentes; revisar o relatório ODM para validação final.",
+    "slope_analysis_id": 144,
+    "slope_export_and_independent_recalculation": "passed",
+    "page_errors": [],
+    "llm_calls": 0
+  },
+  "finished_at": "2026-11-12T17:15:30-03:00",
+  "final_viewer_revalidation": {
+    "status": "passed",
+    "browser_page_errors": [],
+    "checked": [
+      "GLB",
+      "DSM",
+      "DTM",
+      "LAZ",
+      "DSM-DTM",
+      "qualidade"
+    ],
+    "checked_at": "2026-11-12T17:24:13.829481+00:00",
+    "photos_uploaded": false,
+    "nodeodm_processing_submitted": false
+  }
+}

@@ -116,10 +116,71 @@ As capturas suplementares da sequência aparecem a seguir. Para a tela da bacia,
 
 ![Bacia D8 e entradas da análise](../etapa-06/ui_analise_143.png)
 
-## Estado atualizado da Fase 8
+## Aceite integrado em um único projeto novo — F8-07
 
-**Aprovado:** resiliência F8-01–06; fluxo visual 2D, exportação e controles; visualizadores 3D; rechecagem matemática independente das análises no escopo declarado. Os roteiros repetidos não chamaram o modelo.
+**Resultado:** aprovado no escopo do ciclo integrado. Projeto **#88**, voo **#34**, processamento local **#21**, tarefa NodeODM `ad503e1b-b88d-55d7-ad2b-6ddcdd78902b`. O roteiro usou 77 imagens públicas com geotags do dataset Aukerman. São imagens de teste de outra área; não representam Guarajuba, Condomínio Paraíso nem um voo executado pelo usuário. Nenhuma chamada ao LLM foi feita.
 
-**Ainda pendente para aceite final:** não foi criada uma nova missão ODM neste recorte. A evidência de novo projeto e processamento real existe na Fase 3, enquanto a repetição 2D, 3D e auditoria analítica usa os projetos 62 e 64 separadamente. Falta uma sessão única, limpa e reproduzível que percorra o mesmo projeto novo desde imagens/NodeODM até produto, visualização, análise e exportação. Também falta verificar métricas persistentes depois de reiniciar a API/stack e executar pytest no ambiente de automação definido.
+### Esperado versus obtido
 
-**Próxima subetapa: Fase 8 de 8 — aceite ponta a ponta em um novo projeto controlado e reconciliação final da matriz.** Usar o conjunto público Aukerman (identificado como dataset de teste, não Guarajuba), concluir o ciclo ODM e então verificar produto derivado, mapa, análise e exportação no mesmo projeto; fechar o aceite somente após as verificações de retomada/monitoramento.
+| Passo | Esperado | Obtido | Resultado/evidência |
+|---|---|---|---|
+| Criar projeto, voo e enviar imagens | Novo projeto isolado; aceitar fotos válidas e rejeitar arquivo inválido antes de criar tarefa | Projeto #88 e voo #34 criados pela interface; 77 fotos aceitas e georreferenciadas. Arquivo `.txt` recebeu HTTP 400 e contagem de tarefas ficou 0 → 0 | Aprovado; capturas 01–07 |
+| Processamento NodeODM | Tarefa chegar a estado concluído e permitir importar produtos | Concluído em 27,96 min; os seis tipos esperados foram importados: ortomosaico, DSM, DTM, relatório PDF, nuvem LAZ e modelo GLB | Aprovado; capturas 08–12 e manifesto |
+| Mapa e produtos 2D/3D | Abrir cada produto próprio, sem telas repetidas ou modais sobrepostos | Ortofoto no mapa (50 tiles); GLB renderizado (268.775 triângulos, 59 materiais/texturas); DSM e DTM em superfícies distintas; LAZ com 15.889.672 pontos totais e amostra visível de 119.472; comparação DSM–DTM exibiu faixa −14,49 a 41,99 m, média 3,82 m e EPSG:32617 | Aprovado; capturas 13–19, todas inspecionadas |
+| Avaliação de qualidade | Apresentar avaliação e recomendação | 100%, nível “BOM”; o sistema recomenda revisar o relatório ODM | Aprovado para o indicador apresentado; 100% indica completude dos produtos, não acurácia topográfica |
+| Análise no projeto novo | Calcular uma derivada de terreno a partir do DSM, exibir e persistir o resultado | Declividade executada sobre `odm_21_dsm.tif`; análise #144 no projeto #88, EPSG:32617; 44.980.440 pixels totais, 35.461.895 válidos; min 0°, max 89,895°, média 25,930°, mediana 15,658° | Aprovado no cálculo e persistência; captura 22 e manifesto |
+| Exportar e verificar | Baixar GeoTIFF íntegro e confrontar com a fonte | Download iniciado pelo botão da análise. GeoTIFF 7.448 × 5.905, 1 banda float32, EPSG:32617; limites e grade iguais ao DSM. Recálculo independente em todos os 35.461.895 pixels válidos: erro máximo e médio 0° | Aprovado; captura 23 e manifesto numérico |
+
+O raster foi efetivamente baixado e comparado. Seu tamanho é 126.580.809 bytes (SHA-256 `20b92510efcbfeadcb0e47e0b249e0a1447b2a8048e3c7c1e6b8a042e39cc853`). Ele excede o limite de 100 MB por arquivo do GitHub e, por isso, não foi incluído no commit. As capturas, metadados, checksum e comparação numérica ficam no pacote de evidências; o download pode ser reproduzido pelo botão do resultado.
+
+### Inspeção da interface e correção do roteiro
+
+A primeira execução do roteiro parou antes de completar as visualizações porque tentou fechar o modal GLB com `Escape`, que o componente não implementa. O canvas permaneceu sobre os controles e interceptou o clique seguinte. Por esse motivo, uma imagem inicialmente chamada DSM repetia o modelo GLB. Identifiquei isso inspecionando a própria captura, descartei-a e corrigi o roteiro para clicar no botão explícito **Fechar** e aguardar o modal sair do DOM. Também alinhei os seletores do LAZ, da diferença e do botão de qualidade aos componentes efetivos. O roteiro completo corrigido está em [`acceptance_odm_novo_projeto.py`](../../../../tests/e2e/playwright/acceptance_odm_novo_projeto.py), e a repetição somente leitura dos visualizadores, sem novo upload/NodeODM, está em [`resume_odm_acceptance_fase8.py`](../../../../tests/e2e/playwright/resume_odm_acceptance_fase8.py). Essa retomada versionada foi executada: 6 verificações concluídas e `browser_page_errors=[]`.
+
+Na repetição, DSM, DTM, nuvem e diferença produziram capturas distintas; não houve erros JavaScript. A falha identificada era do roteiro de automação e do rótulo de uma captura, não um defeito funcional observado nos visualizadores. O arquivo incorreto foi removido do pacote.
+
+### Capturas do percurso integrado
+
+#### Projeto criado e produtos ODM
+
+![Projeto Aukerman novo no aplicativo](ponta-a-ponta/03_projeto_novo_vazio.png)
+
+![Tarefa ODM concluída](ponta-a-ponta/11_processamento_concluido.png)
+
+![Catálogo com os produtos importados](ponta-a-ponta/12_catalogo_produtos_importados.png)
+
+#### Ortofoto, malha, DSM e DTM
+
+![Ortomosaico do processamento no mapa](ponta-a-ponta/13_ortomosaico_no_mapa.png)
+
+![Modelo texturizado GLB](ponta-a-ponta/14_modelo_texturizado_3d.png)
+
+![Superfície DSM real](ponta-a-ponta/16_dsm_superficie_3d_corrigida.png)
+
+![Terreno DTM real](ponta-a-ponta/17_dtm_terreno_3d_corrigida.png)
+
+#### Nuvem, diferença e análise
+
+![Nuvem de pontos LAZ no visualizador](ponta-a-ponta/18_nuvem_pontos_3d.png)
+
+![Diferença DSM menos DTM](ponta-a-ponta/19_diferenca_dsm_dtm.png)
+
+![Qualidade reportada para o processamento](ponta-a-ponta/20_qualidade_do_processamento.png)
+
+![Declividade calculada sobre o DSM, visível no mapa e na lista de análises](ponta-a-ponta/22_analise_declividade_resultado.png)
+
+![Captura após exportar a análise](ponta-a-ponta/23_declividade_exportada.png)
+
+## Status final da Fase 8
+
+**F8-07 aprovada:** projeto novo → voo → upload válido e negativo → processamento NodeODM → importação dos seis produtos → mapa/visualizadores → avaliação → análise de terreno persistida → exportação GeoTIFF verificada. O fluxo integrado foi realizado em um único projeto. Os produtos fotogramétricos são reais para o dataset público usado; a validação não atesta levantamento de Guarajuba, pontos de controle ou precisão topográfica de campo.
+
+**Aceite operacional global ainda não concluído.** Permanecem duas ações de fechamento, reunidas como **F8-08 — monitoramento, automação e matriz final**:
+
+1. comprovar o comportamento de health/métricas após reinício controlado do backend ou stack. A fotografia consultada nesta sessão foi `/health/metrics`: 3.232 requisições, 0 erros 5xx e latência média acumulada de 319,52 ms; isso não prova retenção após reinício;
+2. disponibilizar `pytest` no ambiente definido (não instalado em `.conda-env`) e executar a suíte automatizada acordada; nenhum pacote foi instalado nesta rodada;
+3. reconciliar os casos de uso obrigatórios contra evidências atuais das fases 1–8 e publicar a decisão de aceite, exclusões e limitações.
+
+A API permaneceu pronta (`database=true`, `language_model=true`) depois que encerrei somente os processos temporários desta sessão; a interface preexistente continuou respondendo HTTP 200. Essa checagem não substitui o ensaio de reinício controlado da instância persistente.
+
+**Próxima etapa: Fase 8 de 8 — subetapa F8-08 (fechamento operacional).** Esperado: observabilidade verificada após reinício, testes automatizados executados e matriz UC reconciliada. Obtido até aqui: readiness saudável, fotografia pontual de métricas e suíte pytest não executada por ausência do pacote. Resultado: pendente; portanto não declaro o Ortomapas integralmente aceito.

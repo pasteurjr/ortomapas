@@ -123,6 +123,8 @@ def main():
         )
         context = browser.new_context(viewport={"width": 1680, "height": 1050}, accept_downloads=True)
         page = context.new_page()
+        browser_page_errors = []
+        page.on("pageerror", lambda error: browser_page_errors.append(str(error)))
         page.set_default_timeout(45_000)
         page.goto(UI, wait_until="domcontentloaded")
 
@@ -309,53 +311,58 @@ def main():
                 raise RuntimeError("Modelo 3D texturizado não foi renderizado: " + (page.locator(".model-view [role=alert]").inner_text() if page.locator(".model-view [role=alert]").count() else mesh_state))
             manifest["textured_model_footer"] = page.locator(".model-view footer").inner_text()
             screenshot(page, "14_modelo_texturizado_3d", manifest, "Modelo GLB real renderizado em WebGL; rodapé informa métricas de geometria e materiais.")
-            page.locator(".model-view button").filter(has_text="Fechar").click() if page.locator(".model-view button").filter(has_text="Fechar").count() else page.keyboard.press("Escape")
+            # This canvas modal does not implement Escape. Close it through its
+            # explicit control and wait before clicking the next product row.
+            page.locator('.model-view button[title="Fechar"]').click()
+            page.locator(".model-view").wait_for(state="detached")
 
         if "dsm" in types:
             task_row.get_by_role("button", name="DSM 3D", exact=True).click()
             page.locator(".surface-view").wait_for(timeout=30_000)
             page.wait_for_timeout(3000)
             screenshot(page, "15_dsm_superficie_3d", manifest, "DSM gerado pelo NodeODM aberto no visualizador de superfície 3D.")
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            page.locator('.surface-view button[title="Fechar"]').click()
+            page.locator(".surface-view").wait_for(state="detached")
         if "dtm" in types:
             task_row.get_by_role("button", name="DTM 3D", exact=True).click()
             page.locator(".surface-view").wait_for(timeout=30_000)
             page.wait_for_timeout(3000)
             screenshot(page, "16_dtm_terreno_3d", manifest, "DTM gerado pelo NodeODM aberto no visualizador de terreno 3D.")
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            page.locator('.surface-view button[title="Fechar"]').click()
+            page.locator(".surface-view").wait_for(state="detached")
         if "nuvem_pontos" in types:
             task_row.get_by_role("button", name="Abrir 3D", exact=True).click()
-            page.locator(".point-cloud-view").wait_for(timeout=30_000)
+            page.locator(".viewer-shell").wait_for(timeout=30_000)
             page.wait_for_timeout(5000)
             screenshot(page, "17_nuvem_pontos_3d", manifest, "Nuvem de pontos fotogramétrica aberta no visualizador 3D.")
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            page.locator('.viewer-shell button[title="Fechar"]').click()
+            page.locator(".viewer-shell").wait_for(state="detached")
         if {"dsm", "dtm"}.issubset(types):
             task_row.get_by_role("button", name="Diferença", exact=True).click()
-            page.locator(".elevation-difference").wait_for(timeout=30_000)
+            page.locator(".diff-view").wait_for(timeout=30_000)
             page.wait_for_timeout(3000)
             screenshot(page, "18_diferenca_dsm_dtm", manifest, "Diferença entre DSM e DTM aberta para comparar superfície e terreno.")
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
-        task_row.get_by_role("button", name="Avaliar qualidade").click()
+            page.locator('.diff-view button[title="Fechar diferenca"]').click()
+            page.locator(".diff-view").wait_for(state="detached")
+        task_row.locator('button[title="Avaliar qualidade"]').click()
         page.locator(".quality-row").wait_for(timeout=30_000)
         manifest["quality_text"] = task_row.locator(".quality-row").inner_text()
         screenshot(page, "19_qualidade_do_processamento", manifest, "Avaliação operacional de qualidade exibida para a tarefa concluída.")
 
         # Run and persist real slope raster via the spatial-analysis UI.
         page.locator(".workspace-sidebar-nav").get_by_text("Análises", exact=True).click()
-        page.get_by_text("Ter", exact=True).click()
+        page.locator(".tools-panel").get_by_text("Ter", exact=True).click()
         page.get_by_role("button", name="Gerar Analise", exact=True).click(timeout=60_000)
-        page.get_by_text("Resultado", exact=True).wait_for(timeout=900_000)
         result_panel = page.locator(".terrain-result")
-        result_panel.wait_for()
+        result_panel.wait_for(timeout=900_000)
         manifest["slope_result_ui"] = result_panel.inner_text()
         manifest["slope_analysis_api"] = api_json(page, "GET", f"{API}/api/analises?projeto_id={project_id}&tipo_analise=terreno")
+        manifest["browser_page_errors"] = browser_page_errors
         screenshot(page, "20_analise_declividade_resultado", manifest, "Declividade calculada sobre o DSM, publicada no mapa e salva no catálogo de análises do projeto.")
         if not manifest["slope_analysis_api"].get("analises"):
             raise RuntimeError("Declividade foi exibida mas não apareceu persistida no catálogo de análises")
+        if browser_page_errors:
+            raise RuntimeError(f"Erros JavaScript durante o aceite integrado: {browser_page_errors}")
 
         manifest.update(finished_at=datetime.now(timezone.utc).isoformat(), outcome="passed")
         save_manifest(manifest)

@@ -91,6 +91,36 @@
       "volume_max_abs_pixel_error_m": 0.0,
       "watershed_reference": "not found for this extent; not operationally certified"
     },
-    "single_new_project_end_to_end": "pending"
-  }
+    "single_new_project_end_to_end": {
+      "status": "passed_with_harness_corrections",
+      "project_id": 88,
+      "flight_id": 34,
+      "processing_id": 21,
+      "nodeodm_task_uuid": "ad503e1b-b88d-55d7-ad2b-6ddcdd78902b",
+      "dataset": "ODM Aukerman public 77-image sample; not Guarajuba",
+      "processing_minutes": 27.96,
+      "product_types": [
+        "ortomosaico",
+        "dsm",
+        "dtm",
+        "relatorio",
+        "nuvem_pontos",
+        "modelo_3d"
+      ],
+      "quality_ui": "100% / BOM; advisory says review ODM report",
+      "slope_analysis_id": 144,
+      "slope_valid_pixels": 35461895,
+      "slope_export": "7448x5905 float32 EPSG:32617",
+      "max_abs_error_deg": 0.0,
+      "mean_abs_error_deg": 0.0,
+      "screenshots": "ponta-a-ponta/manifest.json",
+      "llm_calls": 0,
+      "notes": "Initial Playwright harness failure corrected; incorrectly labeled screenshot discarded; browser page_errors empty on successful resume."
+    }
+  },
+  "remaining_f8_items": [
+    "Restart/persistence verification for monitoring metrics",
+    "Pytest suite execution after pytest becomes available in the designated automation environment",
+    "Final use-case matrix reconciliation and acceptance decision"
+  ]
 }
