@@ -34,7 +34,7 @@ services:
     container_name: ortomapas-grafana
     network_mode: host
     environment:
-      - GF_SERVER_HTTP_PORT=3010
+      - GF_SERVER_HTTP_PORT=3011
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Defina GRAFANA_ADMIN_PASSWORD no ambiente}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_AUTH_ANONYMOUS_ENABLED=false

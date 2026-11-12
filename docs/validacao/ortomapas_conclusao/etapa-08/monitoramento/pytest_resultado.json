@@ -1,0 +1,12 @@
+{
+  "executed_at": "2026-11-12",
+  "command": "ORTOMAPAS_DB_INTEGRATION=0 ./.conda-env/bin/python -m pytest -q -o faulthandler_timeout=60 tests/test_*.py",
+  "exit_code": 0,
+  "passed": 144,
+  "skipped": 1,
+  "warnings": 1883,
+  "duration_seconds": 3.59,
+  "skipped_test": "tests/test_clip_export_http.py::test_real_project_crop_reopen_and_export",
+  "skip_reason": "Requer integração com projeto/banco real; desativada para não alterar o banco ativo.",
+  "llm_calls": 0
+}

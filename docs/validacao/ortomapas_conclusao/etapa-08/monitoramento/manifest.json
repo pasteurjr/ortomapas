@@ -1,0 +1,8 @@
+{
+  "url": "http://127.0.0.1:3011/d/ortomapas-operacional/ortomapas-operacional",
+  "dashboard_title": "Ortomapas - Operacional",
+  "screenshot": "01_dashboard_prometheus.png",
+  "page_errors": [],
+  "text_excerpt": "Skip to main content\nSearch or jump to...\nctrl+k\nHome\nDashboards\nOrtomapas\nOrtomapas - Operacional\nAdd\nShare\nLast 15 minutes\nHome\nStarred\nDashboards\nExplore\nAlerting\nConnections\nAdministration\nRequisições totais\n3321\nErros\n0\nLatência média (ms)\n313\nRespostas por status\n200\n201\n202\n400\n401\n404\n422\nTaxa de requisições\nrequests/s",
+  "captured_at": "2026-11-12T14:31:58-0300"
+}

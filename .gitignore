@@ -28,6 +28,8 @@ htmlcov/
 venv/
 env/
 ENV/
+.conda-env/
+.conda-pkgs/
 .ipynb_checkpoints/
 
 # ============================================
