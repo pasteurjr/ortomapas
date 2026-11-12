@@ -1,0 +1,148 @@
+{
+  "generated_at": "2026-11-12T19:23:48.391448-03:00",
+  "project_id": 89,
+  "before_product_id": 73,
+  "after_product_id": 74,
+  "user_id": 60,
+  "ui": {
+    "project": "Validacao UC-009 RGB 20261112T221838Z",
+    "before_selector": "Indice de VegetacaoVARI - Visible Atmospherically Resistant Index",
+    "after_selector": "Modelo (DSM/DTM)Selecionar...",
+    "threshold_control": "AnaliseDeclividade (Slope)",
+    "statistics": [
+      "Pixels válidos:\n262.144",
+      "Pixels alterados:\n10.000",
+      "Área alterada:\n25 m²",
+      "Percentual alterado:\n3.81%"
+    ]
+  },
+  "expected": {
+    "changed_pixels": 10000,
+    "changed_area_m2": 24.996885224499582,
+    "known_patch": {
+      "rows": [
+        200,
+        300
+      ],
+      "columns": [
+        200,
+        300
+      ]
+    },
+    "threshold_normalized": 0.15
+  },
+  "result_tile_images_loaded": 50,
+  "api_responses": [
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/tools/changes/ortomosaicos"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile-access"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71540/97988.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71539/97989.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71540/97989.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71541/97989.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71540/97990.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71541/97988.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71539/97988.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71541/97991.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71539/97990.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71542/97988.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71542/97987.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71538/97988.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71541/97987.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71542/97989.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71542/97990.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71540/97987.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71541/97990.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71540/97991.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71538/97987.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71538/97991.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71538/97989.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71539/97991.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71538/97990.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71542/97991.png"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5176/api/analises/161/tile/18/71539/97987.png"
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "llm_calls": 0
+}

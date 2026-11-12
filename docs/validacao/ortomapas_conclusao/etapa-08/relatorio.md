@@ -446,4 +446,45 @@ O gráfico mostra trechos coincidentes e divergentes; a tabela e o [JSON integra
 
 **Artefatos:** [DEM 3DEP](../etapa-09/referencias/3dep_aukerman_dem_context.tif), [3DHP consultado](../etapa-09/referencias/3dhp_flowlines_aukerman_context.geojson), [linhas recortadas](../etapa-09/referencias/3dhp_flowlines_3dep_clip.geojson), [manifesto](../etapa-09/referencias/3dep_3dhp_benchmark_metadata.json), [script](../../../../scripts/validate_hydro_3dep_9_5.py), [métricas](../etapa-09/referencias/benchmark_3dep_3dhp_d8.json) e [mapa](../etapa-09/referencias/benchmark_3dep_3dhp_d8.png).
 
-**Próxima subetapa 9.6 de 9:** validar UC-009 (mudança entre dois produtos) com dois ortomosaicos distintos, compatibilidade espacial/resolução documentada e região de mudança conhecida; conferir a máscara/área calculada e a tela de resultado. Depois, subetapa 9.7 cobre UC-024/UC-029 (cancelamento/retomada e reprocessamento versionado); 9.8 revê critérios científicos do UC-026; 9.9 fecha UC-011/UC-020 e a matriz global. O UC-010 já tem evidência de execução K-Means RGB referenciada na matriz. Aceite global continua retido.
+**Registro histórico:** a próxima subetapa era 9.6. Ela foi executada no complemento abaixo. Nesta numeração, “9/9” identifica a fase macro final; 9.1 a 9.9 são suas subetapas. Após a 9.6, permanecem 9.7, 9.8 e 9.9 (três subetapas). O UC-010 já tem evidência de execução K-Means RGB referenciada na matriz. Aceite global continua retido.
+
+## Fase macro 9/9 — subetapa 9.6: comparação RGB do UC-009
+
+**Data:** 12/11/2026. **Caso de uso:** UC-009 — Detectar Mudanças Entre Dois Ortomapas. **Escopo:** correção e validação funcional da comparação de imagens RGB, incluindo alinhamento, máscara de validade, limiar, cálculo de área, persistência e visualização no mapa.
+
+### O que a etapa encontrou e corrigiu
+
+O UC-009 especifica comparação entre ortomapas, mas a aba “Mud” da aplicação oferecia apenas diferença de elevação DSM/DTM. A rota antiga de mudança não estava integrada ao formulário e à camada visual. A interface agora oferece dois modos distintos: mudança RGB entre ortomosaicos e diferença altimétrica entre DSM/DTM. O modo RGB permite escolher os produtos anterior e posterior, definir limiar normalizado de 0 a 1, executar, visualizar a máscara e consultar estatísticas; análise e comparação ficam persistidas no projeto.
+
+Durante a validação, um teste conhecido mostrou que a banda alpha de GeoTIFF RGBA estava sendo contada como banda de conteúdo e distorcia o resultado. O alinhamento foi corrigido para usar apenas RGB e combinar as máscaras válidas dos dois rasters. Também foram corrigidos o uso de CRS para detectar unidade projetada e o retorno da rota que deveria separar os dados da análise e o ID da comparação. O teste de unidade e o fluxo final foram executados após essas correções.
+
+### Dados e procedimento
+
+- O projeto isolado de validação é o **#89**; os produtos RGB anterior/posterior são **#73** e **#74**. Foram criados a partir de um recorte de 512 × 512 pixels do ortomosaico real produzido pelo ODM, produto **#70**. Os arquivos têm EPSG:32617, grade coincidente e pixels de aproximadamente 0,05 m.
+- Para conhecer a resposta esperada sem ambiguidade, a segunda imagem é uma cópia do recorte com os valores RGB invertidos somente numa janela de 100 × 100 pixels (linhas 200–299, colunas 200–299). A banda alpha e a máscara são mantidas. Assim, o teste verifica o algoritmo e a interface com uma alteração sintética conhecida, não representa duas datas/campanhas de voo reais.
+- A interface executou o endpoint autenticado com limiar `0,15` (equivalente a `38,25` níveis na banda uint8), mostrou a máscara como camada de análise e registrou análise **#161** e comparação **#11** no PostgreSQL do Ortomapas. Uma consulta somente leitura confirmou os dois registros associados ao projeto #89 e aos produtos #73/#74.
+- O roteiro reproduzível é [validate_uc009_rgb_phase9.py](../../../../tests/e2e/playwright/validate_uc009_rgb_phase9.py); os dados podem ser recriados por [seed_uc009_change_fixture.py](../../../../scripts/seed_uc009_change_fixture.py), desde que o produto ODM #70 esteja disponível localmente. O manifesto da execução registra IDs, respostas HTTP, controles e erros do navegador.
+
+### Esperado versus obtido
+
+| Critério | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Seleção de entradas | Dois produtos RGB do mesmo projeto e formulário próprio | Projeto #89; produtos #73 e #74 aparecem selecionados como anterior e posterior | Aprovado |
+| Região conhecida | Detectar somente os 10.000 pixels RGB alterados; ignorar alpha/nodata | 10.000 pixels alterados de 262.144 válidos; teste dedicado RGBA passou | Aprovado para fixture controlada |
+| Área | 10.000 × 0,00249969 m² = 24,9969 m² | API e interface apresentam 25 m² (arredondamento); 3,81% dos pixels válidos | Aprovado dentro do arredondamento |
+| Mapa e legenda | Máscara visível sobre mapa, sem alteração representada como transparente | Captura mostra o patch de mudança em vermelho, legenda e camada persistida | Aprovado visualmente |
+| Persistência | Salvar resultado e relação entre produtos | análise #161 (mudanças, concluída) e comparação #11 (projeto #89, produtos #73/#74) | Aprovado |
+| Robustez do navegador/rota | HTTP 200, sem exceção JS; nenhum LLM necessário | Rota RGB e tiles retornaram 200; 50 tiles carregados; `page_errors=[]`, `console_errors=[]`, `llm_calls=0` | Aprovado no fluxo executado |
+
+### Evidências Playwright
+
+1. [Projeto com os dois ortomosaicos de teste](../etapa-09/playwright/uc009_rgb/01_projeto_com_dois_ortomosaicos.png)
+2. [Formulário, escolha antes/depois e limiar](../etapa-09/playwright/uc009_rgb/02_uc009_formulario_antes_depois_limiar.png)
+3. [Máscara RGB no mapa, legenda e estatísticas](../etapa-09/playwright/uc009_rgb/03_uc009_mascara_rgb_e_resultado.png)
+4. [Manifesto com valores esperados, IDs e respostas](../etapa-09/playwright/uc009_rgb/manifest.json)
+
+### Conclusão e limite
+
+**Aprovado funcionalmente para comparação RGB determinística:** o sistema detectou o patch conhecido, calculou sua área, exibiu a camada e persistiu a comparação. A etapa corrige a lacuna entre o UC-009 e a antiga interface que só comparava elevação. **O UC-009 ainda não está aprovado para uso temporal operacional:** o ensaio posterior é sintético, derivado do mesmo voo/ortomosaico; não mede variações reais de iluminação, estação, alinhamento residual, vegetação ou mudanças semânticas. Para essa alegação será necessário comparar capturas independentes de datas distintas e estabelecer um limiar/critério de aceite adequado.
+
+**Próxima subetapa 9.7 de 9 — UC-024/UC-029:** testar cancelamento, retomada e reprocessamento versionado com execução persistida; verificar transições de estado, idempotência, ausência de duplicidade, versões e recuperação observável. Restarão então 9.8 (revisão de critérios científicos do UC-026) e 9.9 (fechamento UC-011/UC-020 e matriz global). Portanto, 9.6 é a sexta subetapa da fase macro 9/9, não a última.

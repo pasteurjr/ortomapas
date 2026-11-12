@@ -9,6 +9,7 @@ import logging
 
 import numpy as np
 import rasterio
+from rasterio.enums import ColorInterp
 from rasterio.warp import reproject, Resampling, calculate_default_transform
 
 from backend.tools.raster_analysis import calc_vegetation_index
@@ -29,20 +30,41 @@ def _align_rasters(path1: str, path2: str):
         (data1: ndarray[bands,h,w], data2: ndarray[bands,h,w], profile: dict)
     """
     with rasterio.open(path1) as src1:
-        data1 = src1.read().astype(np.float64)
+        indexes1 = [index + 1 for index, color in enumerate(src1.colorinterp) if color != ColorInterp.alpha]
+        if len(indexes1) >= 3:
+            indexes1 = indexes1[:3]
+        if not indexes1:
+            indexes1 = list(range(1, src1.count + 1))
+        data1 = src1.read(indexes=indexes1).astype(np.float64)
         profile = src1.profile.copy()
         dst_crs = src1.crs
         dst_transform = src1.transform
         dst_width = src1.width
         dst_height = src1.height
-        nodata1 = src1.nodata
+        valid1 = src1.dataset_mask() > 0
 
     with rasterio.open(path2) as src2:
-        n_bands = min(data1.shape[0], src2.count)
-        data2 = np.empty((n_bands, dst_height, dst_width), dtype=np.float64)
+        indexes2 = [index + 1 for index, color in enumerate(src2.colorinterp) if color != ColorInterp.alpha]
+        if len(indexes2) >= 3:
+            indexes2 = indexes2[:3]
+        if not indexes2:
+            indexes2 = list(range(1, src2.count + 1))
+        n_bands = min(data1.shape[0], len(indexes2))
+        data1 = data1[:n_bands]
+        data2 = np.zeros((n_bands, dst_height, dst_width), dtype=np.float64)
+        valid2 = np.zeros((dst_height, dst_width), dtype=np.uint8)
+        source_valid = (src2.dataset_mask() > 0).astype(np.uint8)
+        if (src2.crs == dst_crs and src2.transform == dst_transform
+                and src2.width == dst_width and src2.height == dst_height):
+            valid2 = source_valid
+        else:
+            reproject(source=source_valid, destination=valid2,
+                      src_transform=src2.transform, src_crs=src2.crs,
+                      dst_transform=dst_transform, dst_crs=dst_crs,
+                      resampling=Resampling.nearest, src_nodata=0, dst_nodata=0)
 
-        for band_idx in range(n_bands):
-            band_data = src2.read(band_idx + 1).astype(np.float64)
+        for band_idx, source_band in enumerate(indexes2[:n_bands]):
+            band_data = src2.read(source_band).astype(np.float64)
             if (
                 src2.crs == dst_crs
                 and src2.transform == dst_transform
@@ -59,11 +81,12 @@ def _align_rasters(path1: str, path2: str):
                     dst_transform=dst_transform,
                     dst_crs=dst_crs,
                     resampling=Resampling.bilinear,
+                    src_nodata=src2.nodata,
+                    dst_nodata=0,
                 )
 
-    # Trim to common band count
-    data1 = data1[:n_bands]
-    return data1, data2, profile
+    valid = valid1 & (valid2 > 0) & np.isfinite(data1).all(axis=0) & np.isfinite(data2).all(axis=0)
+    return data1, data2, profile, valid
 
 
 def detect_changes(
@@ -95,18 +118,19 @@ def detect_changes(
     str
         output_path on success.
     """
-    data1, data2, profile = _align_rasters(raster1_path, raster2_path)
+    data1, data2, profile, valid = _align_rasters(raster1_path, raster2_path)
 
     # Per-band absolute difference, then mean across bands
     diff = np.mean(np.abs(data2 - data1), axis=0)
 
     # Binary mask
-    change_mask = np.where(diff > threshold, 255, 0).astype(np.uint8)
+    change_mask = np.where(valid & (diff > threshold), 255, 0).astype(np.uint8)
 
     profile.update(dtype=rasterio.uint8, count=1, compress="lzw", nodata=None)
 
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(change_mask, 1)
+        dst.write_mask(valid.astype(np.uint8) * 255)
 
     logger.info("Change detection map written to %s", output_path)
     return output_path
@@ -224,15 +248,14 @@ def change_statistics(change_map_path: str) -> dict:
     with rasterio.open(change_map_path) as src:
         data = src.read(1)
         transform = src.transform
+        valid_mask = src.dataset_mask() > 0
         nodata = src.nodata
 
-    # Pixel area in map units (assumed metres)
-    pixel_area_m2 = abs(transform.a * transform.e)
+    # Pixel area from the affine determinant (correct for rotated grids too).
+    pixel_area_m2 = abs(transform.a * transform.e - transform.b * transform.d)
 
     if nodata is not None:
-        valid_mask = data != nodata
-    else:
-        valid_mask = np.ones_like(data, dtype=bool)
+        valid_mask &= data != nodata
 
     valid_data = data[valid_mask]
     total_pixels = int(valid_data.size)

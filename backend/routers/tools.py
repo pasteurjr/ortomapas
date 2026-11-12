@@ -111,6 +111,15 @@ class ChangeDetectionRequest(BaseModel):
     output_name: str
     threshold: float = 30.0
 
+class OrthomosaicChangeRequest(BaseModel):
+    raster1_path: str
+    raster2_path: str
+    output_name: str
+    ortomapa_antes_id: int
+    ortomapa_depois_id: int
+    projeto_id: int
+    threshold: float = Field(default=0.15, ge=0, le=1, allow_inf_nan=False)
+
 class ClassifyRequest(BaseModel):
     ortomapa_path: str
     algorithm: str = "kmeans"
@@ -440,6 +449,54 @@ async def detect_changes(req: ChangeDetectionRequest):
         return {"status": "success", "output_path": output, "statistics": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/changes/ortomosaicos")
+async def detect_orthomosaic_changes(req: OrthomosaicChangeRequest):
+    """Compare two authorized RGB orthomosaics and persist a map-ready result."""
+    from pyproj import CRS
+    from rasterio.warp import transform_bounds
+    from shapely.geometry import box
+    from backend.utils.analysis_products import image_comparison_sources, publish_rgb_change
+    try:
+        before, after = image_comparison_sources(req)
+        first = _resolve_path(req.raster1_path)
+        second = _resolve_path(req.raster2_path)
+        with rasterio.open(first) as raster1, rasterio.open(second) as raster2:
+            if min(raster1.count, raster2.count) < 3:
+                raise HTTPException(status_code=422, detail="Os dois ortomosaicos precisam ter ao menos três bandas RGB")
+            crs1 = CRS.from_user_input(raster1.crs) if raster1.crs else None
+            crs2 = CRS.from_user_input(raster2.crs) if raster2.crs else None
+            if not crs1 or not crs2 or not crs1.is_projected or not crs2.is_projected:
+                raise HTTPException(status_code=422, detail="Os ortomosaicos precisam usar CRS projetado")
+            for crs in (crs1, crs2):
+                if not crs.axis_info or abs(float(crs.axis_info[0].unit_conversion_factor) - 1.0) > 1e-9:
+                    raise HTTPException(status_code=422, detail="O CRS deve usar metros para calcular a área alterada")
+            bounds1 = transform_bounds(crs1, "EPSG:4326", *raster1.bounds)
+            bounds2 = transform_bounds(crs2, "EPSG:4326", *raster2.bounds)
+            if not box(*bounds1).intersection(box(*bounds2)).area:
+                raise HTTPException(status_code=422, detail="Os ortomosaicos não possuem área de sobreposição")
+            sample = raster1.read((1, 2, 3), out_shape=(3, min(512, raster1.height), min(512, raster1.width)))
+            if raster1.dtypes[0].startswith("uint") or raster1.dtypes[0].startswith("int"):
+                import numpy as np
+                scale = float(np.iinfo(raster1.dtypes[0]).max)
+            else:
+                scale = 1.0 if float(sample.max(initial=0)) <= 1.0 else 255.0
+
+        output = _output_path(req.output_name)
+        raw_threshold = req.threshold * scale
+        change_detection.detect_changes(first, second, output, threshold=raw_threshold)
+        statistics = raster_analysis.raster_statistics(output)
+        statistics["band_1"].update(change_detection.change_statistics(output))
+        analysis, comparison_id = publish_rgb_change(before, after, output, statistics, req.model_dump(), raw_threshold)
+        return {"status": "success", "output_path": output, "statistics": statistics["band_1"],
+                "analise": analysis, "comparacao_id": comparison_id}
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        logger.exception("RGB orthomosaic change detection failed")
+        raise HTTPException(status_code=500, detail="Falha ao comparar os ortomosaicos") from exc
 
 @router.post("/classify")
 async def classify_raster(req: ClassifyRequest):

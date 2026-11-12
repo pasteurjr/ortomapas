@@ -266,6 +266,34 @@ def comparison_sources(request):
     return before,after
 
 
+def image_comparison_sources(request):
+    """Resolve an ordered pair of RGB products in the active project."""
+    if request.ortomapa_antes_id == request.ortomapa_depois_id:
+        raise HTTPException(status_code=422, detail='Selecione dois ortomosaicos distintos')
+    context=tool_context.get()
+    if not context or request.projeto_id != context[1]:
+        raise HTTPException(status_code=403, detail='Contexto do projeto invalido')
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('SELECT * FROM ortomapas WHERE id IN (%s,%s)',
+                    (request.ortomapa_antes_id,request.ortomapa_depois_id))
+        rows={row['id']:row for row in cur.fetchall()}
+    before=rows.get(request.ortomapa_antes_id);after=rows.get(request.ortomapa_depois_id)
+    if not before or not after:
+        raise HTTPException(status_code=404, detail='Ortomosaico anterior ou posterior nao encontrado')
+    if before['projeto_id'] != context[1] or after['projeto_id'] != context[1]:
+        raise HTTPException(status_code=403, detail='Os ortomosaicos devem pertencer ao projeto ativo')
+    allowed={'ortomosaico','rgb','multispectral'}
+    before_type=str(before['tipo']).lower();after_type=str(after['tipo']).lower()
+    if before_type not in allowed or after_type not in allowed:
+        raise HTTPException(status_code=422, detail='Selecione apenas ortomosaicos RGB ou multiespectrais')
+    if before_type != after_type:
+        raise HTTPException(status_code=422, detail='Compare produtos do mesmo tipo')
+    if data_path(before['caminho_arquivo']) != data_path(request.raster1_path) or data_path(after['caminho_arquivo']) != data_path(request.raster2_path):
+        raise HTTPException(status_code=422, detail='Os arquivos nao correspondem aos ortomosaicos selecionados')
+    return before,after
+
+
 def publish_elevation_change(before, after, output, statistics, parameters, aoi=None):
     """Publish a temporal terrain difference and its catalog record atomically."""
     path=data_path(output)
@@ -306,6 +334,42 @@ def publish_elevation_change(before, after, output, statistics, parameters, aoi=
             (after['projeto_id'],before['id'],after['id'],before_date,after_date,str(path),Json(metadata['stats']),
              'Diferenca depois - antes; positivo indica deposicao, negativo indica remocao'))
         comparison_id=cur.fetchone()['id'];conn.commit()
+    return serialize_analysis(analysis),comparison_id
+
+
+def publish_rgb_change(before, after, output, statistics, parameters, raw_threshold):
+    """Persist a binary RGB change mask and its temporal comparison record."""
+    path=data_path(output)
+    style={'kind':'change_mask','unit':'mudanca RGB','method':'nearest','min':0,'max':255,
+           'threshold':parameters['threshold'],'legend':[
+               {'label':'Sem mudanca (transparente)','color':'#9ca3af'},
+               {'label':'Mudanca RGB acima do limiar','color':'#dc2626'}]}
+    with rasterio.open(path) as ds:
+        west,south,east,north=transform_bounds(ds.crs,4326,*ds.bounds)
+        metadata={'crs':str(ds.crs),'width':ds.width,'height':ds.height,
+                  'bbox_oeste':west,'bbox_sul':south,'bbox_leste':east,'bbox_norte':north,
+                  'style':style,'stats':statistics['band_1'],
+                  'provenance':{'source_before_id':before['id'],'source_after_id':after['id'],
+                      'source_before_path':before['caminho_arquivo'],'source_after_path':after['caminho_arquivo'],
+                      'operation':'mean absolute visible-band difference','alignment':'after reprojected to before grid',
+                      'threshold_normalized':parameters['threshold'],'threshold_source_value':raw_threshold,
+                      'bands':'R=1,G=2,B=3; alpha used as a validity mask',
+                      'scope':'common valid pixels','created_by':tool_context.get()[0]}}
+    before_date=before.get('data_processamento') or before.get('criado_em')
+    after_date=after.get('data_processamento') or after.get('criado_em')
+    with get_connection() as conn:
+        cur=conn.cursor(dictionary=True)
+        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,'mudancas',%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+            (after['id'],after['projeto_id'],'Mudanca RGB entre ortomosaicos',Json(parameters),str(path),Json(metadata)))
+        analysis=dict(cur.fetchone())
+        cur.execute('''INSERT INTO comparacoes_temporais (projeto_id,ortomapa_antes_id,ortomapa_depois_id,
+            data_antes,data_depois,tipo_comparacao,resultado_path,estatisticas,observacoes)
+            VALUES (%s,%s,%s,COALESCE(%s,now()),COALESCE(%s,now()),'ortomosaico_rgb',%s,%s,%s) RETURNING id''',
+            (after['projeto_id'],before['id'],after['id'],before_date,after_date,str(path),
+             Json(metadata['stats']),'Diferenca media absoluta RGB com mascara das bandas alpha e pixels validos.'))
+        comparison_id=cur.fetchone()['id']
+        conn.commit()
     return serialize_analysis(analysis),comparison_id
 
 
@@ -419,6 +483,9 @@ def colorize(values, valid, style):
         palette=np.array([[int(color[i:i+2],16) for i in (1,3,5)] for color in style['colors']],dtype=np.uint8)
         indexes=np.clip(np.rint(values).astype(int)-1,0,len(palette)-1)
         rgb=palette[indexes]
+    elif style['kind']=='change_mask':
+        rgb=np.zeros((*values.shape,3),dtype=np.uint8);rgb[:]=[220,38,38]
+        valid=valid & (values>0)
     elif style['kind']=='watershed':
         rgb=np.zeros((*values.shape,3),dtype=np.uint8);rgb[:]=[37,99,235]
     elif style['kind']=='twi':
