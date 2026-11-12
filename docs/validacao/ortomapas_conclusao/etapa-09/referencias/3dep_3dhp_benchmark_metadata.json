@@ -1,0 +1,43 @@
+{
+  "retrieved_on": "2026-11-12",
+  "dem_source": {
+    "program": "USGS 3D Elevation Program (3DEP)",
+    "service": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+    "operation": "exportImage",
+    "requested_bbox_wgs84": [-81.79, 41.284, -81.718, 41.324],
+    "requested_size_pixels": [256, 160],
+    "returned_crs": "EPSG:4326",
+    "returned_bounds_wgs84": [-81.79, 41.2815, -81.718, 41.3265],
+    "returned_dimensions": [256, 160],
+    "returned_cell_degrees": [0.00028125, 0.00028125],
+    "local_working_crs": "EPSG:32617",
+    "local_working_grid": [234, 195],
+    "local_cell_size_m": 25.933359422689975,
+    "file": "3dep_aukerman_dem_context.tif",
+    "note": "Dynamic image-service extract resampled to request dimensions; working-grid size is recorded and must not be confused with native lidar resolution."
+  },
+  "hydrography_source": {
+    "program": "USGS 3D Hydrography Program (3DHP)",
+    "service_layer": "https://3dhp.nationalmap.gov/arcgis/rest/services/usgs_3dhp_all/FeatureServer/50",
+    "query_operation": "https://3dhp.nationalmap.gov/arcgis/rest/services/usgs_3dhp_all/FeatureServer/50/query",
+    "query_bbox_wgs84": [-81.79, 41.2815, -81.718, 41.3265],
+    "query_parameters": {"where": "1=1", "geometry_type": "esriGeometryEnvelope", "spatial_relation": "esriSpatialRelIntersects", "out_fields": "*", "return_geometry": true, "out_sr": 4326, "format": "GeoJSON"},
+    "response_file": "3dhp_flowlines_aukerman_context.geojson",
+    "features_returned_and_clipped_to_dem": 98,
+    "featuretype_counts": {"1": 75, "4": 4, "5": 19},
+    "featuretype_1_label_observed": "Channel Line",
+    "featuretype_1_with_stream_order": 71,
+    "stream_orders_with_values": [1, 2, 3, 4],
+    "unpairable_type_1_features_missing_order": 4
+  },
+  "algorithm": "Application backend.tools.hydrology pipeline: prepare_dem, priority-flood fill_sinks, D8 flow_direction, flow_accumulation, extract_stream_lines.",
+  "threshold_sensitivity_m2": [10000, 50000, 100000],
+  "comparison_tolerances_m": [25, 50, 100],
+  "rights_and_limits": "USGS public datasets are U.S. Government data; retain USGS attribution and inspect current product/service terms. 3DHP is mapped hydrography, not field truth. These outputs are a reproducible engineering benchmark, not site-specific regulatory or survey-grade certification.",
+  "official_references": [
+    "https://www.usgs.gov/news/technical-announcement/new-elevation-map-service-available-usgs-3d-elevation-program",
+    "https://www.usgs.gov/3d-hydrography-program/access-3dhp-data-products",
+    "https://www.usgs.gov/ngp-standards-and-specifications/3d-hydrography-program-3dhpall-flowline",
+    "https://www.usgs.gov/3d-hydrography-program/3dhp-flow-network-derivatives"
+  ]
+}

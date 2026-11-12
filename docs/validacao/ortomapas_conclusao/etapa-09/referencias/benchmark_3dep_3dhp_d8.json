@@ -1,0 +1,610 @@
+{
+  "generated_at": "2026-11-12T15:56:22.850112-03:00",
+  "scope": "independent public-data benchmark; not ODM project 88 / DTM 72; no application database writes",
+  "algorithm": "backend.tools.hydrology: prepare_dem -> priority-flood fill_sinks -> flow_direction D8 -> flow_accumulation -> extract_stream_lines",
+  "dem_input": {
+    "path": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/3dep_aukerman_dem_context.tif",
+    "sha256": "022660592424456a1613802c9168c3d5ba017d675f9eaecdb0f9a71608427fa7",
+    "source_service": "USGS 3DEP Elevation ImageServer",
+    "source_crs": "EPSG:4326",
+    "reference_input": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/3dhp_flowlines_aukerman_context.geojson",
+    "reference_sha256": "2bb2e00150118be81ff7c0cb72538224956884e1941738ace8d4be20a082a752",
+    "features_returned": 98,
+    "features_in_dem": 98,
+    "features_in_dem_by_type": {
+      "1": 75,
+      "4": 4,
+      "5": 19
+    },
+    "river_type1_features_in_dem": 75,
+    "river_type1_features_with_order": 71,
+    "river_type1_features_without_order": 4,
+    "river_orders_in_dem": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "dem_working_grid": {
+    "crs": "EPSG:32617",
+    "bounds_m": [
+      433842.99334056274,
+      4570246.666206529,
+      439911.39944547217,
+      4575303.671293954
+    ],
+    "width": 234,
+    "height": 195,
+    "pixel_size_m": [
+      25.933359422689975,
+      25.933359422689975
+    ],
+    "working_grid": {
+      "source_shape": [
+        195,
+        234
+      ],
+      "working_shape": [
+        195,
+        234
+      ],
+      "scale": 1.0,
+      "pixel_area_m2": 672.5391309464229,
+      "cell_size_m": 25.933359422689975,
+      "smoothing_sigma_cells": 1
+    }
+  },
+  "pairing": {
+    "predicted_type": "D8 potential drainage channel (application output)",
+    "reference_type": "USGS 3DHP featuretype=1 River",
+    "key": "Strahler order + line type",
+    "distance_sampling": "predicted line sampled every 1m in EPSG:32617",
+    "tolerances_m": [
+      25.0,
+      50.0,
+      100.0
+    ]
+  },
+  "threshold_sensitivity": {
+    "10000": {
+      "minimum_contributing_area_m2": 10000.0,
+      "threshold_cells": 15,
+      "predicted_features": 839,
+      "predicted_stream_cells": 7387,
+      "predicted_total_length_m": 220260.26174378706,
+      "predicted_order_lengths_m": {
+        "1": 124452.20469834021,
+        "2": 48852.82087217209,
+        "3": 24188.560740240588,
+        "4": 15362.897787711896,
+        "5": 6961.067508028046,
+        "6": 442.71013729422117
+      },
+      "predicted_orders": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "reference_orders_type1": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "orders_compared": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "by_order": {
+        "1": {
+          "predicted_features": 657,
+          "reference_features": 42,
+          "predicted_length_m": 124452.21044907383,
+          "reference_length_m": 42498.905741590694,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 124453,
+              "mean_distance_m": 199.3380105650937,
+              "median_distance_m": 176.81698208797096,
+              "p95_distance_m": 485.0183828390326,
+              "coverage_predicted_pct": 13.914006184386787,
+              "coverage_reference_pct": 45.22924467171103
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 124453,
+              "mean_distance_m": 199.3380105650937,
+              "median_distance_m": 176.81698208797096,
+              "p95_distance_m": 485.0183828390326,
+              "coverage_predicted_pct": 22.256430260436318,
+              "coverage_reference_pct": 69.84091974580274
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 124453,
+              "mean_distance_m": 199.3380105650937,
+              "median_distance_m": 176.81698208797096,
+              "p95_distance_m": 485.0183828390326,
+              "coverage_predicted_pct": 31.87155738241798,
+              "coverage_reference_pct": 89.04215603365878
+            }
+          }
+        },
+        "2": {
+          "predicted_features": 140,
+          "reference_features": 12,
+          "predicted_length_m": 48852.81207790704,
+          "reference_length_m": 9953.482671109763,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 48853,
+              "mean_distance_m": 806.6917790780917,
+              "median_distance_m": 617.568071729952,
+              "p95_distance_m": 2170.627214807668,
+              "coverage_predicted_pct": 3.151497485463623,
+              "coverage_reference_pct": 15.92310935946202
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 48853,
+              "mean_distance_m": 806.6917790780917,
+              "median_distance_m": 617.568071729952,
+              "p95_distance_m": 2170.627214807668,
+              "coverage_predicted_pct": 4.545976079988386,
+              "coverage_reference_pct": 26.344143788350053
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 48853,
+              "mean_distance_m": 806.6917790780917,
+              "median_distance_m": 617.568071729952,
+              "p95_distance_m": 2170.627214807668,
+              "coverage_predicted_pct": 7.0452223491493084,
+              "coverage_reference_pct": 43.61147342292343
+            }
+          }
+        },
+        "3": {
+          "predicted_features": 35,
+          "reference_features": 3,
+          "predicted_length_m": 24188.569258540185,
+          "reference_length_m": 3013.1218339555153,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 24189,
+              "mean_distance_m": 1273.5038986781483,
+              "median_distance_m": 1163.4261750160829,
+              "p95_distance_m": 2679.3361175843024,
+              "coverage_predicted_pct": 0.0,
+              "coverage_reference_pct": 0.0
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 24189,
+              "mean_distance_m": 1273.5038986781483,
+              "median_distance_m": 1163.4261750160829,
+              "p95_distance_m": 2679.3361175843024,
+              "coverage_predicted_pct": 0.6988435330531265,
+              "coverage_reference_pct": 5.709595998778566
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 24189,
+              "mean_distance_m": 1273.5038986781483,
+              "median_distance_m": 1163.4261750160829,
+              "p95_distance_m": 2679.3361175843024,
+              "coverage_predicted_pct": 1.118712673117958,
+              "coverage_reference_pct": 10.700010057455586
+            }
+          }
+        },
+        "4": {
+          "predicted_features": 5,
+          "reference_features": 14,
+          "predicted_length_m": 15362.900005987562,
+          "reference_length_m": 6955.639842389041,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 15363,
+              "mean_distance_m": 1626.1712321658565,
+              "median_distance_m": 1628.9916133538143,
+              "p95_distance_m": 3791.1395928205143,
+              "coverage_predicted_pct": 3.751294940861885,
+              "coverage_reference_pct": 8.675205554801448
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 15363,
+              "mean_distance_m": 1626.1712321658565,
+              "median_distance_m": 1628.9916133538143,
+              "p95_distance_m": 3791.1395928205143,
+              "coverage_predicted_pct": 6.632623156867715,
+              "coverage_reference_pct": 18.169037657181427
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 15363,
+              "mean_distance_m": 1626.1712321658565,
+              "median_distance_m": 1628.9916133538143,
+              "p95_distance_m": 3791.1395928205143,
+              "coverage_predicted_pct": 9.170179796626039,
+              "coverage_reference_pct": 29.29547666480835
+            }
+          }
+        }
+      }
+    },
+    "50000": {
+      "minimum_contributing_area_m2": 50000.0,
+      "threshold_cells": 75,
+      "predicted_features": 147,
+      "predicted_stream_cells": 3011,
+      "predicted_total_length_m": 90767.45396844232,
+      "predicted_order_lengths_m": {
+        "1": 46906.73929518598,
+        "2": 23812.145325199526,
+        "3": 12644.791702734543,
+        "4": 6961.067508028046,
+        "5": 442.71013729422117
+      },
+      "predicted_orders": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "reference_orders_type1": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "orders_compared": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "by_order": {
+        "1": {
+          "predicted_features": 109,
+          "reference_features": 42,
+          "predicted_length_m": 46906.73512593434,
+          "reference_length_m": 42498.905741590694,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 46907,
+              "mean_distance_m": 149.11559007642774,
+              "median_distance_m": 92.29458946418423,
+              "p95_distance_m": 476.49575942164284,
+              "coverage_predicted_pct": 31.614006193829415,
+              "coverage_reference_pct": 35.58312295154811
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 46907,
+              "mean_distance_m": 149.11559007642774,
+              "median_distance_m": 92.29458946418423,
+              "p95_distance_m": 476.49575942164284,
+              "coverage_predicted_pct": 41.74467244293389,
+              "coverage_reference_pct": 48.23901400777929
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 46907,
+              "mean_distance_m": 149.11559007642774,
+              "median_distance_m": 92.29458946418423,
+              "p95_distance_m": 476.49575942164284,
+              "coverage_predicted_pct": 51.28088861081343,
+              "coverage_reference_pct": 61.04997495127708
+            }
+          }
+        },
+        "2": {
+          "predicted_features": 32,
+          "reference_features": 12,
+          "predicted_length_m": 23812.151174435912,
+          "reference_length_m": 9953.482671109763,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 23813,
+              "mean_distance_m": 639.7962137279239,
+              "median_distance_m": 444.38424245351626,
+              "p95_distance_m": 2053.3160380107497,
+              "coverage_predicted_pct": 16.633162611178953,
+              "coverage_reference_pct": 40.29901874490682
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 23813,
+              "mean_distance_m": 639.7962137279239,
+              "median_distance_m": 444.38424245351626,
+              "p95_distance_m": 2053.3160380107497,
+              "coverage_predicted_pct": 21.57799621112148,
+              "coverage_reference_pct": 52.47910471293096
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 23813,
+              "mean_distance_m": 639.7962137279239,
+              "median_distance_m": 444.38424245351626,
+              "p95_distance_m": 2053.3160380107497,
+              "coverage_predicted_pct": 26.877000725722166,
+              "coverage_reference_pct": 64.05607209759741
+            }
+          }
+        },
+        "3": {
+          "predicted_features": 4,
+          "reference_features": 3,
+          "predicted_length_m": 12644.792552519299,
+          "reference_length_m": 3013.1218339555153,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 12645,
+              "mean_distance_m": 1646.4146522923427,
+              "median_distance_m": 1535.858954641466,
+              "p95_distance_m": 3434.430367862133,
+              "coverage_predicted_pct": 1.2880821621346068,
+              "coverage_reference_pct": 4.340046262662332
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 12645,
+              "mean_distance_m": 1646.4146522923427,
+              "median_distance_m": 1535.858954641466,
+              "p95_distance_m": 3434.430367862133,
+              "coverage_predicted_pct": 2.589770092503135,
+              "coverage_reference_pct": 6.847710056197918
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 12645,
+              "mean_distance_m": 1646.4146522923427,
+              "median_distance_m": 1535.858954641466,
+              "p95_distance_m": 3434.430367862133,
+              "coverage_predicted_pct": 4.317401990749591,
+              "coverage_reference_pct": 10.27917581138024
+            }
+          }
+        },
+        "4": {
+          "predicted_features": 1,
+          "reference_features": 14,
+          "predicted_length_m": 6961.071023640605,
+          "reference_length_m": 6955.639842389041,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 6962,
+              "mean_distance_m": 379.2139546149018,
+              "median_distance_m": 52.445537918081484,
+              "p95_distance_m": 1550.1399604180697,
+              "coverage_predicted_pct": 33.19005124972284,
+              "coverage_reference_pct": 34.114001328231595
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 6962,
+              "mean_distance_m": 379.2139546149018,
+              "median_distance_m": 52.445537918081484,
+              "p95_distance_m": 1550.1399604180697,
+              "coverage_predicted_pct": 48.689613446129385,
+              "coverage_reference_pct": 54.342213988629986
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 6962,
+              "mean_distance_m": 379.2139546149018,
+              "median_distance_m": 52.445537918081484,
+              "p95_distance_m": 1550.1399604180697,
+              "coverage_predicted_pct": 58.84398224863925,
+              "coverage_reference_pct": 74.88729406985394
+            }
+          }
+        }
+      }
+    },
+    "100000": {
+      "minimum_contributing_area_m2": 100000.0,
+      "threshold_cells": 149,
+      "predicted_features": 77,
+      "predicted_stream_cells": 2217,
+      "predicted_total_length_m": 67255.31981375987,
+      "predicted_order_lengths_m": {
+        "1": 36732.54165267682,
+        "2": 22285.44696001772,
+        "3": 7794.6210637711065,
+        "4": 442.71013729422117
+      },
+      "predicted_orders": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "reference_orders_type1": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "orders_compared": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "by_order": {
+        "1": {
+          "predicted_features": 62,
+          "reference_features": 42,
+          "predicted_length_m": 36732.544652290584,
+          "reference_length_m": 42498.905741590694,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 36733,
+              "mean_distance_m": 112.18656023329764,
+              "median_distance_m": 27.03626632342323,
+              "p95_distance_m": 390.2511091289455,
+              "coverage_predicted_pct": 47.81342430927371,
+              "coverage_reference_pct": 41.85303995781839
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 36733,
+              "mean_distance_m": 112.18656023329764,
+              "median_distance_m": 27.03626632342323,
+              "p95_distance_m": 390.2511091289455,
+              "coverage_predicted_pct": 59.84873266578129,
+              "coverage_reference_pct": 53.674734760494125
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 36733,
+              "mean_distance_m": 112.18656023329764,
+              "median_distance_m": 27.03626632342323,
+              "p95_distance_m": 390.2511091289455,
+              "coverage_predicted_pct": 65.3615157252796,
+              "coverage_reference_pct": 62.77920755969661
+            }
+          }
+        },
+        "2": {
+          "predicted_features": 13,
+          "reference_features": 12,
+          "predicted_length_m": 22285.4516855735,
+          "reference_length_m": 9953.482671109763,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 22286,
+              "mean_distance_m": 723.7695834020092,
+              "median_distance_m": 529.6256914755986,
+              "p95_distance_m": 2289.8720864544907,
+              "coverage_predicted_pct": 19.30977223061384,
+              "coverage_reference_pct": 43.49848034684065
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 22286,
+              "mean_distance_m": 723.7695834020092,
+              "median_distance_m": 529.6256914755986,
+              "p95_distance_m": 2289.8720864544907,
+              "coverage_predicted_pct": 25.60104089283136,
+              "coverage_reference_pct": 57.24102616390964
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 22286,
+              "mean_distance_m": 723.7695834020092,
+              "median_distance_m": 529.6256914755986,
+              "p95_distance_m": 2289.8720864544907,
+              "coverage_predicted_pct": 33.28166428611064,
+              "coverage_reference_pct": 71.85939831888355
+            }
+          }
+        },
+        "3": {
+          "predicted_features": 1,
+          "reference_features": 3,
+          "predicted_length_m": 7794.624388032833,
+          "reference_length_m": 3013.1218339555153,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 7795,
+              "mean_distance_m": 682.9112545407811,
+              "median_distance_m": 542.0449169522988,
+              "p95_distance_m": 1795.529847744529,
+              "coverage_predicted_pct": 12.389786319433776,
+              "coverage_reference_pct": 30.822286205766208
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 7795,
+              "mean_distance_m": 682.9112545407811,
+              "median_distance_m": 542.0449169522988,
+              "p95_distance_m": 1795.529847744529,
+              "coverage_predicted_pct": 21.844101786762092,
+              "coverage_reference_pct": 56.74175522337966
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 7795,
+              "mean_distance_m": 682.9112545407811,
+              "median_distance_m": 542.0449169522988,
+              "p95_distance_m": 1795.529847744529,
+              "coverage_predicted_pct": 29.342254471036455,
+              "coverage_reference_pct": 77.32159625758457
+            }
+          }
+        },
+        "4": {
+          "predicted_features": 1,
+          "reference_features": 14,
+          "predicted_length_m": 442.7093132684,
+          "reference_length_m": 6955.639842389041,
+          "tolerances": {
+            "25": {
+              "sample_interval_m": 1.0,
+              "sample_count": 443,
+              "mean_distance_m": 800.4658206854232,
+              "median_distance_m": 813.6523316326341,
+              "p95_distance_m": 903.9671680396443,
+              "coverage_predicted_pct": 0.0,
+              "coverage_reference_pct": 0.0
+            },
+            "50": {
+              "sample_interval_m": 1.0,
+              "sample_count": 443,
+              "mean_distance_m": 800.4658206854232,
+              "median_distance_m": 813.6523316326341,
+              "p95_distance_m": 903.9671680396443,
+              "coverage_predicted_pct": 0.0,
+              "coverage_reference_pct": 0.0
+            },
+            "100": {
+              "sample_interval_m": 1.0,
+              "sample_count": 443,
+              "mean_distance_m": 800.4658206854232,
+              "median_distance_m": 813.6523316326341,
+              "p95_distance_m": 903.9671680396443,
+              "coverage_predicted_pct": 0.0,
+              "coverage_reference_pct": 0.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "limitations": [
+    "This validates the same algorithm implementation on an independent, coarse 3DEP DEM, not the application ODM DTM #72.",
+    "3DEP ImageServer response is resampled to the requested grid; measured working cell size is recorded, and is not fine-resolution lidar validation.",
+    "Mapped 3DHP flowlines are not field truth; survey/source dates and hydro-enforcement lineage may differ.",
+    "Stream extraction threshold is a parameter; results are reported for all three predeclared thresholds and not selected by best score.",
+    "Geometric overlap and distance are similarity measures, not regulatory/engineering acceptance or positional accuracy certification."
+  ],
+  "artifacts": {
+    "clipped_reference": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/3dhp_flowlines_3dep_clip.geojson",
+    "comparison_map": "docs/validacao/ortomapas_conclusao/etapa-09/referencias/benchmark_3dep_3dhp_d8.png"
+  }
+}

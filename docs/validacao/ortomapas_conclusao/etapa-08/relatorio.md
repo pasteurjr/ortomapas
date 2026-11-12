@@ -412,3 +412,38 @@ A etapa **não valida nem reprova a acurácia** da rede D8. Ela demonstra que a 
 **Artefatos:** [roteiro reproduzível](../../../../scripts/compare_hydrology_reference_9_4.py), [resposta USGS](../etapa-09/referencias/3dhp_flowlines_aukerman.geojson), [recorte ao DTM (vazio por não interseção)](../etapa-09/referencias/3dhp_flowlines_dtm_clip.geojson), [metadados da consulta](../etapa-09/referencias/3dhp_source_metadata.json), [resultado quantitativo](../etapa-09/referencias/comparacao_3dhp_d8.json) e [mapa comparativo](../etapa-09/referencias/comparacao_rede_d8_3dhp.png).
 
 **Próxima subetapa 9.5 de 9:** localizar um conjunto público em que DTM/DEM e hidrografia oficial cubram a mesma área, ou formalizar uma validação interna sem alegar acurácia externa. Registrar licenças, resolução, CRS e limitações; executar comparação pareada apenas quando existir interseção espacial real. Em paralelo, continuar a matriz dos UCs parciais UC-009, UC-010, UC-024, UC-026 e UC-029. O aceite operacional global continua retido.
+
+## Etapa 9 de 9 — subetapa 9.5: benchmark D8 com DEM 3DEP e linhas 3DHP co-localizados
+
+**Data:** 12/11/2026. **Objetivo:** executar a implementação D8 do Ortomapas sobre um DEM público e comparar as redes com hidrografia oficial que cruza a mesma extensão, mantendo o ensaio separado do projeto ODM #88/DTM #72.
+
+### Dados e execução
+
+- DEM: recorte público do USGS 3DEP ImageServer; imagem de 256 × 160 pixels solicitada em EPSG:4326 e reprojetada pelo teste para EPSG:32617. A grade real de processamento ficou em 234 × 195, com células de 25,933 m. A imagem é uma exportação dinâmica reamostrada; não é lidar de alta resolução.
+- Referência: consulta 3DHP na extensão do DEM retornou 98 linhas/feições, todas recortadas à área do DEM: 75 `featuretype=1` (“Channel Line”), 19 tipo 5 e 4 tipo 4. Das linhas tipo 1, 71 têm `streamorder` preenchido; quatro sem ordem ficaram fora do pareamento. Classes por tipo e ordem foram pareadas, sem tratar connectors dos tipos 4/5 como rios.
+- O [roteiro reproduzível](../../../../scripts/validate_hydro_3dep_9_5.py) executou diretamente as rotinas do backend: `prepare_dem` → preenchimento Priority-Flood → direção D8 → acumulação → extração de linhas. A análise foi feita em diretório temporário; não alterou PostgreSQL, tarefas nem produtos do projeto.
+- Para evitar escolher o parâmetro que “vence” depois de observar os resultados, foram registrados três limiares de área contribuinte: 10.000, 50.000 e 100.000 m². Compararam-se ordens coincidentes em tolerâncias de 25, 50 e 100 m; a figura mostra o limiar intermediário de 50.000 m².
+
+Fontes oficiais: [serviço de elevação 3DEP](https://www.usgs.gov/news/technical-announcement/new-elevation-map-service-available-usgs-3d-elevation-program), [produtos 3DHP](https://www.usgs.gov/3d-hydrography-program/access-3dhp-data-products), [esquema Flowline](https://www.usgs.gov/ngp-standards-and-specifications/3d-hydrography-program-3dhpall-flowline) e [ordem de fluxo](https://www.usgs.gov/3d-hydrography-program/3dhp-flow-network-derivatives). O manifesto [3DEP/3DHP](../etapa-09/referencias/3dep_3dhp_benchmark_metadata.json) registra as consultas, parâmetros e limitações.
+
+### Esperado versus obtido
+
+| Critério | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Cobertura comum | DEM e linhas de referência com extensão intersectante | 98 feições dentro do DEM; 75 rios tipo 1, 71 com ordem utilizável | Aprovado para comparabilidade espacial |
+| Execução da implementação | Rodar as rotinas de produção, sem mock, e produzir linhas D8 | Três execuções reais do backend; limiar 10k: 839 feições; 50k: 147; 100k: 77 | Aprovado para execução reproduzível |
+| Pareamento por ordem/tipo | Comparar classes comuns, não connectors | Tipos 4/5 excluídos; ordens 1–4 pareadas nas três configurações | Aprovado para cálculo por classe |
+| Concordância espacial | Coincidência coerente para todos os limiares/classes dentro da tolerância escolhida | A 50 m e limiar 50k: cobertura da rede prevista por classe foi 41,7% (ordem 1), 21,6% (ordem 2), 2,6% (ordem 3) e 48,7% (ordem 4). Medianas das distâncias previstas→referência: 92,3 m, 444,4 m, 1.535,9 m e 52,4 m, respectivamente | **Não aprovado para acurácia operacional** |
+| Robustez a limiar | Resultado estável quando varia área mínima | A concordância variou bastante entre limiares de 10k/50k/100k e ordens; a ordem 4 no limiar 100k teve cobertura nula a 50 m | Limitação identificada; requer calibração/referência apropriada |
+
+![D8 calculado em linhas contínuas e hidrografia 3DHP em tracejado, por ordem Strahler, sobre a área comum](../etapa-09/referencias/benchmark_3dep_3dhp_d8.png)
+
+O gráfico mostra trechos coincidentes e divergentes; a tabela e o [JSON integral](../etapa-09/referencias/benchmark_3dep_3dhp_d8.json) conservam medidas por ordem, distâncias P95, comprimentos, resultados nas três tolerâncias e sensibilidade ao limiar. As métricas de cobertura são dirigidas: percentagem da rede prevista próxima da referência e percentagem da referência próxima da rede prevista não significam a mesma coisa. O deslocamento de linhas pode resultar da baixa resolução de 25,9 m, da reamostragem, da escala do limiar ou de diferenças de data/linhagem entre relevo e cartografia. Não se atribui causalidade a um único fator com este teste.
+
+### Conclusão da subetapa
+
+**Aprovado:** os componentes de produção executaram com dados públicos reais, produziram redes com ordem, foram pareados por tipo/ordem numa extensão comum e geraram artefatos reproduzíveis. **Reprovado para aceite de acurácia operacional:** concordância é desigual e sensível ao parâmetro; não existe critério de tolerância/homologação previamente especificado, e os dados são grosseiros/cartográficos, não controle de campo. Isto é evidência útil de desempenho comparativo, não valida hidrologia para projeto de engenharia e não muda o resultado da etapa 9.4 para DTM #72.
+
+**Artefatos:** [DEM 3DEP](../etapa-09/referencias/3dep_aukerman_dem_context.tif), [3DHP consultado](../etapa-09/referencias/3dhp_flowlines_aukerman_context.geojson), [linhas recortadas](../etapa-09/referencias/3dhp_flowlines_3dep_clip.geojson), [manifesto](../etapa-09/referencias/3dep_3dhp_benchmark_metadata.json), [script](../../../../scripts/validate_hydro_3dep_9_5.py), [métricas](../etapa-09/referencias/benchmark_3dep_3dhp_d8.json) e [mapa](../etapa-09/referencias/benchmark_3dep_3dhp_d8.png).
+
+**Próxima subetapa 9.6 de 9:** validar UC-009 (mudança entre dois produtos) com dois ortomosaicos distintos, compatibilidade espacial/resolução documentada e região de mudança conhecida; conferir a máscara/área calculada e a tela de resultado. Depois, subetapa 9.7 cobre UC-024/UC-029 (cancelamento/retomada e reprocessamento versionado); 9.8 revê critérios científicos do UC-026; 9.9 fecha UC-011/UC-020 e a matriz global. O UC-010 já tem evidência de execução K-Means RGB referenciada na matriz. Aceite global continua retido.
