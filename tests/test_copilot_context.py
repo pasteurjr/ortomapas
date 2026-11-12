@@ -18,7 +18,7 @@ class Cursor:
         self.rows = []
 
     def execute(self, query, params=()):
-        if 'SELECT id,projeto_id,estado FROM copilot_threads' in query:
+        if 'SELECT id,projeto_id,estado,resumo FROM copilot_threads' in query:
             self.row = {'id': 14, 'projeto_id': 8, 'estado': {}} if params == (14, 5) else None
         elif 'SELECT papel,conteudo' in query:
             self.rows = [
@@ -72,7 +72,7 @@ def test_copilot_resumes_owned_thread_and_measures_selected_geometry(monkeypatch
             captured.append(messages)
             return CopilotResponse(answer='A geometria foi medida.', confidence=0.9), {'model': 'test'}
 
-    monkeypatch.setattr(agents, 'LMStudioClient', Client)
+    monkeypatch.setattr(agents, 'get_llm_client', Client)
     geometry = {'type': 'Feature', 'properties': {}, 'geometry': {
         'type': 'Polygon', 'coordinates': [[[0, 0], [0.001, 0], [0.001, 0.001], [0, 0.001], [0, 0]]]
     }}
@@ -108,6 +108,38 @@ def test_copilot_hides_threads_owned_by_another_user(monkeypatch):
         assert False, 'Thread de outro usuario deveria ser negada'
     except HTTPException as error:
         assert error.status_code == 404
+
+
+def test_profile_tool_evidence_is_compacted_only_for_model_context():
+    samples = 200
+    full = {'tool': 'perfil_altimetrico', 'result': {'status': 'ok', 'dados': {
+        'produto_id': 25, 'pontos': samples, 'comprimento_m': 310.0,
+        'distancias_m': [float(i) for i in range(samples)],
+        'elevacoes': [100.0 + i / 10 for i in range(samples)],
+        'geometry': {'type': 'LineString', 'coordinates': [[-81.75, 41.3], [-81.74, 41.31]]},
+        'coordinates_wgs84': [[-81.75 + i / 10000, 41.3] for i in range(samples)],
+    }}}
+    compact = agents._compact_tool_results_for_model([full])[0]
+    compact_data = compact['result']['dados']
+    assert len(compact_data['amostras_representativas']) <= 7
+    assert compact_data['resumo_elevacoes_m']['min'] == 100.0
+    assert compact_data['resumo_elevacoes_m']['max'] == 119.9
+    assert 'elevacoes' not in compact_data and 'coordinates_wgs84' not in compact_data
+    assert len(full['result']['dados']['elevacoes']) == samples
+
+
+def test_dsm_dtm_difference_grid_is_compacted_for_model_only():
+    grid = [[float(row - col) for col in range(64)] for row in range(47)]
+    full = {'tool': 'comparar_dsm_dtm', 'result': {'status': 'ok', 'dados': {
+        'processamento_id': 12, 'min': -63.0, 'max': 46.0, 'media': 2.3,
+        'grade': [47, 64], 'valid_pixels': 2417, 'units': 'm', 'differences': grid,
+    }}}
+    compact = agents._compact_tool_results_for_model([full])[0]
+    compact_data = compact['result']['dados']
+    assert compact_data['media'] == 2.3
+    assert compact_data['diferencas_grade_cells'] == 47 * 64
+    assert 'differences' not in compact_data
+    assert len(full['result']['dados']['differences']) == 47
 
 
 def test_raster_sampling_masks_pixels_outside_selected_aoi():
@@ -210,7 +242,7 @@ def test_copilot_does_not_execute_repeated_identical_tool_calls(monkeypatch):
         executions.append(data)
         return {'status': 'ok', 'dados': {'geometry': geometry, 'distancia_m': 20}}
 
-    monkeypatch.setattr(agents, 'LMStudioClient', Client)
+    monkeypatch.setattr(agents, 'get_llm_client', Client)
     monkeypatch.setattr(agents, 'execute_tool', execute)
     monkeypatch.setattr(agents, '_audit', lambda *_args, **_kwargs: None)
     response = asyncio.run(agents.ask_copilot({'prompt': 'Gere um buffer de 20 metros.'}, {'id': 5}))
@@ -219,3 +251,95 @@ def test_copilot_does_not_execute_repeated_identical_tool_calls(monkeypatch):
     assert len(response['ferramentas_executadas']) == 1
     assert response['resposta']['answer'] == 'Buffer criado uma vez.'
     assert calls == [True, True, False]
+
+
+class SurfaceSelectionCursor:
+    def __init__(self):
+        self.row = None
+        self.rows = []
+
+    def execute(self, query, params=()):
+        if 'SELECT id,nome,status FROM projetos' in query:
+            self.row = {'id': 62, 'nome': 'Projeto de teste', 'status': 'ativo'}
+        elif 'SELECT p.id,p.tipo,p.formato,p.crs,p.processamento_id' in query:
+            self.rows = [
+                {'id': 25, 'tipo': 'dsm', 'formato': 'GeoTIFF', 'crs': 'EPSG:32617', 'processamento_id': 12, 'odm_task_id': 'task-a', 'processamento_status': 'concluido'},
+                {'id': 30, 'tipo': 'dsm', 'formato': 'GeoTIFF', 'crs': 'EPSG:32617', 'processamento_id': 13, 'odm_task_id': 'task-b', 'processamento_status': 'concluido'},
+            ]
+        else:
+            self.row = None
+            self.rows = []
+
+    def fetchone(self):
+        return self.row
+
+    def fetchall(self):
+        return self.rows
+
+
+class SurfaceSelectionConnection:
+    def __init__(self):
+        self.cursor_instance = SurfaceSelectionCursor()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def cursor(self, dictionary=False):
+        return self.cursor_instance
+
+    def commit(self):
+        pass
+
+
+def test_elevation_measurement_requires_surface_when_project_has_multiple(monkeypatch):
+    connection = SurfaceSelectionConnection()
+    model_called = []
+    monkeypatch.setattr(agents, 'get_connection', lambda: connection)
+    monkeypatch.setattr(agents, 'require_project_role', lambda *_: None)
+    monkeypatch.setattr(agents, 'get_llm_client', lambda: model_called.append(True))
+
+    try:
+        asyncio.run(agents.ask_copilot({
+            'prompt': 'Calcule a declividade média dentro da geometria selecionada.',
+            'context': {'projeto_id': 62},
+        }, {'id': 1, 'perfil': 'admin'}))
+        assert False, 'A análise ambígua deve solicitar a superfície antes de chamar o LLM.'
+    except HTTPException as error:
+        assert error.status_code == 409
+        assert 'DSM #25' in error.detail and 'DSM #30' in error.detail
+    assert model_called == []
+
+
+def test_elevation_measurement_uses_explicit_surface_selection(monkeypatch):
+    connection = SurfaceSelectionConnection()
+    captured = []
+    executed = []
+    monkeypatch.setattr(agents, 'get_connection', lambda: connection)
+    monkeypatch.setattr(agents, 'require_project_role', lambda *_: None)
+
+    class Client:
+        def complete(self, messages, tools):
+            captured.append(messages)
+            answer = 'Vou calcular a declividade.' if len(captured) == 1 else 'Declividade calculada.'
+            return CopilotResponse(answer=answer, confidence=0.9), {'model': 'test'}
+
+    async def execute(data, _user):
+        executed.append(data['arguments']['produto_id'])
+        return {'status': 'ok', 'dados': {'produto_id': data['arguments']['produto_id'], 'media': 7.5, 'max': 20.0}}
+
+    monkeypatch.setattr(agents, 'get_llm_client', Client)
+    monkeypatch.setattr(agents, 'execute_tool', execute)
+    monkeypatch.setattr(agents, '_audit', lambda *_args, **_kwargs: None)
+    geometry = {'type': 'Polygon', 'coordinates': [[[0, 0], [0.001, 0], [0.001, 0.001], [0, 0.001], [0, 0]]]}
+    response = asyncio.run(agents.ask_copilot({
+        'prompt': 'Calcule a declividade média dentro do polígono.',
+        'context': {'projeto_id': 62, 'geometria': geometry, 'produto_analise_id': 30},
+    }, {'id': 1, 'perfil': 'admin'}))
+
+    assert executed == [30]
+    assert response['ferramentas_executadas'][0]['result']['dados']['dados']['produto_id'] == 30
+    assert any('"produto_analise_id": 30' in message.get('content', '') for message in captured[0])
+    assert any('"processamento_id": 13' in message.get('content', '') for message in captured[0])

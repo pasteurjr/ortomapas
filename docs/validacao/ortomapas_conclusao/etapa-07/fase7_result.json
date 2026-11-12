@@ -1,0 +1,141 @@
+{
+  "project": "Guarajuba - Condomínio Paraíso (Demonstração)",
+  "provider_configured": "anthropic/claude-sonnet-5-5",
+  "steps": [
+    {
+      "id": "F7-LIVE-00",
+      "status": "passed",
+      "action": "Tela inicial de autenticacao",
+      "screenshot": "fase7_01_login.png"
+    },
+    {
+      "id": "F7-LIVE-01",
+      "status": "passed",
+      "action": "Autenticacao e selecao do projeto existente",
+      "screenshot": "fase7_02_projeto.png"
+    },
+    {
+      "id": "F7-LIVE-02",
+      "status": "passed",
+      "action": "Desenho de poligono e selecao contextual no chat",
+      "screenshot": "fase7_03_geometria_selecionada.png"
+    },
+    {
+      "id": "F7-LIVE-03",
+      "status": "passed",
+      "action": "Pergunta executada no Anthropic Sonnet 5.5 com medicao deterministica e evidencia renderizada",
+      "area_m2": 39599.67198350416,
+      "perimetro_m": 796.656016639739,
+      "crs": "EPSG:32724",
+      "screenshot": "fase7_04_medicao_com_evidencia.png"
+    },
+    {
+      "id": "F7-LIVE-04",
+      "status": "passed",
+      "action": "Pergunta de continuacao respondida usando o contexto da conversa",
+      "answer": "Medição da geometria selecionada no mapa:\n\n- **Área:** 39.599,67 m² (unidade: metro quadrado, `unidade_area: \"m2\"`), equivalente a cerca de 3,96 ha.\n- **Perímetro:** 796,66 m (unidade: metro, `unidade_distancia: \"m\"`).\n\n**Origem e método:** os valores vêm da geometria selecionada no mapa, um polígono com coordenadas em EPSG:4326. A ferramenta `medir_geometria` reprojetou o polígono para EPSG:32724 (método `projecao_local`) e calculou a área e o perímetro nesse sistema, em metros.\n\nEsses valores não correspondem à área coberta pelo voo (5,2 ha), que é um dado geral do projeto.",
+      "screenshot": "fase7_05_retomada_contexto.png"
+    },
+    {
+      "id": "F7-LIVE-05",
+      "status": "passed",
+      "action": "Historico e evidencia da ferramenta confirmados pela API autenticada",
+      "messages": 4,
+      "screenshot": "fase7_05_retomada_contexto.png"
+    },
+    {
+      "id": "F7-LIVE-05A",
+      "status": "passed",
+      "action": "Buffer real exibido como previa; API confirma que ainda nao foi persistido",
+      "distance_m": 20.0,
+      "buffer_tool_count": 1,
+      "screenshot": "fase7_06_buffer_pendente.png"
+    },
+    {
+      "id": "F7-LIVE-05B",
+      "status": "passed",
+      "action": "Clique explicito grava uma camada e a API confirma a persistencia",
+      "layer_id": 8,
+      "screenshot": "fase7_07_buffer_salvo.png"
+    },
+    {
+      "id": "F7-LIVE-07",
+      "status": "passed",
+      "action": "Criacao de conversa independente sem misturar mensagens",
+      "thread_id": 156,
+      "screenshot": "fase7_08_nova_conversa.png"
+    },
+    {
+      "id": "F7-LIVE-08",
+      "status": "passed",
+      "action": "Troca de conversa restaura o historico associado a thread selecionada",
+      "thread_id": 155,
+      "screenshot": "fase7_09_troca_conversa.png"
+    },
+    {
+      "id": "F7-LIVE-09",
+      "status": "passed",
+      "action": "Memoria pessoal salva pela interface e confirmada pela API",
+      "screenshot": "fase7_10_memoria_salva.png"
+    },
+    {
+      "id": "F7-LIVE-10",
+      "status": "passed",
+      "action": "Memoria temporaria excluida pela interface",
+      "screenshot": "fase7_11_memoria_excluida.png"
+    },
+    {
+      "id": "F7-LIVE-06",
+      "status": "passed",
+      "action": "Conta autenticada independente recebeu 404 para a conversa privada"
+    },
+    {
+      "id": "F7-LIVE-11",
+      "status": "passed",
+      "action": "Auditoria completada sem erros de interface",
+      "screenshot": "fase7_12_privacidade.png"
+    }
+  ],
+  "started_at": "2026-11-12T12:50:55.148853-03:00",
+  "thread_id": 155,
+  "persisted_messages": 4,
+  "llm_usage": [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "calls": 2,
+      "input_tokens": 5231,
+      "output_tokens": 393,
+      "estimated_cost_usd": 0.014392,
+      "billing_complete": true
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "calls": 2,
+      "input_tokens": 6271,
+      "output_tokens": 970,
+      "estimated_cost_usd": 0.022242,
+      "billing_complete": true
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "calls": 2,
+      "input_tokens": 11187,
+      "output_tokens": 594,
+      "estimated_cost_usd": 0.028314,
+      "billing_complete": true
+    }
+  ],
+  "total_estimated_cost_usd": 0.064948,
+  "total_input_tokens": 22689,
+  "total_output_tokens": 1957,
+  "status": "passed",
+  "cleanup_layer_status": 200,
+  "cleanup_thread_rows": 2,
+  "cleanup_memory_rows": 0,
+  "cleanup_outsider_rows": 1,
+  "page_errors": [],
+  "finished_at": "2026-11-12T12:51:20.017991-03:00"
+}

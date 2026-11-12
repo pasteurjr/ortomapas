@@ -5,6 +5,8 @@ uvicorn[standard]>=0.30.0
 python-multipart>=0.0.9
 aiofiles>=24.0.0
 requests>=2.31.0
+PyJWT>=2.8.0
+bcrypt>=4.0.0
 laspy>=2.5.0
 lazrs>=0.6.0
 
@@ -29,6 +31,8 @@ pillow>=10.0.0
 
 # AI / Machine Learning
 ultralytics>=8.3.0
+ultralytics-platform>=0.1.0
+torchvision>=0.29.1
 anthropic>=0.75.0
 
 # Observabilidade distribuida (opcional, habilitada por OTEL_ENABLED=1)

@@ -181,14 +181,14 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 | 4. Mapa 2D e exportação | Executada | Ortofoto, DSM/DTM, camadas, comparação e GeoTIFF de origem em dados reais | [Relatório e 9 capturas da Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md) | Aprovada no escopo raster; comparação não temporal; demais formatos/serviços não reexecutados |
 | 5. Visualização 3D | Executada | DSM, DTM, GLB e LAZ reais; metadados, extensão, controles e seleção conferidos | [Relatório e 5 capturas da Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md) | Aprovada na pré-visualização; grade DSM/DTM reduzida; GLB sem aceite de georreferenciamento |
 | 6. Análises espaciais | Executada como auditoria da matriz UC-005–012 | Produtos persistidos conferidos, recálculos independentes, oito telas Playwright e limites de aceite por caso de uso | [Relatório, manifesto e capturas da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md) | Executada; UC-009 parcial (sem campanhas reais independentes), UC-010 sem acurácia semântica e UC-011 demonstrativo sem referência hidrográfica local; restante aprovado no escopo matemático/visual |
-| 7. Copiloto | Parcial / escopo precisa reconciliação | Contexto, isolamento, ferramentas e aprovações aprovados | A preencher na execução | Pendente |
+| 7. Copiloto | Executada com Playwright e Anthropic Sonnet 5.5 | Medição e contexto corretos, buffer só persiste após aprovação, histórico/memória e privacidade | [Relatório, JSON e 13 capturas](../validacao/ortomapas_conclusao/etapa-07/relatorio.md) | Aprovada no escopo executado; 8 chamadas no total incluindo tentativa exploratória; custo estimado US$ 0,088184; produtos de Guarajuba são sintéticos; RAG e robustez ampla seguem pendentes |
 | 8. Robustez e aceite final | Planejada | Roteiro repetível e matriz final sem falhas críticas | A preencher na execução | Pendente |
 
 ## 6. Próxima etapa
 
-**Fases 1 a 6 de 8 executadas no escopo documentado:** as análises espaciais foram auditadas com dados reais e limites de aceite por UC. As pendências de verdade de campo e validação temporal/hidrológica permanecem expressas; consulte o [relatório da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md), além dos relatórios de [Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md), [Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md), [Fase 3](../validacao/ortomapas_conclusao/etapa-03/relatorio.md), [Fase 4](../validacao/ortomapas_conclusao/etapa-04/relatorio.md) e [Fase 5](../validacao/ortomapas_conclusao/etapa-05/relatorio.md).
+**Fases 1 a 7 de 8 executadas no escopo documentado.** A Fase 7 validou o Copiloto com interação real, evidência de medição, contexto, aprovação de escrita, histórico, memória e isolamento entre contas. Produtos do projeto de demonstração de Guarajuba são sintéticos; a validação não afirma acurácia de voo local. Consulte o [relatório da Fase 7](../validacao/ortomapas_conclusao/etapa-07/relatorio.md), além do [relatório da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md) e os relatórios anteriores.
 
-**Próxima etapa: Fase 7 de 8 — Copiloto, conversas e ferramentas.** Testar contexto e histórico isolados por usuário, vínculo com projeto, ferramentas com entrada/saída real, confirmação antes de escrita e respostas que não inventem resultados.
+**Próxima etapa: Fase 8 de 8 — Robustez e aceite final.** Executar fluxos completos repetíveis, testar falhas/retomada e telemetria, reconciliar matriz e interface, registrar pendências e determinar aceite operacional com critérios explícitos.
 
 ## 7. Referências internas
 
@@ -203,3 +203,4 @@ Esta tabela começa como plano. “Obtido” e “Resultado” permanecem penden
 - [Relatório de validação da Fase 1](../validacao/ortomapas_conclusao/etapa-01/relatorio.md)
 - [Relatório de validação da Fase 2](../validacao/ortomapas_conclusao/etapa-02/relatorio.md)
 - [Relatório de validação da Fase 6](../validacao/ortomapas_conclusao/etapa-06/relatorio.md)
+- [Relatório de validação da Fase 7](../validacao/ortomapas_conclusao/etapa-07/relatorio.md)
