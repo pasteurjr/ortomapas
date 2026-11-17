@@ -3,10 +3,13 @@
     <div class="section-title"><i class="pi pi-cog"></i> Processamentos ODM <Badge :value="tasks.length" severity="info" /></div>
     <p v-if="error" class="odm-error" role="alert">{{ error }}</p>
     <p v-if="recoveryMessage" class="odm-recovery-success" role="status">{{ recoveryMessage }}</p>
+    <p v-if="publicationMessage" class="odm-recovery-success" role="status">{{ publicationMessage }}</p>
     <div v-if="!tasks.length" class="empty-state">Nenhum processamento</div>
     <div v-for="task in tasks" :key="task.id" class="task-row">
-      <div class="task-main"><strong>{{ statusLabel(task.status) }}</strong><small>{{ task.odm_task_id.slice(0, 8) }} · {{ task.etapa || 'Aguardando etapa' }}</small></div>
-      <ProgressBar :value="Number(task.progresso || 0)" :showValue="true" />
+      <div class="task-main"><strong>{{ statusLabel(task.status) }}</strong><small>{{ task.odm_task_id.slice(0, 8) }} · {{ task.status === 'cancelado' ? 'Interrompido' : (task.etapa || (task.status === 'concluido' ? 'Concluído' : 'Aguardando etapa')) }}</small></div>
+      <small v-if="task.parametros?.reprocessamento" class="version-line">Versão {{ task.parametros.reprocessamento.version }} · derivada do processamento #{{ task.parametros.reprocessamento.parent_processing_id }}</small>
+      <ProgressBar v-if="task.status !== 'cancelado'" :value="Number(task.progresso || 0)" :showValue="true" />
+      <div v-else class="cancelled-progress" role="status">Execução interrompida; os produtos desta versão não foram gerados.</div>
       <p v-if="task.nodeodm_missing" class="recovery-warning" role="status">{{ task.aviso_nodeodm || task.erro || 'Tarefa ausente do histórico NodeODM.' }}</p>
       <div class="task-actions">
         <Button v-if="task.status === 'concluido' && orthoFor(task)" label="Abrir ortofoto" icon="pi pi-image" size="small" severity="success" @click="openOrthomosaic(task)" />
@@ -20,6 +23,14 @@
         <Button v-if="task.status === 'concluido'" label="Importar produtos" icon="pi pi-download" size="small" severity="success" :disabled="!projectStore.canEdit" :loading="importing === task.id" @click="importProducts(task)" />
         <Button v-if="['pendente','processando'].includes(task.status)" label="Cancelar processamento" icon="pi pi-stop-circle" size="small" severity="danger" :disabled="!projectStore.canEdit" :loading="cancelling === task.id" @click="cancelTarget = task; showCancelConfirm = true" />
         <Button v-if="task.nodeodm_missing && task.recovery_available" label="Reenviar fotos preservadas" icon="pi pi-refresh" size="small" severity="warn" :disabled="!projectStore.canEdit" @click="openRecovery(task)" />
+        <Button v-if="['concluido','erro','cancelado'].includes(task.status) && task.reprocess_available" label="Criar nova versão" icon="pi pi-clone" size="small" severity="help" :disabled="!projectStore.canEdit" :loading="reprocessing === task.id" @click="openReprocess(task)" />
+      </div>
+      <div v-for="product in publishableProducts(task)" :key="`ogc-${product.id}`" class="ogc-product-row">
+        <span><i class="pi pi-map"></i> {{ product.tipo.toUpperCase() }} · {{ product.caminho?.split('/').pop() }}</span>
+        <span v-if="publicationFor(product)" class="ogc-layer">WMS/WMTS: {{ publicationFor(product).workspace }}:{{ publicationFor(product).layer_name }}</span>
+        <Button v-if="publicationFor(product)" label="Abrir no mapa" icon="pi pi-map" size="small" severity="info" @click="openPublishedLayer(product)" />
+        <Button v-if="publicationFor(product)" label="Remover publicação" icon="pi pi-times" size="small" severity="secondary" :disabled="!projectStore.canEdit || publishing === product.id" :loading="publishing === product.id" @click="unpublish(product)" />
+        <Button v-else label="Publicar WMS/WMTS" icon="pi pi-globe" size="small" severity="help" :disabled="!projectStore.canEdit" :loading="publishing === product.id" @click="publish(product)" />
       </div>
       <small v-if="task.status === 'erro' && task.erro" class="task-error">{{ task.erro }}</small>
       <div v-if="quality[task.id]" class="quality-row"><strong>Qualidade: {{ quality[task.id].score }}%</strong><span>{{ quality[task.id].nivel }}</span><small>{{ quality[task.id].recomendacoes?.[0] }}</small></div>
@@ -45,24 +56,48 @@
         <Button label="Confirmar cancelamento" icon="pi pi-stop-circle" severity="danger" :loading="Boolean(cancelling)" @click="confirmCancel" />
       </template>
     </Dialog>
+    <Dialog v-model:visible="showReprocessConfirm" header="Reprocessar com novos parâmetros" :modal="true" :style="{ width: '480px' }">
+      <p v-if="reprocessTarget">Será criada uma nova tarefa ODM a partir das fotos preservadas do processamento #{{ reprocessTarget.id }}. O original, seu histórico e seus produtos não serão alterados.</p>
+      <div class="reprocess-field">
+        <label for="reprocess-ortho-resolution">Resolução do ortomosaico (cm/pixel)</label>
+        <input id="reprocess-ortho-resolution" v-model.number="reprocessResolution" type="number" min="1" max="100" step="1" />
+        <small>Uma resolução maior gera um ortomosaico menos detalhado e pode reduzir o tempo de processamento.</small>
+      </div>
+      <p v-if="reprocessError" class="odm-error" role="alert">{{ reprocessError }}</p>
+      <template #footer>
+        <Button label="Voltar" severity="secondary" :disabled="Boolean(reprocessing)" @click="showReprocessConfirm = false" />
+        <Button label="Criar nova versão" icon="pi pi-clone" severity="help" :loading="Boolean(reprocessing)" :disabled="!Number.isFinite(reprocessResolution) || reprocessResolution < 1 || reprocessResolution > 100" @click="confirmReprocess" />
+      </template>
+    </Dialog>
   </section>
 </template>
 <script setup>
 import { ref, watch, onUnmounted } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useMapStore } from '../stores/mapStore'
-import { getOdmProcessamentos, getOdmProducts, importOdmProducts, downloadOdmProduct, getOdmQuality, recoverOdmTask, cancelOdmProcessing } from '../api/client'
+import { getOdmProcessamentos, getOdmProducts, importOdmProducts, downloadOdmProduct, getOdmQuality, recoverOdmTask, cancelOdmProcessing, reprocessOdmTask, getGeoServerPublications, publishGeoServerProduct, unpublishGeoServerPublication } from '../api/client'
 import PointCloudViewer from './PointCloudViewer.vue'
 import TexturedModelViewer from './TexturedModelViewer.vue'
 import DsmSurfaceViewer from './DsmSurfaceViewer.vue'
 import ElevationDifference from './ElevationDifference.vue'
 import Badge from 'primevue/badge'; import ProgressBar from 'primevue/progressbar'; import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
-const projectStore = useProjectStore(); const mapStore = useMapStore(); const tasks = ref([]); const products = ref([]); const quality = ref({}); const importing = ref(null); const selectedProduct = ref(null); const selectedModel = ref(null); const selectedSurface = ref(null); const comparisonTask = ref(null); const error = ref(''); const recoveryMessage = ref(''); const recoveryError = ref(''); const recoveryTarget = ref(null); const showRecoveryConfirm = ref(false); const recovering = ref(null); const cancelTarget = ref(null); const showCancelConfirm = ref(false); const cancelError = ref(''); const cancelling = ref(null); let timer
-async function refresh() { if (!projectStore.activeProject) return; try { const [jobs, assets] = await Promise.all([getOdmProcessamentos(projectStore.activeProject.id), getOdmProducts(projectStore.activeProject.id)]); tasks.value = jobs.data.processamentos || []; products.value = assets.data.produtos || []; error.value = '' } catch (e) { error.value = e.response?.data?.detail || 'Falha ao atualizar tarefas ODM.' } }
+const projectStore = useProjectStore(); const mapStore = useMapStore(); const tasks = ref([]); const products = ref([]); const publications = ref([]); const quality = ref({}); const importing = ref(null); const publishing = ref(null); const publicationMessage = ref(''); const selectedProduct = ref(null); const selectedModel = ref(null); const selectedSurface = ref(null); const comparisonTask = ref(null); const error = ref(''); const recoveryMessage = ref(''); const recoveryError = ref(''); const recoveryTarget = ref(null); const showRecoveryConfirm = ref(false); const recovering = ref(null); const cancelTarget = ref(null); const showCancelConfirm = ref(false); const cancelError = ref(''); const cancelling = ref(null); const reprocessTarget = ref(null); const showReprocessConfirm = ref(false); const reprocessResolution = ref(10); const reprocessError = ref(''); const reprocessing = ref(null); let timer
+async function refresh() { if (!projectStore.activeProject) return; try { const [jobs, assets, ogc] = await Promise.all([getOdmProcessamentos(projectStore.activeProject.id), getOdmProducts(projectStore.activeProject.id), getGeoServerPublications(projectStore.activeProject.id)]); tasks.value = jobs.data.processamentos || []; products.value = assets.data.produtos || []; publications.value = ogc.data.publicacoes || []; error.value = '' } catch (e) { error.value = e.response?.data?.detail || 'Falha ao atualizar tarefas ODM.' } }
 watch(() => projectStore.activeProject, () => { refresh(); clearInterval(timer); timer = setInterval(refresh, 5000) }, { immediate: true })
 onUnmounted(() => clearInterval(timer))
 async function importProducts(task) { importing.value = task.id; error.value = ''; try { await importOdmProducts(task.id); await projectStore.fetchOrtomapas(); await refresh() } catch (e) { error.value = e.response?.data?.detail || 'Falha ao importar produtos ODM.' } finally { importing.value = null } }
+function publishableProducts(task) { return products.value.filter((p) => p.processamento_id === task.id && ['ortomosaico', 'dsm', 'dtm', 'ndvi'].includes(String(p.tipo).toLowerCase()) && ['tif', 'tiff', 'geotiff'].includes(String(p.formato).toLowerCase())) }
+function publicationFor(product) { return publications.value.find((item) => item.produto_id === product.id) }
+function openPublishedLayer(product) {
+  const publication = publicationFor(product)
+  if (!publication) return
+  const layerName = `${publication.workspace}:${publication.layer_name}`
+  mapStore.addLayer({ id: `published-${product.id}`, name: `${product.tipo.toUpperCase()} · ${publication.layer_name}`, type: 'wms', productId: product.id, ogcLayer: layerName, wmsLayers: layerName, wmsStyles: '', wmsFormat: 'image/png', wmsVersion: '1.1.1' })
+  publicationMessage.value = `Camada ${layerName} adicionada ao mapa. Se ela estiver fora da extensão atual, ajuste o enquadramento do projeto.`
+}
+async function publish(product) { publishing.value = product.id; publicationMessage.value = ''; error.value = ''; try { const { data } = await publishGeoServerProduct(product.id); publicationMessage.value = `Produto publicado como ${data.wms_layer}. O arquivo original continua no projeto.`; await refresh() } catch (e) { error.value = e.response?.data?.detail || 'Falha ao publicar no GeoServer.' } finally { publishing.value = null } }
+async function unpublish(product) { const item = publicationFor(product); if (!item) return; publishing.value = product.id; publicationMessage.value = ''; error.value = ''; try { await unpublishGeoServerPublication(item.id); publicationMessage.value = 'Publicação removida do GeoServer; o raster original foi preservado.'; await refresh() } catch (e) { error.value = e.response?.data?.detail || 'Falha ao remover a publicação.' } finally { publishing.value = null } }
 function openRecovery(task) { recoveryTarget.value = task; recoveryError.value = ''; recoveryMessage.value = ''; showRecoveryConfirm.value = true }
 async function confirmRecovery() { if (!recoveryTarget.value) return; recovering.value = recoveryTarget.value.id; recoveryError.value = ''; try { const { data } = await recoverOdmTask(recoveryTarget.value.id); recoveryMessage.value = `Novo processamento ${data.processing_id} iniciado no NodeODM com ${data.images_count} fotos. Os produtos anteriores foram preservados.`; showRecoveryConfirm.value = false; await refresh() } catch (e) { recoveryError.value = e.response?.data?.detail || 'Falha ao reenviar as fotos preservadas.' } finally { recovering.value = null } }
 function orthoFor(task) { return products.value.find((p) => p.processamento_id === task.id && p.tipo === 'ortomosaico') }
@@ -91,10 +126,25 @@ function reportFor(task) { return products.value.find((p) => p.processamento_id 
 async function downloadReport(product) { const { data } = await downloadOdmProduct(product.id); const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = product.caminho?.split('/').pop() || 'relatorio-odm.pdf'; link.click(); URL.revokeObjectURL(url) }
 async function evaluate(task) { const { data } = await getOdmQuality(task.id); quality.value = { ...quality.value, [task.id]: data } }
 async function confirmCancel() { if (!cancelTarget.value) return; cancelling.value = cancelTarget.value.id; cancelError.value = ''; try { const { data } = await cancelOdmProcessing(cancelTarget.value.id); recoveryMessage.value = data.message; showCancelConfirm.value = false; await refresh() } catch (e) { cancelError.value = e.response?.data?.detail || 'Falha ao cancelar processamento.' } finally { cancelling.value = null } }
+function openReprocess(task) { reprocessTarget.value = task; reprocessResolution.value = 10; reprocessError.value = ''; showReprocessConfirm.value = true }
+async function confirmReprocess() {
+  if (!reprocessTarget.value) return
+  const task = reprocessTarget.value; reprocessing.value = task.id; reprocessError.value = ''
+  const key = globalThis.crypto?.randomUUID?.() || `reprocess-${task.id}-${Date.now()}`
+  try {
+    const { data } = await reprocessOdmTask(task.id, { options: [{ name: 'orthophoto-resolution', value: reprocessResolution.value }] }, key)
+    recoveryMessage.value = `Versão ${data.version} criada como processamento #${data.processing_id}, com ${data.images_count ?? 'as'} fotos preservadas. A versão anterior continua disponível.`
+    showReprocessConfirm.value = false; await refresh()
+  } catch (e) { reprocessError.value = e.response?.data?.detail || 'Falha ao criar a nova versão.' }
+  finally { reprocessing.value = null }
+}
 </script>
 <style scoped>
 .odm-tasks { margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }.section-title { display:flex; align-items:center; gap:6px; font-size:.8rem; font-weight:600; color:var(--text-dim); text-transform:uppercase; }.task-row { padding:8px 2px; border-bottom:1px solid var(--border); }.task-main { display:flex; justify-content:space-between; font-size:.78rem; } small,.empty-state { color:var(--text-dim); }.task-row :deep(.p-progressbar) { margin-top:5px; height:14px; }.task-actions { display:flex; gap:6px; margin-top:6px; }.empty-state { padding:8px 0; font-size:.78rem; }
 .quality-row{display:flex;justify-content:space-between;margin-top:5px;font-size:.72rem;color:#7fd1b9}.quality-row span{text-transform:uppercase;color:var(--text-dim)}
 .task-actions{flex-wrap:wrap}.quality-row{flex-wrap:wrap;gap:5px}
+.version-line{display:block;margin-top:3px;color:var(--text-dim)}.reprocess-field{display:grid;gap:6px;margin:14px 0}.reprocess-field label{font-weight:600}.reprocess-field input{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)}.reprocess-field small{line-height:1.4}
+.cancelled-progress{margin-top:5px;padding:5px 7px;border-left:3px solid #d99b31;background:color-mix(in srgb,#d99b31 10%,transparent);font-size:.72rem;line-height:1.35;color:var(--text-dim)}
+.ogc-product-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;margin-top:5px;border-left:2px solid #7c6bd6;background:color-mix(in srgb,#7c6bd6 8%,transparent);font-size:.72rem}.ogc-layer{color:var(--text-dim);font-family:monospace}
 .odm-error,.task-error{display:block;color:#b91c1c;font-size:.76rem;margin:6px 0;overflow-wrap:anywhere}.recovery-warning{padding:7px 8px;margin:6px 0;border-left:3px solid #d99b31;background:color-mix(in srgb,#d99b31 12%,transparent);font-size:.75rem;line-height:1.4}.odm-recovery-success{padding:7px 8px;margin:6px 0;border-left:3px solid #16a34a;background:color-mix(in srgb,#16a34a 10%,transparent);font-size:.76rem;line-height:1.4}
 </style>

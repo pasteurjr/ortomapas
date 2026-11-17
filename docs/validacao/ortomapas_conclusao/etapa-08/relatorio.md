@@ -488,3 +488,47 @@ Durante a validação, um teste conhecido mostrou que a banda alpha de GeoTIFF R
 **Aprovado funcionalmente para comparação RGB determinística:** o sistema detectou o patch conhecido, calculou sua área, exibiu a camada e persistiu a comparação. A etapa corrige a lacuna entre o UC-009 e a antiga interface que só comparava elevação. **O UC-009 ainda não está aprovado para uso temporal operacional:** o ensaio posterior é sintético, derivado do mesmo voo/ortomosaico; não mede variações reais de iluminação, estação, alinhamento residual, vegetação ou mudanças semânticas. Para essa alegação será necessário comparar capturas independentes de datas distintas e estabelecer um limiar/critério de aceite adequado.
 
 **Próxima subetapa 9.7 de 9 — UC-024/UC-029:** testar cancelamento, retomada e reprocessamento versionado com execução persistida; verificar transições de estado, idempotência, ausência de duplicidade, versões e recuperação observável. Restarão então 9.8 (revisão de critérios científicos do UC-026) e 9.9 (fechamento UC-011/UC-020 e matriz global). Portanto, 9.6 é a sexta subetapa da fase macro 9/9, não a última.
+
+## Fase macro 9/9 — subetapa 9.7: cancelamento e reprocessamento versionado (UC-024/UC-029)
+
+**Data:** 17/11/2026. **Objetivo:** confirmar no NodeODM real que a aplicação cria nova versão com novos parâmetros, mantém a linhagem e permite cancelar a tarefa sem afetar o processamento anterior nem seus produtos.
+
+### Dados e método
+
+- Projeto de validação #88, com processamento concluído #21 e 77 fotos originais preservadas (542.880.685 bytes). O processamento de origem foi gerado anteriormente com o dataset público Aukerman; não é voo do usuário. Os seis produtos originais estavam catalogados antes do ensaio.
+- Serviço real consultado: NodeODM 2.2.4, motor ODM 3.5.6. Foi solicitada nova versão alterando `orthophoto-resolution` do padrão ODM para 10 cm/pixel. A aplicação reenviou as mesmas fotos preservadas, enviou as opções originais junto da opção alterada e gravou a linhagem no PostgreSQL.
+- A nova tarefa foi cancelada enquanto ativa para validar a interrupção e preservar recursos. O primeiro ensaio criou #22 (versão 2); depois de corrigir os rótulos da tela e proteger a alocação concorrente do número de versão, a repetição final criou #23 (versão 3). Ambas foram canceladas, sem importar produtos. Portanto, não se executou a segunda fotogrametria até o fim. O roteiro registra a execução final #23; a captura final mostra também o histórico cancelado #22 e o processamento original.
+- O [roteiro Playwright reproduzível](../../../../tests/e2e/playwright/validate_odm_versioned_reprocess_phase9.py) usa a conta local de validação; o token assinado é temporário e não é salvo no manifesto. Os cinco screenshots e o manifesto estão em [`playwright/uc024_029`](../etapa-09/playwright/uc024_029/).
+
+### Esperado versus obtido
+
+| Critério | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Nova versão e linhagem | Criar outra tarefa, vinculada ao processo #21, sem substituir a origem | Repetição final: processo #23, versão 3, `parent_processing_id=21`, NodeODM devolveu HTTP 202 e UUID próprio. O primeiro reteste registrou #22, versão 2 | Aprovado |
+| Parâmetros e engine | Alterar o parâmetro escolhido e preservar os demais; registrar engine/versão | `orthophoto-resolution=10`; `dsm`, `dtm` e `pc-las` preservados; engine `odm`, versão 3.5.6 | Aprovado para o envio e persistência |
+| Idempotência | Repetir a mesma chave/payload não cria tarefa; reutilizar chave com payload diferente conflita | Na execução final, replay: HTTP 200 e mesmo processo #23; alteração do payload com a mesma chave: HTTP 409 | Aprovado |
+| Cancelamento real | NodeODM confirma estado terminal cancelado e histórico mantém as versões | API HTTP 200; NodeODM status code 50; #23 `cancelado`; #21 continua `concluido`; #22 também permanece cancelado do reteste anterior | Aprovado |
+| Preservação dos produtos | Produtos da origem não são removidos ou alterados | #21 manteve os mesmos seis produtos; #22 e #23 não importaram produtos | Aprovado para preservação |
+| Interface | Confirmação explica origem/parâmetro; histórico mostra versão e pai; cancelamento não deve parecer conclusão | Cinco capturas distintas; versão/pai visíveis; inspeção encontrou barra 100% e texto “Aguardando etapa” em tarefa cancelada. A tela foi corrigida e a captura 05 mostra “Interrompido”, aviso de ausência de produtos e sem barra enganosa; Playwright sem erro JS | Aprovado após correção visual |
+
+### Capturas de tela
+
+![Processamento original concluído e ação de criar versão disponíveis no painel ODM](../etapa-09/playwright/uc024_029/01_processamento_original_concluido.png)
+
+![Confirmação da nova resolução, mostrando a preservação da tarefa original](../etapa-09/playwright/uc024_029/02_confirmacao_novos_parametros.png)
+
+![Versão nova na fila NodeODM, com vínculo ao processo original](../etapa-09/playwright/uc024_029/03_nova_versao_na_fila_nodeodm.png)
+
+![Diálogo de confirmação da interrupção da nova versão](../etapa-09/playwright/uc024_029/04_confirmacao_cancelamento_nova_versao.png)
+
+![Nova versão cancelada, indicação de interrupção e processamento original preservado](../etapa-09/playwright/uc024_029/05_cancelamento_confirmado_historico_preservado.png)
+
+O [manifesto de validação](../etapa-09/playwright/uc024_029/manifest.json) conserva IDs, parâmetros, respostas e verificações sem tokens.
+
+### Conclusão e limite
+
+**UC-024:** cancelamento de tarefa real e idempotência do envio repetido foram aprovados neste cenário. A recuperação de histórico ausente já tinha evidência de contrato controlado na Fase 3; aqui, a tarefa #21 estava ausente do histórico atual do NodeODM, e a aplicação continuou mostrando seus produtos importados e permitiu criar uma versão usando as fotos locais preservadas.
+
+**UC-029 permanece parcial:** o sistema agora cria e identifica versões com parâmetros diferentes, mas a nova tarefa foi cancelada antes de gerar ortomosaico/DSM. Assim, ainda não há comparação quantitativa de dois resultados fotogramétricos concluídos. O aceite dessa parte exige executar versões de origem e reprocessada até o fim e comparar dimensões, CRS, GSD, métricas de qualidade e produtos; este teste não afirma essa comparação.
+
+**Próxima subetapa 9.8 de 9 — UC-026:** auditar indicadores/relatórios de qualidade e separar métricas operacionais de acurácia posicional/vertical; comparar cada afirmação com o que os dados realmente permitem concluir. Restará a 9.9 para fechar UC-011/UC-020, reconciliar UCs ainda parciais — incluindo a comparação de resultados do UC-029 — e decidir o aceite global. Após a 9.7, faltam duas subetapas.

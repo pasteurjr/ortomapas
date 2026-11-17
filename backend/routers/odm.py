@@ -16,10 +16,11 @@ import laspy
 import numpy as np
 from pyproj import Transformer
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Response, UploadFile
+from pydantic import BaseModel, Field
 from PIL import Image
 from psycopg2.extras import Json
 
@@ -37,6 +38,12 @@ _POINT_CACHE_MAX = 8
 MAX_ODM_IMAGES = 500
 MAX_ODM_IMAGE_BYTES = 100 * 1024 * 1024
 MAX_ODM_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
+
+
+class ReprocessODMRequest(BaseModel):
+    """Changed NodeODM options for a new, traceable processing version."""
+    options: List[Dict[str, Any]] = Field(default_factory=list, max_length=100)
+    name: Optional[str] = Field(default=None, max_length=255)
 
 
 def _safe_name(name: str) -> str:
@@ -291,6 +298,7 @@ async def list_processamentos(projeto_id: int = Query(...), user: dict = Depends
         cur.execute("SELECT * FROM processamentos_odm WHERE projeto_id = %s ORDER BY criado_em DESC", (projeto_id,))
         jobs = [dict(row) for row in cur.fetchall()]
         for job in jobs:
+            job["reprocess_available"] = len(_stored_flight_images(job["voo_id"])) >= 3
             try:
                 info_response = requests.get(f"{job['endpoint']}/task/{job['odm_task_id']}/info", timeout=10)
                 if _nodeodm_task_missing(info_response):
@@ -346,6 +354,165 @@ async def cancel_odm_processing(processing_id: int, user: dict = Depends(current
         cur.execute("UPDATE processamentos_odm SET status = 'cancelado', etapa = 'Cancelado pelo usuario', fim_em = now(), atualizado_em = now() WHERE id = %s", (processing_id,))
         conn.commit()
     return {"message": "Processamento cancelado no NodeODM.", "processing_id": processing_id, "task_id": job["odm_task_id"], "status": "cancelado"}
+
+
+@router.post("/odm/processamentos/{processing_id}/reprocessar", status_code=202)
+async def reprocess_odm_task(
+    processing_id: int,
+    req: ReprocessODMRequest,
+    response: Response,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    user: dict = Depends(current_user),
+):
+    """Create a new NodeODM task version from preserved photos and changed options."""
+    if idempotency_key is not None and not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", idempotency_key):
+        raise HTTPException(status_code=400, detail="Idempotency-Key invalida")
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM processamentos_odm WHERE id = %s", (processing_id,))
+        parent = cur.fetchone()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Processamento nao encontrado")
+        require_project_role(parent["projeto_id"], user, {"proprietario", "editor"})
+        if parent["status"] not in {"concluido", "erro", "cancelado"}:
+            raise HTTPException(status_code=409, detail="Finalize ou cancele o processamento antes de criar uma nova versao")
+        cur.execute("SELECT nome FROM projetos WHERE id = %s", (parent["projeto_id"],))
+        project = cur.fetchone()
+        cur.execute("SELECT nome_original,hash_sha256 FROM voo_fotos WHERE voo_id = %s ORDER BY id", (parent["voo_id"],))
+        photo_rows = cur.fetchall()
+
+    images = _stored_flight_images(parent["voo_id"])
+    if len(images) < 3 or len(images) != len(photo_rows):
+        raise HTTPException(status_code=422, detail="Fotos originais incompletas; nao e possivel criar uma nova versao")
+    sizes = [path.stat().st_size for path in images]
+    total_bytes = sum(sizes)
+    if any(size <= 0 or size > MAX_ODM_IMAGE_BYTES for size in sizes) or len(images) > MAX_ODM_IMAGES or total_bytes > MAX_ODM_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Fotos preservadas excedem os limites atuais de reprocessamento")
+
+    saved = parent.get("parametros") or {}
+    if isinstance(saved, str):
+        try:
+            saved = json.loads(saved)
+        except json.JSONDecodeError:
+            saved = {}
+    if isinstance(saved, dict):
+        saved_options = saved.get("options", [])
+    else:
+        saved_options = saved
+    if isinstance(saved_options, dict):
+        saved_options = [{"name": name, "value": value} for name, value in saved_options.items()]
+    if not isinstance(saved_options, list):
+        saved_options = []
+    effective_by_name = {str(item["name"]): item.get("value") for item in saved_options
+                         if isinstance(item, dict) and item.get("name")}
+    original_by_name = dict(effective_by_name)
+    requested_names = set()
+    for item in req.options:
+        name = item.get("name")
+        if not isinstance(name, str) or not name or "value" not in item:
+            raise HTTPException(status_code=422, detail="Cada parametro precisa conter name e value")
+        if name in requested_names:
+            raise HTTPException(status_code=422, detail=f"Parametro duplicado: {name}")
+        requested_names.add(name)
+        effective_by_name[name] = item["value"]
+    effective_options = [{"name": name, "value": value} for name, value in sorted(effective_by_name.items())]
+    if not req.options or not any(original_by_name.get(item["name"]) != item["value"] for item in req.options):
+        raise HTTPException(status_code=422, detail="Informe ao menos um parametro diferente do processamento original")
+
+    parent_parameters = parent.get("parametros") or {}
+    if isinstance(parent_parameters, str):
+        try:
+            parent_parameters = json.loads(parent_parameters)
+        except json.JSONDecodeError:
+            parent_parameters = {}
+    parent_version = (parent_parameters.get("reprocessamento") or {}) if isinstance(parent_parameters, dict) else {}
+    root_id = int(parent_version.get("root_processing_id") or processing_id)
+    fingerprint_data = {
+        "parent_processing_id": processing_id,
+        "options": effective_options,
+        "photos": sorted((row.get("nome_original"), row.get("hash_sha256")) for row in photo_rows),
+    }
+    fingerprint = hashlib.sha256(json.dumps(fingerprint_data, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    key = idempotency_key or str(uuid.uuid4())
+    task_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"ortomapas-reprocess:{parent['projeto_id']}:{parent['voo_id']}:{user['id']}:{key}"))
+    lock_scope = f"odm-reprocess:{parent['projeto_id']}:{parent['voo_id']}:{user['id']}:{key}"
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (lock_scope,))
+        cur.execute("SELECT * FROM odm_idempotency_keys WHERE projeto_id = %s AND voo_id = %s AND usuario_id = %s AND idempotency_key = %s FOR UPDATE",
+                    (parent["projeto_id"], parent["voo_id"], user["id"], key))
+        existing = cur.fetchone()
+        if existing and existing["request_fingerprint"].strip() != fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key ja utilizada com parametros diferentes")
+        if existing and existing.get("processamento_id"):
+            cur.execute("SELECT id,odm_task_id,status,parametros FROM processamentos_odm WHERE id = %s", (existing["processamento_id"],))
+            prior = cur.fetchone()
+            conn.rollback()
+            response.status_code = 200
+            return {"processing_id": prior["id"], "task": {"uuid": prior["odm_task_id"]},
+                    "status": prior["status"], "reprocessed_from_id": processing_id,
+                    "version": (prior["parametros"] or {}).get("reprocessamento", {}).get("version"), "reused": True}
+        if not existing:
+            cur.execute("INSERT INTO odm_idempotency_keys (projeto_id,voo_id,usuario_id,idempotency_key,request_fingerprint,odm_task_id) VALUES (%s,%s,%s,%s,%s,%s)",
+                        (parent["projeto_id"], parent["voo_id"], user["id"], key, fingerprint, task_uuid))
+        conn.commit()
+
+    try:
+        remote = requests.get(f"{parent['endpoint']}/task/{task_uuid}/info", timeout=15)
+        if remote.ok and (remote.json() or {}).get("uuid") == task_uuid:
+            task = {"uuid": task_uuid}
+        elif _nodeodm_task_missing(remote):
+            handles = []
+            try:
+                handles = [("images", (path.name, path.open("rb"), "application/octet-stream")) for path in images]
+                name = req.name or f"{project['nome']} - Voo {parent['voo_id']} - reprocessamento"
+                fields = {"name": name, "options": json.dumps(effective_options, ensure_ascii=False)}
+                submit = requests.post(f"{parent['endpoint']}/task/new", data=fields, files=handles,
+                                       headers={"set-uuid": task_uuid}, timeout=(30, 600))
+                submit.raise_for_status()
+                task = submit.json()
+                if task.get("uuid") != task_uuid:
+                    raise HTTPException(status_code=502, detail="NodeODM nao confirmou o identificador idempotente")
+            finally:
+                for _, (_, handle, _) in handles:
+                    handle.close()
+        else:
+            raise HTTPException(status_code=502, detail=f"NodeODM respondeu HTTP {remote.status_code} ao verificar a nova tarefa")
+        try:
+            node_info = requests.get(f"{parent['endpoint']}/info", timeout=10).json()
+        except (requests.RequestException, ValueError):
+            node_info = {}
+    except HTTPException:
+        raise
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail=f"Falha ao enviar nova versao ao NodeODM: {exc}") from exc
+
+    version_parameters = {
+        "options": effective_options,
+        "reprocessamento": {"root_processing_id": root_id, "parent_processing_id": processing_id,
+            "source_task_id": parent["odm_task_id"], "requested_options": req.options,
+            "fingerprint": fingerprint, "created_at": datetime.utcnow().isoformat() + "Z"},
+    }
+    with get_connection() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"odm-reprocess-root:{root_id}",))
+        cur.execute("""SELECT COALESCE(MAX(NULLIF(parametros->'reprocessamento'->>'version','')::INTEGER),1) AS latest
+            FROM processamentos_odm WHERE id = %s OR parametros->'reprocessamento'->>'root_processing_id' = %s""",
+                    (root_id, str(root_id)))
+        version = int(cur.fetchone()["latest"]) + 1
+        version_parameters["reprocessamento"]["version"] = version
+        cur.execute("""INSERT INTO processamentos_odm
+            (projeto_id,voo_id,odm_task_id,endpoint,engine,engine_version,parametros,status,criado_por)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,'pendente',%s) RETURNING id""",
+                    (parent["projeto_id"], parent["voo_id"], task_uuid, parent["endpoint"],
+                     node_info.get("engine"), node_info.get("engineVersion"), Json(version_parameters), user["id"]))
+        new_id = cur.fetchone()["id"]
+        cur.execute("UPDATE odm_idempotency_keys SET processamento_id = %s, odm_task_id = %s WHERE projeto_id = %s AND voo_id = %s AND usuario_id = %s AND idempotency_key = %s",
+                    (new_id, task_uuid, parent["projeto_id"], parent["voo_id"], user["id"], key))
+        conn.commit()
+    return {"processing_id": new_id, "task": task, "reprocessed_from_id": processing_id,
+            "root_processing_id": root_id, "version": version, "options": effective_options,
+            "images_count": len(images), "total_bytes": total_bytes, "reused": False}
 
 
 @router.post("/odm/processamentos/{processing_id}/recuperar", status_code=202)

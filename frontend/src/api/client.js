@@ -131,6 +131,12 @@ export function cancelOdmProcessing(processingId) {
   return api.post(`/odm/processamentos/${processingId}/cancelar`)
 }
 
+export function reprocessOdmTask(processingId, payload, idempotencyKey) {
+  return api.post(`/odm/processamentos/${processingId}/reprocessar`, payload, {
+    headers: { 'Idempotency-Key': idempotencyKey }, timeout: 600000,
+  })
+}
+
 export function getOdmProcessamentos(projetoId) {
   return api.get('/odm/processamentos', { params: { projeto_id: projetoId } })
 }

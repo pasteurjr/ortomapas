@@ -1,0 +1,227 @@
+{
+  "started_at": "2026-11-17T16:15:34.085082-03:00",
+  "environment": {
+    "ui": "http://127.0.0.1:5176",
+    "api": "http://127.0.0.1:8888",
+    "nodeodm": "real NodeODM 2.2.4 / ODM 3.5.6"
+  },
+  "project_id": 88,
+  "parent_processing_id": 21,
+  "parent_status_before": "concluido",
+  "preserved_photo_count": 77,
+  "preserved_photo_bytes": 542880685,
+  "parent_product_count_before": 6,
+  "expected_new_version": 3,
+  "changed_parameter": {
+    "name": "orthophoto-resolution",
+    "old": "not set (ODM default)",
+    "new": 10,
+    "unit": "cm/pixel"
+  },
+  "screenshots": [
+    {
+      "file": "01_processamento_original_concluido.png",
+      "description": "Processamento original #21 concluído e ação para abrir uma versão independente disponível."
+    },
+    {
+      "file": "02_confirmacao_novos_parametros.png",
+      "description": "Confirmação mostra que o original e seus produtos serão preservados; resolução nova de 10 cm/pixel."
+    },
+    {
+      "file": "03_nova_versao_na_fila_nodeodm.png",
+      "description": "Nova tarefa real aparece no histórico com versão e origem; a antiga permanece concluída."
+    },
+    {
+      "file": "04_confirmacao_cancelamento_nova_versao.png",
+      "description": "Confirmação identifica a tarefa nova que será cancelada."
+    },
+    {
+      "file": "05_cancelamento_confirmado_historico_preservado.png",
+      "description": "A nova versão termina cancelada; a versão original permanece concluída e separada."
+    }
+  ],
+  "assertions": [
+    {
+      "case": "nova versão ODM real",
+      "expected": "nova tarefa NodeODM 202 com pai #21, versão 3, novas opções e todas as fotos preservadas",
+      "observed": {
+        "processing_id": 23,
+        "reprocessed_from_id": 21,
+        "root_processing_id": 21,
+        "version": 3,
+        "images_count": 77,
+        "total_bytes": 542880685,
+        "reused": false
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "idempotência de reprocessamento",
+      "expected": "mesma chave e payload reutilizam a tarefa; payload diferente conflita",
+      "observed": {
+        "same_payload_status": 200,
+        "same_processing_id": 23,
+        "changed_payload_status": 409
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "cancelamento sem perda de histórico/produtos",
+      "expected": "NodeODM status 50, nova versão cancelada, pai concluído e produtos anteriores intactos",
+      "observed": {
+        "parent_status": "concluido",
+        "child_status": "cancelado",
+        "nodeodm_status_code": 50,
+        "parent_product_count_before": 6,
+        "parent_product_count_after": 6,
+        "child_product_count": 0,
+        "engine": "odm",
+        "engine_version": "3.5.6",
+        "child_options": [
+          {
+            "name": "dsm",
+            "value": true
+          },
+          {
+            "name": "dtm",
+            "value": true
+          },
+          {
+            "name": "orthophoto-resolution",
+            "value": 10
+          },
+          {
+            "name": "pc-las",
+            "value": true
+          }
+        ],
+        "page_errors": [],
+        "console_errors": [],
+        "api_responses": [
+          {
+            "status": 200,
+            "url": "http://127.0.0.1:5176/api/odm/produtos"
+          },
+          {
+            "status": 200,
+            "url": "http://127.0.0.1:5176/api/odm/processamentos"
+          },
+          {
+            "status": 202,
+            "url": "http://127.0.0.1:5176/api/odm/processamentos/21/reprocessar"
+          },
+          {
+            "status": 200,
+            "url": "http://127.0.0.1:5176/api/odm/produtos"
+          },
+          {
+            "status": 200,
+            "url": "http://127.0.0.1:5176/api/odm/processamentos"
+          },
+          {
+            "status": 200,
+            "url": "http://127.0.0.1:5176/api/odm/processamentos/23/cancelar"
+          },
+          {
+            "status": 200,
+            "url": "http://127.0.0.1:5176/api/odm/processamentos"
+          },
+          {
+            "status": 200,
+            "url": "http://127.0.0.1:5176/api/odm/produtos"
+          }
+        ]
+      },
+      "result": "PASS"
+    },
+    {
+      "case": "representação visual do cancelamento",
+      "expected": "sem barra de progresso 100%; estado Interrompido e aviso de ausência de produtos",
+      "observed": "captura 05 mostra status Interrompido, aviso de execução interrompida, sem barra de progresso, page_errors=[]",
+      "result": "PASS"
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "llm_calls": 0,
+  "reprocess": {
+    "processing_id": 23,
+    "reprocessed_from_id": 21,
+    "root_processing_id": 21,
+    "version": 3,
+    "images_count": 77,
+    "total_bytes": 542880685,
+    "reused": false
+  },
+  "idempotency_key_captured": true,
+  "idempotency": {
+    "same_payload_status": 200,
+    "same_processing_id": 23,
+    "changed_payload_status": 409
+  },
+  "final": {
+    "parent_status": "concluido",
+    "child_status": "cancelado",
+    "nodeodm_status_code": 50,
+    "parent_product_count_before": 6,
+    "parent_product_count_after": 6,
+    "child_product_count": 0,
+    "engine": "odm",
+    "engine_version": "3.5.6",
+    "child_options": [
+      {
+        "name": "dsm",
+        "value": true
+      },
+      {
+        "name": "dtm",
+        "value": true
+      },
+      {
+        "name": "orthophoto-resolution",
+        "value": 10
+      },
+      {
+        "name": "pc-las",
+        "value": true
+      }
+    ],
+    "page_errors": [],
+    "console_errors": [],
+    "api_responses": [
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5176/api/odm/produtos"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5176/api/odm/processamentos"
+      },
+      {
+        "status": 202,
+        "url": "http://127.0.0.1:5176/api/odm/processamentos/21/reprocessar"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5176/api/odm/produtos"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5176/api/odm/processamentos"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5176/api/odm/processamentos/23/cancelar"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5176/api/odm/processamentos"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5176/api/odm/produtos"
+      }
+    ]
+  },
+  "ui_correction_after_inspection": "A inspeção encontrou barra 100% e texto secundário Aguardando etapa para tarefa cancelada. A interface agora remove a barra, mostra Interrompido e informa que não há produtos; screenshot 05 foi recapturado e conferido sem erros JS."
+}
