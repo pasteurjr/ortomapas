@@ -1,0 +1,329 @@
+{
+  "started_at": "2026-11-17T21:34:42.370130-03:00",
+  "case": "UC-029 / reprocessamento completo e comparação de versões",
+  "project_id": 88,
+  "parent_processing_id": 21,
+  "parent_status_before": "concluido",
+  "parent_task_uuid": "ad503e1b-b88d-55d7-ad2b-6ddcdd78902b",
+  "preserved_photos": 77,
+  "preserved_photo_bytes": 542880685,
+  "nodeodm": {
+    "version": "2.2.4",
+    "engine": "odm",
+    "engineVersion": "3.5.6",
+    "taskQueueCount": 0,
+    "maxParallelTasks": 1
+  },
+  "requested_change": {
+    "option": "orthophoto-resolution",
+    "value": 10,
+    "unit": "cm/pixel"
+  },
+  "expected_version": 4,
+  "started_request_http": 202,
+  "child_processing_id": 24,
+  "child_task_uuid": "acea0fee-7c5d-5b64-af53-48d9e2d3ab27",
+  "screenshots": [
+    {
+      "file": "01_versao_original.png",
+      "description": "Processamento #21 concluído e seis produtos originais disponíveis antes do reprocessamento."
+    },
+    {
+      "file": "02_parametro_alterado.png",
+      "description": "Formulário real com resolução da ortofoto alterada para 10 cm/pixel e aviso de preservação do original."
+    },
+    {
+      "file": "03_tarefa_ativa_nodeodm.png",
+      "description": "Versão nova enviada ao NodeODM real e visível na fila; o processamento de origem continua concluído."
+    },
+    {
+      "file": "04_progresso_intermediario.png",
+      "description": "Acompanhamento visual Playwright durante a tarefa #24 no NodeODM; versão #21 preservada."
+    },
+    {
+      "file": "05_rotulo_processando_corrigido.png",
+      "description": "Reteste visual após corrigir o fallback: tarefa processando sem nome de fase agora diz “Executando no NodeODM”."
+    },
+    {
+      "file": "06_tarefa_concluida_antes_importar.png",
+      "description": "NodeODM concluiu a versão 4; o histórico de origem permanece concluído com seis produtos."
+    },
+    {
+      "file": "07_produtos_importados_comparacao.png",
+      "description": "Ortomosaico/DSM/DTM/relatório/LAZ da versão nova importados no catálogo; produto original intacto."
+    }
+  ],
+  "progress_observations": [
+    {
+      "observed_at": "2026-11-17T21:34:46.184319-03:00",
+      "code": 20,
+      "state": null,
+      "progress_percent": 0.0
+    },
+    {
+      "observed_at": "2026-11-17T21:35:46.237611-03:00",
+      "code": 20,
+      "state": null,
+      "progress_percent": 4.5
+    },
+    {
+      "observed_at": "2026-11-17T21:36:46.346264-03:00",
+      "code": 20,
+      "state": null,
+      "progress_percent": 6.75
+    },
+    {
+      "observed_at": "2026-11-17T21:37:46.388972-03:00",
+      "code": 20,
+      "state": null,
+      "progress_percent": 15.75
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "llm_calls": 0,
+  "token_persisted": false,
+  "child_task_prefix": "acea0fee",
+  "version": 4,
+  "source_bytes_submitted": 542880685,
+  "effective_options": [
+    {
+      "name": "dsm",
+      "value": true
+    },
+    {
+      "name": "dtm",
+      "value": true
+    },
+    {
+      "name": "orthophoto-resolution",
+      "value": 10
+    },
+    {
+      "name": "pc-las",
+      "value": true
+    }
+  ],
+  "idempotency_key_sent": true,
+  "intermediate_ui_state": "Processando\nacea0fee · Aguardando etapa\nVersão 4 · derivada do processamento #21\n24.75%\nCancelar processamento",
+  "intermediate_page_errors": [],
+  "intermediate_ui_state_after_fix": "Processando\nacea0fee · Executando no NodeODM\nVersão 4 · derivada do processamento #21\n24.75%\nCancelar processamento",
+  "intermediate_page_errors_after_fix": [],
+  "finished_at": "2026-11-18T03:17:48.854814-03:00",
+  "nodeodm_terminal": {
+    "code": 40
+  },
+  "import_http": 200,
+  "imported_product_types": [
+    "dsm",
+    "dtm",
+    "modelo_3d",
+    "nuvem_pontos",
+    "ortomosaico",
+    "relatorio"
+  ],
+  "completion": {
+    "processing_id": 24,
+    "version": 4,
+    "status": "concluido",
+    "nodeodm_code": 40,
+    "processing_time_ms": 1438751
+  },
+  "comparison": {
+    "parent_status": "concluido",
+    "child_status": "concluido",
+    "child_engine": "odm",
+    "child_engine_version": "3.5.6",
+    "parent_products_before": 6,
+    "parent_products_after": 6,
+    "version_metadata": {
+      "version": 4,
+      "created_at": "2026-11-18T00:34:45.876792Z",
+      "fingerprint": "b4d6bd489cf3f7a7e373d63155eeae9ecb31715ccaee63d190d132cb59bad96e",
+      "source_task_id": "ad503e1b-b88d-55d7-ad2b-6ddcdd78902b",
+      "requested_options": [
+        {
+          "name": "orthophoto-resolution",
+          "value": 10
+        }
+      ],
+      "root_processing_id": 21,
+      "parent_processing_id": 21
+    },
+    "original_laz_points": 15889672,
+    "reprocessed_laz_points": 15783502,
+    "original_orthophoto_pixel_m": 0.04999870292017745,
+    "reprocessed_orthophoto_pixel_m": 0.09999999923896324,
+    "rasters": {
+      "ortomosaico": {
+        "original": {
+          "file": "data/ortomapas/odm_21_ortomosaico.tif",
+          "bytes": 92910547,
+          "width": 7449,
+          "height": 5906,
+          "bands": 4,
+          "crs": "EPSG:32617",
+          "resolution": [
+            0.04999870292017745,
+            0.04999506740086222
+          ],
+          "bounds": [
+            436847.2876722548,
+            4572650.895214921,
+            437219.7280103072,
+            4572946.16608299
+          ],
+          "nodata": null
+        },
+        "reprocessed": {
+          "file": "data/ortomapas/odm_24_ortomosaico.tif",
+          "bytes": 26682995,
+          "width": 3739,
+          "height": 2979,
+          "bands": 4,
+          "crs": "EPSG:32617",
+          "resolution": [
+            0.09999999923896324,
+            0.09997356411090891
+          ],
+          "bounds": [
+            436846.7227389361,
+            4572650.805436898,
+            437220.62273609056,
+            4572948.626684384
+          ],
+          "nodata": null
+        },
+        "sample_comparison": {
+          "sample_window_old_grid_pixels": [
+            512,
+            512
+          ],
+          "common_valid_pixels": 262144,
+          "overlap_ratio_of_old_extent": 1.0,
+          "bands_compared": 3,
+          "mean_absolute_difference": 5.542372226715088,
+          "root_mean_square_difference": 7.817260265350342,
+          "max_absolute_difference": 88.0,
+          "note": "Comparison only; no acceptance threshold was defined for pixel values or elevations."
+        }
+      },
+      "dsm": {
+        "original": {
+          "file": "data/ortomapas/odm_21_dsm.tif",
+          "bytes": 63653202,
+          "width": 7448,
+          "height": 5905,
+          "bands": 1,
+          "crs": "EPSG:32617",
+          "resolution": [
+            0.04999999999999531,
+            0.05
+          ],
+          "bounds": [
+            436847.29000000004,
+            4572650.885,
+            437219.69,
+            4572946.135
+          ],
+          "nodata": -9999.0
+        },
+        "reprocessed": {
+          "file": "data/ortomapas/odm_24_dsm.tif",
+          "bytes": 62198823,
+          "width": 7478,
+          "height": 5957,
+          "bands": 1,
+          "crs": "EPSG:32617",
+          "resolution": [
+            0.04999999999999533,
+            0.04999999999993746
+          ],
+          "bounds": [
+            436846.77,
+            4572650.805000001,
+            437220.67,
+            4572948.655
+          ],
+          "nodata": -9999.0
+        },
+        "sample_comparison": {
+          "sample_window_old_grid_pixels": [
+            512,
+            512
+          ],
+          "common_valid_pixels": 262144,
+          "overlap_ratio_of_old_extent": 1.0,
+          "bands_compared": 1,
+          "mean_absolute_difference": 0.04187854006886482,
+          "root_mean_square_difference": 0.28835970163345337,
+          "max_absolute_difference": 11.837997436523438,
+          "note": "Comparison only; no acceptance threshold was defined for pixel values or elevations."
+        }
+      },
+      "dtm": {
+        "original": {
+          "file": "data/ortomapas/odm_21_dtm.tif",
+          "bytes": 74751157,
+          "width": 7449,
+          "height": 5906,
+          "bands": 1,
+          "crs": "EPSG:32617",
+          "resolution": [
+            0.04999999999999375,
+            0.04999999999996846
+          ],
+          "bounds": [
+            436847.28,
+            4572650.850000001,
+            437219.73,
+            4572946.15
+          ],
+          "nodata": -9999.0
+        },
+        "reprocessed": {
+          "file": "data/ortomapas/odm_24_dtm.tif",
+          "bytes": 76145084,
+          "width": 7479,
+          "height": 5957,
+          "bands": 1,
+          "crs": "EPSG:32617",
+          "resolution": [
+            0.04999999999999377,
+            0.0500000000000938
+          ],
+          "bounds": [
+            436846.73000000004,
+            4572650.785,
+            437220.68,
+            4572948.635000001
+          ],
+          "nodata": -9999.0
+        },
+        "sample_comparison": {
+          "sample_window_old_grid_pixels": [
+            512,
+            512
+          ],
+          "common_valid_pixels": 262144,
+          "overlap_ratio_of_old_extent": 1.0,
+          "bands_compared": 1,
+          "mean_absolute_difference": 0.023157194256782532,
+          "root_mean_square_difference": 0.028450515121221542,
+          "max_absolute_difference": 0.204498291015625,
+          "note": "Comparison only; no acceptance threshold was defined for pixel values or elevations."
+        }
+      }
+    },
+    "acceptance_limit": "Product lineage, target resolution, CRS/coverage, and output existence are checked. Pixel/elevation differences are measured without a scientific threshold or GCP/ground truth."
+  },
+  "acceptance_checks": {
+    "two_completed_versions": true,
+    "parent_product_count_unchanged": true,
+    "lineage_and_version": true,
+    "target_resolution_applied": true,
+    "spatial_overlap": true,
+    "browser_clean": true
+  },
+  "result": "PASS_FUNCTIONAL_UC029"
+}

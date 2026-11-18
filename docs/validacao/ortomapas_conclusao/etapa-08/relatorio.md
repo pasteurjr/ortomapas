@@ -568,3 +568,59 @@ O [manifesto da validação](../etapa-09/playwright/uc026_quality/manifest.json)
 **UC-026 permanece parcial para aceite científico/operacional.** O PDF do ODM reporta estimativas baseadas no ajuste do conjunto com referência GPS, mas esta revisão não dispõe de pontos de checagem independentes nem de levantamento de referência para confirmar acurácia absoluta/relativa. Também não foi estabelecido um erro máximo tolerável para o uso pretendido. Portanto, 100% significa somente que as três condições operacionais passaram; não certifica a precisão nem a aptidão do mapa para medições.
 
 **Próxima subetapa 9.9 de 9 — reconciliação e decisão de aceite:** fechar UC-011/UC-020 nos limites científicos já registrados, definir explicitamente o destino das pendências obrigatórias (inclusive UC-009 campanhas independentes, UC-029 comparação de duas fotogrametrias concluídas e UC-026 checkpoints/tolerâncias), atualizar a matriz final e decidir se há aceite ou bloqueio por falta de dados de referência. Após a 9.8, resta uma subetapa.
+
+## Fase macro 9/9 — subetapa 9.9: reconciliação final e decisão de aceite
+
+**Execução:** 18/11/2026
+**Objetivo:** concluir a validação funcional comparativa do UC-029, reconciliar os UCs parciais e decidir formalmente se o produto pode receber aceite operacional global.
+
+### UC-029 — duas versões reais concluídas
+
+O teste usou o projeto #88 e o conjunto público Aukerman de 77 fotografias (542.880.685 bytes preservados). É um dataset público de demonstração, não voo de drone do usuário nem levantamento de Guarajuba. O processamento original #21 já estava concluído. Pela interface foi criada e enviada ao NodeODM a versão #24 (versão 4, pai #21), alterando `orthophoto-resolution` para 10 cm/pixel. NodeODM 2.2.4 executou ODM 3.5.6 e terminou com status code 40, 100%, em 1.438.751 ms (23 min 59 s). O Playwright importou os seis produtos: ortomosaico, DSM, DTM, relatório, nuvem LAZ e modelo 3D.
+
+### Esperado versus obtido
+
+| Critério | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Execução terminal | Processo novo conclui no NodeODM e persiste como concluído | NodeODM code 40; API/DB #24 `concluido`; versão 4 e referência ao pai #21 | Aprovado funcionalmente |
+| Parâmetro | 10 cm/pixel aplicado à ortofoto | Orto #21: 0,049999 m/pixel; #24: 0,100000 m/pixel; ambos EPSG:32617 | Aprovado |
+| Importação e proteção do histórico | Seis saídas novas catalogadas; seis produtos originais preservados | Importação HTTP 200; produtos #24: ortomosaico, DSM, DTM, relatório, LAZ, modelo 3D; produtos #21: 6 antes e depois | Aprovado funcionalmente |
+| Cobertura/grade comparável | Sobreposição espacial e amostra comum verificáveis | Orto/DSM/DTM em EPSG:32617; extensão comum equivale a 100% da extensão original; janela central pareada 512×512 com 262.144 pixels válidos em cada comparação | Aprovado para comparação interna |
+| Diferença do ortomosaico | Medir diferença radiométrica, sem presumir limite inexistente | 3 bandas RGB; MAE 5,542 DN, RMSE 7,817 DN, máximo 88 DN. Orto #21 7449×5906; #24 3739×2979 | Medido; não existe limiar de aceitação radiométrica definido |
+| Diferença DSM | Comparar superfícies nas mesmas coordenadas | MAE 0,041879 m; RMSE 0,288360 m; máximo 11,837997 m | Medido; sem checkpoint/limiar independente, não prova acurácia vertical |
+| Diferença DTM | Comparar terreno nas mesmas coordenadas | MAE 0,023157 m; RMSE 0,028451 m; máximo 0,204498 m | Medido; sem checkpoint/limiar independente, não prova acurácia vertical |
+| Nuvem de pontos | Confirmar arquivos e cardinalidade | LAZ #21: 15.889.672 pontos; #24: 15.783.502 pontos | Produtos presentes; variação de contagem sem critério de qualidade definido |
+| Linhagem e não destruição | Pai/versão explícitos, histórico da origem intacto | #24/v4 deriva de #21; seis produtos #21 continuam registrados; verificações automatizadas passaram | Aprovado |
+| Interface | Mostrar tarefa concluída e produtos sem erro de navegador | Captura Playwright após importação; erros de página e console vazios | Aprovado visualmente |
+
+As diferenças de pixel e elevação são comparações entre duas reconstruções das **mesmas 77 fotos**. Elas comprovam que o versionamento e a comparação funcionam e descrevem as saídas observadas; não certificam georreferenciamento, qualidade fotogramétrica, acurácia vertical ou aptidão para projeto de engenharia. Para isso faltam GCP/checkpoints independentes e tolerâncias quantitativas previamente acordadas.
+
+### Capturas da execução
+
+1. A tarefa #24 aparece concluída no NodeODM, antes da importação: [captura 06](../etapa-09/playwright/uc029_reprocess/06_tarefa_concluida_antes_importar.png).
+2. Produtos da versão importada aparecem no projeto junto ao histórico: [captura 07](../etapa-09/playwright/uc029_reprocess/07_produtos_importados_comparacao.png).
+3. As capturas anteriores mostram a origem preservada, alteração para 10 cm, envio, fila e progresso: [01 versão original](../etapa-09/playwright/uc029_reprocess/01_versao_original.png), [02 parâmetro](../etapa-09/playwright/uc029_reprocess/02_parametro_alterado.png), [03 tarefa ativa](../etapa-09/playwright/uc029_reprocess/03_tarefa_ativa_nodeodm.png), [04 rótulo incorreto detectado](../etapa-09/playwright/uc029_reprocess/04_progresso_intermediario.png) e [05 reteste após correção](../etapa-09/playwright/uc029_reprocess/05_rotulo_processando_corrigido.png).
+
+A captura 04 encontrou uma inconsistência de UI: processo em execução sem subetapa mostrava “Aguardando etapa”. Corrigi o fallback em `OdmTasks.vue` para “Executando no NodeODM”. A captura 05 confirma estado “Processando”, progresso visível e mensagem coerente. O build e a validação Playwright foram refeitos; não houve erro JS/console. As observações desta correção estão no [manifesto JSON](../etapa-09/playwright/uc029_reprocess/manifest.json), junto com opções efetivas, resposta terminal, métricas, produtos importados e checks.
+
+### Reconciliação final dos casos de uso
+
+| UC | Estado após a reconciliação 9.9 | O que ainda impede aceite operacional pleno |
+|---|---|---|
+| UC-009 — comparação de mudanças | Parcial: comparação RGB controlada foi demonstrada na 9.6 | Campanhas reais independentes, registro entre datas e critérios para iluminação/estação |
+| UC-010 — classificação | K-Means RGB foi executado nos dados testados; sem validação semântica | Amostras rotuladas independentes e métricas de classe; RGB não equivale a multiespectral |
+| UC-011 — hidrologia | Algoritmos e fluxo visual demonstrativos funcionam; aceite hidrológico retido | DTM e rede de referência coincidentes, referência independente e critérios quantitativos aprovados |
+| UC-020 — fila de análise | Fila/worker provados apenas para tipos descritos na matriz; parcial | Enfileirar mudança e volume, integrar segmentação/classificadores supervisionados e manter fila separada do Copiloto |
+| UC-024 — recuperação | Cancelamento, idempotência e nova versão testados com NodeODM real | Cenário de tarefa perdida e endpoint `/recuperar` ainda não executados contra falha real no serviço |
+| UC-026 — qualidade | Indicador corrigido para completude operacional, não “qualidade 100%” | Checkpoints/GCP independentes, tolerâncias e critérios adequados ao uso |
+| UC-029 — reprocessamento comparativo | **Aprovado funcionalmente** em #21/#24, incluindo importação, versão, parâmetro e comparação | A aprovação não inclui acurácia externa; esta segue dependente de referência independente e tolerâncias |
+
+Os resultados individuais, evidências anteriores e links estão na [matriz de rastreabilidade reconciliada](../../analise/matriz_rastreabilidade_ortomapas_fase1.md). A fila de análises espaciais UC-020 não é o chat do Copiloto; nenhuma aprovação dos workers foi usada como prova do agente conversacional.
+
+### Decisão final da Fase 9
+
+**Subetapas 9.1 a 9.9 concluídas; restam zero etapas numeradas no plano atual.** A conclusão da fase significa que todos os trabalhos nela planejados foram reconciliados e documentados. Não significa que todos os casos de uso receberam aceite operacional.
+
+**Decisão: aceite operacional global retido.** Razões: faltam evidências de campo/referência independente para os critérios científicos de UC-009, UC-011 e UC-026; UC-020 ainda tem tipos de análise fora da fila; UC-024 não tem recuperação real testada; UC-010 não tem verdade de campo para qualidade semântica. UC-029, ao contrário, passou no escopo funcional versionado explicitado nesta seção. Para avançar ao aceite global será preciso fornecer datasets/referências e tolerâncias para essas validações, completar os tipos de análise pendentes e executar a matriz correspondente. Não restam etapas da Fase 9 a renumerar; são critérios de produto que ainda requerem entradas e trabalho próprio.
+
+Android, controle DJI e simulador de drone seguem como produtos separados e não alteram esta decisão do Ortomapas Web.

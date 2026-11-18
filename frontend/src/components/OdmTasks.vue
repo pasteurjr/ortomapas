@@ -6,7 +6,7 @@
     <p v-if="publicationMessage" class="odm-recovery-success" role="status">{{ publicationMessage }}</p>
     <div v-if="!tasks.length" class="empty-state">Nenhum processamento</div>
     <div v-for="task in tasks" :key="task.id" class="task-row">
-      <div class="task-main"><strong>{{ statusLabel(task.status) }}</strong><small>{{ task.odm_task_id.slice(0, 8) }} · {{ task.status === 'cancelado' ? 'Interrompido' : (task.etapa || (task.status === 'concluido' ? 'Concluído' : 'Aguardando etapa')) }}</small></div>
+      <div class="task-main"><strong>{{ statusLabel(task.status) }}</strong><small>{{ task.odm_task_id.slice(0, 8) }} · {{ task.status === 'cancelado' ? 'Interrompido' : (task.etapa || (task.status === 'concluido' ? 'Concluído' : task.status === 'processando' ? 'Executando no NodeODM' : task.status === 'pendente' ? 'Aguardando na fila' : 'Aguardando etapa')) }}</small></div>
       <small v-if="task.parametros?.reprocessamento" class="version-line">Versão {{ task.parametros.reprocessamento.version }} · derivada do processamento #{{ task.parametros.reprocessamento.parent_processing_id }}</small>
       <ProgressBar v-if="task.status !== 'cancelado'" :value="Number(task.progresso || 0)" :showValue="true" />
       <div v-else class="cancelled-progress" role="status">Execução interrompida; os produtos desta versão não foram gerados.</div>
