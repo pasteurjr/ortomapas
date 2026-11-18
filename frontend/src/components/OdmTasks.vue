@@ -33,7 +33,13 @@
         <Button v-else label="Publicar WMS/WMTS" icon="pi pi-globe" size="small" severity="help" :disabled="!projectStore.canEdit" :loading="publishing === product.id" @click="publish(product)" />
       </div>
       <small v-if="task.status === 'erro' && task.erro" class="task-error">{{ task.erro }}</small>
-      <div v-if="quality[task.id]" class="quality-row"><strong>Qualidade: {{ quality[task.id].score }}%</strong><span>{{ quality[task.id].nivel }}</span><small>{{ quality[task.id].recomendacoes?.[0] }}</small></div>
+      <div v-if="quality[task.id]" class="quality-row" data-testid="odm-completeness">
+        <strong>Completude de produtos: {{ quality[task.id].score }}%</strong>
+        <span>{{ quality[task.id].nivel }}</span>
+        <small>{{ quality[task.id].escopo }}</small>
+        <small class="quality-limit">Não é uma nota de acurácia. Não valida precisão posicional/vertical, GSD real ou qualidade agronômica.</small>
+        <small>{{ quality[task.id].recomendacoes?.[0] }}</small>
+      </div>
     </div>
     <PointCloudViewer v-if="selectedProduct" :product="selectedProduct" @close="selectedProduct = null" />
     <TexturedModelViewer v-if="selectedModel" :product="selectedModel" @close="selectedModel = null" />
@@ -142,6 +148,7 @@ async function confirmReprocess() {
 <style scoped>
 .odm-tasks { margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }.section-title { display:flex; align-items:center; gap:6px; font-size:.8rem; font-weight:600; color:var(--text-dim); text-transform:uppercase; }.task-row { padding:8px 2px; border-bottom:1px solid var(--border); }.task-main { display:flex; justify-content:space-between; font-size:.78rem; } small,.empty-state { color:var(--text-dim); }.task-row :deep(.p-progressbar) { margin-top:5px; height:14px; }.task-actions { display:flex; gap:6px; margin-top:6px; }.empty-state { padding:8px 0; font-size:.78rem; }
 .quality-row{display:flex;justify-content:space-between;margin-top:5px;font-size:.72rem;color:#7fd1b9}.quality-row span{text-transform:uppercase;color:var(--text-dim)}
+.quality-row small{flex-basis:100%;line-height:1.4}.quality-row .quality-limit{padding:5px 7px;border-left:3px solid #d99b31;background:color-mix(in srgb,#d99b31 10%,transparent);color:var(--text-dim)}
 .task-actions{flex-wrap:wrap}.quality-row{flex-wrap:wrap;gap:5px}
 .version-line{display:block;margin-top:3px;color:var(--text-dim)}.reprocess-field{display:grid;gap:6px;margin:14px 0}.reprocess-field label{font-weight:600}.reprocess-field input{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)}.reprocess-field small{line-height:1.4}
 .cancelled-progress{margin-top:5px;padding:5px 7px;border-left:3px solid #d99b31;background:color-mix(in srgb,#d99b31 10%,transparent);font-size:.72rem;line-height:1.35;color:var(--text-dim)}

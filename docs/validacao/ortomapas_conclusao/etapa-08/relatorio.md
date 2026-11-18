@@ -532,3 +532,39 @@ O [manifesto de validação](../etapa-09/playwright/uc024_029/manifest.json) con
 **UC-029 permanece parcial:** o sistema agora cria e identifica versões com parâmetros diferentes, mas a nova tarefa foi cancelada antes de gerar ortomosaico/DSM. Assim, ainda não há comparação quantitativa de dois resultados fotogramétricos concluídos. O aceite dessa parte exige executar versões de origem e reprocessada até o fim e comparar dimensões, CRS, GSD, métricas de qualidade e produtos; este teste não afirma essa comparação.
 
 **Próxima subetapa 9.8 de 9 — UC-026:** auditar indicadores/relatórios de qualidade e separar métricas operacionais de acurácia posicional/vertical; comparar cada afirmação com o que os dados realmente permitem concluir. Restará a 9.9 para fechar UC-011/UC-020, reconciliar UCs ainda parciais — incluindo a comparação de resultados do UC-029 — e decidir o aceite global. Após a 9.7, faltam duas subetapas.
+
+## Fase macro 9/9 — subetapa 9.8: auditoria do indicador de qualidade ODM (UC-026)
+
+**Data:** 17/11/2026. **Objetivo:** verificar o que a nota de qualidade realmente calcula, confrontá-la com os produtos e o relatório ODM reais, corrigir a semântica apresentada ao usuário e registrar os limites de acurácia.
+
+### Dados reais e método
+
+- Projeto #88 e processamento concluído #21; mesmo conjunto público Aukerman já processado por ODM 3.5.6 (77 imagens). Nenhum novo processamento fotogramétrico foi iniciado e nenhuma chamada a LLM foi feita.
+- Os seis produtos permaneceram no PostgreSQL; ortomosaico, DSM e DTM foram inspecionados com Rasterio, nuvem LAZ com Laspy e o relatório PDF original com `pdftotext`. A captura foi refeita por Playwright na interface e o endpoint autenticado foi consultado por HTTP GET.
+- A pontuação do código era a média de três condições booleanas: registro de ortomosaico, registro de DSM/DTM e nuvem LAZ com pelo menos 100 mil pontos. Não consultava checkpoints de campo, GCP independentes, erro de reprojeção, GSD alvo, qualidade de alinhamento nem qualidade radiométrica. Embora devolvesse `nivel=bom`, não era uma nota de qualidade científica.
+- Corrigi o contrato sem remover a chave `score` usada por compatibilidade: a API agora declara `tipo_score=completude_de_catalogo_e_volume_de_nuvem`, informa que avalia registros de ortomosaico e DSM/DTM mais a leitura do cabeçalho LAZ com limiar de pontos, explicita limites, usa `nivel=completa/parcial` e identifica a resolução raster em unidades do CRS. A interface passou a exibir “Completude de produtos” e um aviso visível de que não é uma nota de acurácia.
+
+### Esperado versus obtido
+
+| Critério | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Significado da nota | Diferenciar completude operacional de qualidade/precisão fotogramétrica | API retornou `score=100`, `tipo_score=completude_de_catalogo_e_volume_de_nuvem`, `nivel=completa` e limites explícitos; UI mostra completude, não “Qualidade: 100%” | Aprovado após correção semântica |
+| Regras contabilizadas | Expor as três verificações que compõem a nota | Ortomosaico presente; DSM/DTM presente; nuvem LAZ presente e 15.889.672 pontos (limite interno: 100.000) | Aprovado como indicador de presença/completude |
+| Geometria dos rasters | API coerente com arquivos reais quanto a dimensão, CRS e resolução | Orto 7.449 × 5.906, DSM 7.448 × 5.905, DTM 7.449 × 5.906; os três em EPSG:32617 e aproximadamente 0,05 m/pixel; dimensões/pixels da API conferiram com Rasterio | Aprovado para leitura de metadados; não é validação da acurácia do raster |
+| Relatório ODM | Ler indicadores do processamento sem tratá-los como prova de campo | PDF: 77/77 imagens reconstruídas, GSD médio reportado 2,8 cm, erro GPS 0,85 m, CE90 horizontal absoluto 0,717 m e LE90 vertical absoluto 1,220 m | Valores do relatório confirmados; são estimativas ODM e não foram comparados a checkpoints independentes |
+| GSD versus pixel exportado | Não confundir resolução de saída com GSD | Relatório estima GSD de 2,8 cm; GeoTIFF tem pixel próximo de 5 cm. São medidas distintas (GSD médio estimado versus espaçamento da grade de saída), não necessariamente uma inconsistência | Limite esclarecido; adequação ao uso não certificada |
+| Tela e navegador | Mostrar o alcance do score e o aviso ao usuário na tarefa real | Captura mostra projeto #88, processo concluído #21, completude 100%, escopo das três condições e aviso contra inferir acurácia; `page_errors=[]`, `console_errors=[]` | Aprovado visualmente |
+
+### Captura e manifesto
+
+![Cartão de completude do processo real #21, com escopo e limite de acurácia visíveis](../etapa-09/playwright/uc026_quality/01_uc026_completude_e_limites.png)
+
+O [manifesto da validação](../etapa-09/playwright/uc026_quality/manifest.json) contém status HTTP, comparação esperado/obtido, metadados conferidos independentemente, estatísticas transcritas do relatório, caminhos relativos dos produtos e ausência de erros do navegador. O [roteiro Playwright reproduzível](../../../../tests/e2e/playwright/validate_uc026_quality_phase9.py) não persiste o token temporário.
+
+### Conclusão e pendência
+
+**Correção funcional/semântica aprovada:** a API e a interface não apresentam mais as três checagens como avaliação abrangente de qualidade; a tela deixa claro o que 100% significa. Os metadados de raster e a contagem da nuvem coincidiram com leituras independentes dos arquivos.
+
+**UC-026 permanece parcial para aceite científico/operacional.** O PDF do ODM reporta estimativas baseadas no ajuste do conjunto com referência GPS, mas esta revisão não dispõe de pontos de checagem independentes nem de levantamento de referência para confirmar acurácia absoluta/relativa. Também não foi estabelecido um erro máximo tolerável para o uso pretendido. Portanto, 100% significa somente que as três condições operacionais passaram; não certifica a precisão nem a aptidão do mapa para medições.
+
+**Próxima subetapa 9.9 de 9 — reconciliação e decisão de aceite:** fechar UC-011/UC-020 nos limites científicos já registrados, definir explicitamente o destino das pendências obrigatórias (inclusive UC-009 campanhas independentes, UC-029 comparação de duas fotogrametrias concluídas e UC-026 checkpoints/tolerâncias), atualizar a matriz final e decidir se há aceite ou bloqueio por falta de dados de referência. Após a 9.8, resta uma subetapa.

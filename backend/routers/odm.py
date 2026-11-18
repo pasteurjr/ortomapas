@@ -839,7 +839,11 @@ async def processing_quality(processing_id: int, user: dict = Depends(current_us
         item = next((p for p in products if p['tipo'] == kind), None)
         if item:
             try:
-                with rasterio.open(Path(DATA_DIR) / item['caminho']) as ds: metrics[f'{kind}_pixels'] = ds.width * ds.height; metrics[f'{kind}_resolucao'] = abs(ds.transform.a)
+                with rasterio.open(Path(DATA_DIR) / item['caminho']) as ds:
+                    metrics[f'{kind}_pixels'] = ds.width * ds.height
+                    metrics[f'{kind}_resolucao'] = abs(ds.transform.a)
+                    metrics[f'{kind}_resolucao_unidade'] = 'unidade do CRS por pixel'
+                    metrics[f'{kind}_crs'] = str(ds.crs) if ds.crs else None
             except Exception: pass
     # Some LAZ headers do not expose a usable point count. Treat that as an
     # unavailable metric, rather than raising while rendering the quality card.
@@ -853,7 +857,25 @@ async def processing_quality(processing_id: int, user: dict = Depends(current_us
     elif laz_points < 100000:
         recommendations.append('Revisar sobreposição e qualidade das imagens: nuvem de pontos abaixo do esperado.')
     if not recommendations: recommendations.append('Produtos principais presentes; revisar o relatório ODM para validação final.')
-    return {'processamento_id': processing_id, 'score': score, 'nivel': 'bom' if score >= 80 else 'atencao', 'verificacoes': checks, 'metricas': metrics, 'recomendacoes': recommendations, 'produtos': products}
+    # This score counts product-presence checks; it is not a photogrammetric
+    # accuracy or scientific quality score. Keep the legacy score key for API
+    # compatibility and state its scope explicitly for current and future UIs.
+    return {
+        'processamento_id': processing_id,
+        'score': score,
+        'tipo_score': 'completude_de_catalogo_e_volume_de_nuvem',
+        'nivel': 'completa' if score == 100 else 'parcial',
+        'escopo': 'Registros de ortomosaico e DSM/DTM no catálogo; arquivo LAZ legível com ao menos 100.000 pontos.',
+        'limites': [
+            'Não mede acurácia posicional ou vertical com pontos de controle independentes.',
+            'Não certifica GSD real, alinhamento, qualidade radiométrica, classificação ou adequação agronômica.',
+            'As resoluções reportadas vêm dos pixels dos rasters e não substituem uma validação de campo.',
+        ],
+        'verificacoes': checks,
+        'metricas': metrics,
+        'recomendacoes': recommendations,
+        'produtos': products,
+    }
 
 
 @router.get("/odm/tasks/{task_id}/download/{asset}")

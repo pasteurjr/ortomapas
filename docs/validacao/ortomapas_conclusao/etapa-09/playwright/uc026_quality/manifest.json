@@ -1,0 +1,176 @@
+{
+  "executed_at": "2026-11-17T21:10:06.426295-03:00",
+  "case": "UC-026 / auditoria das métricas de qualidade ODM",
+  "project_id": 88,
+  "processing_id": 21,
+  "ui": "http://127.0.0.1:5176",
+  "api_http_status": 200,
+  "api_summary": {
+    "score": 100,
+    "tipo_score": "completude_de_catalogo_e_volume_de_nuvem",
+    "nivel": "completa",
+    "escopo": "Registros de ortomosaico e DSM/DTM no catálogo; arquivo LAZ legível com ao menos 100.000 pontos.",
+    "limites": [
+      "Não mede acurácia posicional ou vertical com pontos de controle independentes.",
+      "Não certifica GSD real, alinhamento, qualidade radiométrica, classificação ou adequação agronômica.",
+      "As resoluções reportadas vêm dos pixels dos rasters e não substituem uma validação de campo."
+    ],
+    "verificacoes": [
+      {
+        "item": "ortomosaico",
+        "ok": true
+      },
+      {
+        "item": "modelo de elevacao",
+        "ok": true
+      },
+      {
+        "item": "nuvem de pontos",
+        "ok": true
+      }
+    ],
+    "metricas": {
+      "pontos_laz": 15889672,
+      "dsm_pixels": 43980440,
+      "dsm_resolucao": 0.04999999999999531,
+      "dsm_resolucao_unidade": "unidade do CRS por pixel",
+      "dsm_crs": "EPSG:32617",
+      "dtm_pixels": 43993794,
+      "dtm_resolucao": 0.04999999999999375,
+      "dtm_resolucao_unidade": "unidade do CRS por pixel",
+      "dtm_crs": "EPSG:32617",
+      "ortomosaico_pixels": 43993794,
+      "ortomosaico_resolucao": 0.04999870292017745,
+      "ortomosaico_resolucao_unidade": "unidade do CRS por pixel",
+      "ortomosaico_crs": "EPSG:32617"
+    },
+    "recomendacoes": [
+      "Produtos principais presentes; revisar o relatório ODM para validação final."
+    ]
+  },
+  "independent_product_checks": {
+    "raster": {
+      "ortomosaico": {
+        "file": "data/ortomapas/odm_21_ortomosaico.tif",
+        "bytes": 92910547,
+        "width": 7449,
+        "height": 5906,
+        "bands": 4,
+        "crs": "EPSG:32617",
+        "pixel_size": [
+          0.04999870292017745,
+          0.04999506740086222
+        ],
+        "pixel_unit": "meter",
+        "bounds": [
+          436847.288,
+          4572650.895,
+          437219.728,
+          4572946.166
+        ]
+      },
+      "dsm": {
+        "file": "data/ortomapas/odm_21_dsm.tif",
+        "bytes": 63653202,
+        "width": 7448,
+        "height": 5905,
+        "bands": 1,
+        "crs": "EPSG:32617",
+        "pixel_size": [
+          0.04999999999999531,
+          0.05
+        ],
+        "pixel_unit": "meter",
+        "bounds": [
+          436847.29,
+          4572650.885,
+          437219.69,
+          4572946.135
+        ]
+      },
+      "dtm": {
+        "file": "data/ortomapas/odm_21_dtm.tif",
+        "bytes": 74751157,
+        "width": 7449,
+        "height": 5906,
+        "bands": 1,
+        "crs": "EPSG:32617",
+        "pixel_size": [
+          0.04999999999999375,
+          0.04999999999996846
+        ],
+        "pixel_unit": "meter",
+        "bounds": [
+          436847.28,
+          4572650.85,
+          437219.73,
+          4572946.15
+        ]
+      }
+    },
+    "laz": {
+      "file": "data/exports/odm_21_nuvem_pontos.laz",
+      "point_count": 15889672
+    },
+    "report": {
+      "file": "data/exports/odm_21_relatorio.pdf",
+      "odm_version": "3.5.6",
+      "reconstructed_images": "77/77 (100.0%)",
+      "average_gsd_cm": 2.8,
+      "gps_error_m": 0.85,
+      "horizontal_ce90_m": 0.717,
+      "vertical_le90_m": 1.22,
+      "field_checks": {
+        "reconstructed_images": true,
+        "average_gsd_2_8_cm": true,
+        "gps_error_0_85_m": true,
+        "horizontal_ce90_0_717_m": true,
+        "vertical_le90_1_220_m": true
+      }
+    },
+    "interpretation": {
+      "ortho_pixel_size_m": [
+        0.04999870292017745,
+        0.04999506740086222
+      ],
+      "report_gsd_cm": 2.8,
+      "gcp_independent_validation": false,
+      "warning": "ODM report statistics are not an independent field/GCP accuracy acceptance."
+    }
+  },
+  "expected_vs_observed": [
+    {
+      "criterion": "score semântico",
+      "expected": "identificar nota como completude de produtos; não chamar de qualidade/precisão",
+      "observed": "UI mostra completude operacional e alerta explícito de que não é nota de acurácia",
+      "result": "PASS"
+    },
+    {
+      "criterion": "presença de produtos",
+      "expected": "3 checagens passam quando ortomosaico, elevação e LAZ acima de 100 mil pontos estão presentes",
+      "observed": "100%, 3 checagens; LAZ 15,889,672 pontos",
+      "result": "PASS"
+    },
+    {
+      "criterion": "metadados raster",
+      "expected": "resolução e CRS coerentes com arquivos",
+      "observed": "API iguala contagem de pixels independente; raster em EPSG:32617 e cerca de 0,05 m/pixel",
+      "result": "PASS"
+    },
+    {
+      "criterion": "acurácia externa",
+      "expected": "não declarar aceite sem GCP/checkpoints independentes",
+      "observed": "relatório ODM informa estimativas GPS/CE90/LE90, mas não houve validação independente de campo/GCP",
+      "result": "LIMITAÇÃO MANTIDA"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "01_uc026_completude_e_limites.png",
+      "description": "Tela real do processamento #21 com a completude de produtos e aviso explícito de que a pontuação não mede acurácia."
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "token_persisted": false
+}
