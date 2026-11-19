@@ -624,3 +624,44 @@ Os resultados individuais, evidências anteriores e links estão na [matriz de r
 **Decisão: aceite operacional global retido.** Razões: faltam evidências de campo/referência independente para os critérios científicos de UC-009, UC-011 e UC-026; UC-020 ainda tem tipos de análise fora da fila; UC-024 não tem recuperação real testada; UC-010 não tem verdade de campo para qualidade semântica. UC-029, ao contrário, passou no escopo funcional versionado explicitado nesta seção. Para avançar ao aceite global será preciso fornecer datasets/referências e tolerâncias para essas validações, completar os tipos de análise pendentes e executar a matriz correspondente. Não restam etapas da Fase 9 a renumerar; são critérios de produto que ainda requerem entradas e trabalho próprio.
 
 Android, controle DJI e simulador de drone seguem como produtos separados e não alteram esta decisão do Ortomapas Web.
+
+## Fase pós-9 — etapa proposta 10.1: recuperação real de tarefa NodeODM (UC-024)
+
+**Execução:** 19/11/2026
+**Estado:** aprovada para o cenário real de recuperação executado. A Fase 10 é uma sequência proposta depois do plano original 9.1–9.9, sem renumerar a Fase 9.
+
+### Pré-condição real e esperado
+
+No projeto #88, o processo de origem #21 estava concluído no PostgreSQL, com 77 fotos originais preservadas (542.880.685 bytes) e seis produtos catalogados. O NodeODM 2.2.4 confirmou que o UUID original `ad503e1b-b88d-55d7-ad2b-6ddcdd78902b` não existe mais: `GET /task/{uuid}/info` respondeu HTTP 200 com JSON de erro `not found`. A API do Ortomapas marcou `nodeodm_missing=true` e `recovery_available=true`; a interface exibiu o aviso e o botão de reenviar as fotos.
+
+O resultado esperado era reenviar as fotos preservadas uma vez ao NodeODM real, criar uma nova linha de processamento ligada ao #21, acompanhar até terminar, importar os seis tipos de produto e manter intactos as fotos e os produtos originais.
+
+### Execução e esperado versus obtido
+
+| Verificação | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Detecção da ausência | Distinguir UUID inexistente de NodeODM indisponível | NodeODM respondeu HTTP 200 com erro `not found`; API classificou a tarefa como ausente e habilitou recuperação | Aprovado |
+| Proteção dos originais | Manter 77 fotos e seis produtos do processamento #21 | Antes e depois: 77 fotos, 542.880.685 bytes e seis produtos; processo #21 continuou `concluido` | Aprovado |
+| Reenvio real | A UI envia as fotos locais e registra relação de origem | Clique confirmado na interface; API HTTP 202; processamento #25 ligado ao #21, UUID novo, 77 imagens e 542.880.685 bytes | Aprovado |
+| Estado NodeODM | Acompanhar tarefa até status final de sucesso | NodeODM 2.2.4 / ODM 3.5.6: status code 40, 100%; processamento #25 terminou em 1.582.134 ms (26 min 22 s) | Aprovado |
+| Importação | Catalogar ortomosaico, DSM, DTM, relatório, LAZ e modelo 3D | Endpoint de importação HTTP 200; seis tipos catalogados e seis arquivos físicos confirmados; uma única linha de recuperação para #21 e UUID substituto presente em `/task/list` | Aprovado sem duplicidade neste envio |
+| Rasters | Confirmar CRS, resolução e dimensões dos novos arquivos | Orto EPSG:32617, ~0,05 m/pixel, 7.419×5.923; DSM e DTM EPSG:32617, 0,05 m/pixel, 7.419×5.922 | Aprovado como existência/metadados, sem declarar acurácia |
+| Navegador | Executar o fluxo pela UI sem erros de JavaScript | `page_errors=[]`, `console_errors=[]`; manifesto não armazena token e não houve chamada a LLM | Aprovado |
+
+Todos os seis arquivos físicos foram encontrados: GeoTIFF de ortomosaico (90.192.112 bytes), DSM (59.441.101 bytes), DTM (72.624.182 bytes), PDF do relatório (15.570.044 bytes), LAZ (58.940.461 bytes; 15.769.914 pontos, EPSG:32617) e GLB (43.861.476 bytes). As verificações de tipos, tamanhos, CRS e geometrias atestam catalogação/geração, não precisão científica.
+
+### Capturas e recuperação do monitoramento
+
+- [01 — tarefa #21 ausente, produtos preservados e botão habilitado](../etapa-10/uc024_real_recovery/01_tarefa_origem_ausente.png)
+- [02 — diálogo de confirmação do reenvio](../etapa-10/uc024_real_recovery/02_confirmacao_de_recuperacao.png)
+- [03 — nova tarefa real no NodeODM](../etapa-10/uc024_real_recovery/03_nova_tarefa_nodeodm.png)
+- [Capturas intermediárias de progresso](../etapa-10/uc024_real_recovery/)
+- [Tela final com #25 concluído e produtos importados](../etapa-10/uc024_real_recovery/recuperacao_concluida_produtos_importados.png)
+
+O processo de acompanhamento no terminal foi encerrado pelo ambiente depois de aproximadamente 20 minutos, enquanto o NodeODM seguia executando. A retomada usou o UUID #25 já gravado no manifesto; **não reenviou as fotos nem criou nova tarefa**. O mesmo monitor capturou 58,5%, 73,8%, 88,2% e 100%, importou os produtos e confirmou o estado terminal. A sequência aparece no [manifesto JSON](../etapa-10/uc024_real_recovery/manifest.json). Os roteiros reproduzíveis são [`validate_uc024_real_recovery_phase10.py`](../../../../tests/e2e/playwright/validate_uc024_real_recovery_phase10.py) e [`finalize_uc024_real_recovery_phase10.py`](../../../../tests/e2e/playwright/finalize_uc024_real_recovery_phase10.py).
+
+### Conclusão da etapa 10.1
+
+**UC-024 aprovado nos cenários exercitados:** além do cancelamento e da idempotência/conflito registrados na 9.7, a recuperação foi executada com a tarefa ausente no NodeODM real, e os produtos foram regenerados/importados sem perder a origem. Isto valida a recuperação operacional desse caso específico, com fotos preservadas. Não prova retomada a partir de checkpoint intermediário do ODM: o comportamento executado reenviou o conjunto completo e iniciou um processamento novo, como a própria UI informa.
+
+**Próxima etapa: 10.2 de 7 — cobertura da fila espacial (UC-020). Restam seis etapas propostas, 10.2–10.7.** A Fase 10 é um plano pós-Fase 9 e seu escopo continua sujeito à matriz de requisitos. O [plano MD/PDF](../../analise/plano_conclusao_ortomapas_web.md) já registra a sequência e o novo resultado.

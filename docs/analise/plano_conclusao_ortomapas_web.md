@@ -2,7 +2,7 @@
 
 **Data:** 10/11/2026
 **Versão:** 1.0
-**Situação em 18/11/2026:** subetapas 9.1–9.9 concluídas e reconciliadas; aceite operacional global retido por critérios de campo, referência independente e cobertura funcional ainda pendentes.
+**Situação em 19/11/2026:** Fase 9 (9.1–9.9) encerrada; aceite operacional global retido. Na Fase 10 proposta, a 10.1 (recuperação real UC-024) foi validada; faltam seis etapas propostas, 10.2–10.7.
 **Escopo:** concluir, validar e documentar o produto web Ortomapas.
 
 ## 1. Objetivo e limites
@@ -226,7 +226,23 @@ As etapas do envio, do parâmetro, da fila, do progresso, da correção de rótu
 
 A [matriz de rastreabilidade atualizada](../../analise/matriz_rastreabilidade_ortomapas_fase1.md) é a fonte da classificação detalhada por requisito/UC. As pendências acima não são novas etapas 9.x renomeadas: descrevem critérios de aceite que seguem abertos. Para conceder o aceite operacional global, é necessário fornecer/definir as referências e critérios indicados, implementar as operações ausentes do UC-020 e executar os testes correspondentes. Até isso ocorrer, o resultado global é **aceite retido**, não “tudo aprovado”. Android, controle do drone e simulador continuam em trilhas separadas, fora desta conclusão.
 
-## 7. Referências internas
+## 7. Plano pós-Fase 9 — fechamento operacional (Fase 10 proposta)
+
+Este bloco inicia o trabalho após o encerramento da numeração 9.1–9.9. A **Fase 10 é uma continuação proposta** para tratar lacunas operacionais da matriz; não reabre nem renumera a Fase 9. Cada etapa exige entradas, critério esperado, resultado observado, evidência Playwright quando houver interação visual, atualização cumulativa MD/PDF e commit/push isolado.
+
+| Etapa proposta | Caso(s) | Trabalho e critério de saída |
+|---|---|---|
+| **10.1 — Recuperação real NodeODM** | UC-024 | **Concluída:** tarefa #21 ausente confirmada no serviço real; as 77 fotos preservadas foram reenviadas uma vez. NodeODM concluiu #25 (code 40, 26 min 22 s); seis produtos importados; origem e seus seis produtos preservados. [Relatório e evidências](../validacao/ortomapas_conclusao/etapa-08/relatorio.md). |
+| **10.2 — Cobertura da fila espacial** | UC-020 | Próxima: delimitar com a matriz os tipos obrigatórios; integrar mudança/volume à fila se confirmados como requisito, e decidir se segmentação/classificadores supervisionados pertencem ao escopo. Validar cada tipo em API, banco, UI e resultado. Copiloto permanece separado. |
+| **10.3 — Comparação entre campanhas** | UC-009 | Obter duas campanhas independentes da mesma área, verificar alinhamento/CRS/resolução e testar registro, máscara e diferença com critérios para iluminação/estação. |
+| **10.4 — Qualidade semântica de classificação** | UC-010 | Usar amostras de referência rotuladas; calcular métricas por classe e repetibilidade. Não chamar resultado RGB de análise multiespectral. |
+| **10.5 — Validação hidrológica** | UC-011 | Encontrar DTM e hidrografia oficial co-localizados; definir método e tolerâncias antes de comparar drenagem/bacias. Sem referência compatível, limitar a conclusão a demonstração funcional. |
+| **10.6 — Acurácia posicional/vertical** | UC-026 | Definir usos e tolerâncias; validar produtos contra checkpoints/GCP independentes, datum/CRS documentados e relatório reprodutível. |
+| **10.7 — Regressão e aceite** | Matriz completa | Reexecutar casos obrigatórios alterados, fechar rastreabilidade, documentar exclusões aceitas e decidir formalmente o aceite operacional global. |
+
+**Estado atualizado da Fase 10:** 10.1 concluída; 10.2–10.7 ainda não iniciadas. O teste da 10.1 usou o processo #21 no projeto público #88 porque o NodeODM confirmou que o UUID original estava ausente, enquanto o banco conservava as 77 fotos e seis produtos. A recuperação real preservou o processo original e gerou a nova tarefa #25. Próxima: 10.2 de 7; restam seis etapas propostas.
+
+## 8. Referências internas
 
 - [Casos de uso v2](casos_de_uso_v2.md)
 - [Requisitos de integração ODM](integracao_odm_requisitos.md)

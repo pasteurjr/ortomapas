@@ -1,0 +1,265 @@
+{
+  "started_at": "2026-11-19T15:37:57.959559-03:00",
+  "case": "UC-024 / recuperação real de tarefa ausente no NodeODM",
+  "environment": {
+    "project_id": 88,
+    "parent_processing_id": 21,
+    "nodeodm_version": "2.2.4",
+    "odm_engine_version": "3.5.6"
+  },
+  "source": {
+    "task_uuid": "ad503e1b-b88d-55d7-ad2b-6ddcdd78902b",
+    "task_info_http": 200,
+    "nodeodm_missing_confirmed": true,
+    "database_status_before": "concluido",
+    "photo_count": 77,
+    "photo_bytes": 542880685,
+    "preserved_product_count_before": 6,
+    "dataset": "Aukerman público já presente no projeto #88; não é voo do usuário",
+    "api_state": {
+      "status": "concluido",
+      "nodeodm_missing": true,
+      "recovery_available": true,
+      "stored_photos": 77
+    }
+  },
+  "recovery": {
+    "http": 202,
+    "new_processing_id": 25,
+    "new_task_uuid": "22d6736c-a17e-41ba-9d15-18d56ba755c7",
+    "parent_processing_id": 21,
+    "images_count": 77,
+    "total_bytes": 542880685,
+    "recovery_metadata": {
+      "source": "voo_fotos local originals",
+      "images_count": 77,
+      "recovered_at": "2026-11-19T18:38:01.432354Z",
+      "missing_task_id": "ad503e1b-b88d-55d7-ad2b-6ddcdd78902b",
+      "reprocessed_from_id": 21
+    },
+    "nodeodm_terminal": {
+      "code": 40
+    },
+    "progress": 100,
+    "processing_time_ms": 1582134,
+    "source_status_after": "concluido",
+    "new_status_after": "concluido",
+    "source_product_count_after": 6,
+    "source_photo_count_after": 77,
+    "source_photo_bytes_after": 542880685,
+    "import_http": 200,
+    "imported_product_types": [
+      "dsm",
+      "dtm",
+      "modelo_3d",
+      "nuvem_pontos",
+      "ortomosaico",
+      "relatorio"
+    ],
+    "new_catalog_product_count": 6,
+    "physical_products": [
+      {
+        "tipo": "dsm",
+        "path": "ortomapas/odm_25_dsm.tif",
+        "formato": "GeoTIFF",
+        "exists": true,
+        "bytes": 59441101,
+        "crs": "EPSG:32617",
+        "resolution": 0.05000000000000157,
+        "width": 7419,
+        "height": 5922,
+        "resolution_m": [
+          0.05000000000000157,
+          0.05000000000009436
+        ]
+      },
+      {
+        "tipo": "dtm",
+        "path": "ortomapas/odm_25_dtm.tif",
+        "formato": "GeoTIFF",
+        "exists": true,
+        "bytes": 72624182,
+        "crs": "EPSG:32617",
+        "resolution": 0.05000000000000157,
+        "width": 7419,
+        "height": 5922,
+        "resolution_m": [
+          0.05000000000000157,
+          0.05000000000009436
+        ]
+      },
+      {
+        "tipo": "modelo_3d",
+        "path": "exports/odm_25_modelo_3d.glb",
+        "formato": "GLB",
+        "exists": true,
+        "bytes": 43861476,
+        "crs": null,
+        "resolution": null,
+        "width": null,
+        "height": null
+      },
+      {
+        "tipo": "nuvem_pontos",
+        "path": "exports/odm_25_nuvem_pontos.laz",
+        "formato": "LAZ",
+        "exists": true,
+        "bytes": 58940461,
+        "crs": "EPSG:32617",
+        "resolution": null,
+        "width": null,
+        "height": null,
+        "point_count": 15769914
+      },
+      {
+        "tipo": "ortomosaico",
+        "path": "ortomapas/odm_25_ortomosaico.tif",
+        "formato": "GeoTIFF",
+        "exists": true,
+        "bytes": 90192112,
+        "crs": "EPSG:32617",
+        "resolution": 0.04999739760603116,
+        "width": 7419,
+        "height": 5923,
+        "resolution_m": [
+          0.04999739760603116,
+          0.04999505653527692
+        ]
+      },
+      {
+        "tipo": "relatorio",
+        "path": "exports/odm_25_relatorio.pdf",
+        "formato": "PDF",
+        "exists": true,
+        "bytes": 15570044,
+        "crs": null,
+        "resolution": null,
+        "width": null,
+        "height": null
+      }
+    ],
+    "recovery_records_for_source_21": 1,
+    "replacement_uuid_in_nodeodm_task_list": true
+  },
+  "progress_observations": [
+    {
+      "observed_at": "2026-11-19T15:38:03.176113-03:00",
+      "status_code": 20,
+      "progress_percent": 0.0,
+      "stage": null
+    },
+    {
+      "observed_at": "2026-11-19T15:40:18.364391-03:00",
+      "status_code": 20,
+      "progress_percent": 15.75,
+      "stage": null
+    },
+    {
+      "observed_at": "2026-11-19T15:52:18.846551-03:00",
+      "status_code": 20,
+      "progress_percent": 41.625,
+      "stage": null
+    },
+    {
+      "observed_at": "2026-11-19T15:56:34.178344-03:00",
+      "status_code": 20,
+      "progress_percent": 54.0,
+      "stage": null
+    },
+    {
+      "observed_at": "2026-11-19T16:00:44.286466-03:00",
+      "status_code": 20,
+      "progress_percent": 58.5,
+      "stage": null,
+      "resumed_monitor": true
+    },
+    {
+      "observed_at": "2026-11-19T16:03:14.509751-03:00",
+      "status_code": 20,
+      "progress_percent": 73.8,
+      "stage": null,
+      "resumed_monitor": true
+    },
+    {
+      "observed_at": "2026-11-19T16:04:04.660964-03:00",
+      "status_code": 20,
+      "progress_percent": 88.2,
+      "stage": null,
+      "resumed_monitor": true
+    },
+    {
+      "observed_at": "2026-11-19T16:04:24.790910-03:00",
+      "status_code": 40,
+      "progress_percent": 100.0,
+      "stage": null,
+      "resumed_monitor": true
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "01_tarefa_origem_ausente.png",
+      "description": "Tarefa #21 ausente no NodeODM; fotos preservadas e controle de recuperação habilitado."
+    },
+    {
+      "file": "02_confirmacao_de_recuperacao.png",
+      "description": "Confirmação informa que as fotos originais preservadas serão reenviadas e os produtos anteriores mantidos."
+    },
+    {
+      "file": "03_nova_tarefa_nodeodm.png",
+      "description": "Tarefa substituta criada no NodeODM real; histórico da origem preservado."
+    },
+    {
+      "file": "progresso_000.png",
+      "description": "Recuperação real #'25' em 0.0% (estado NodeODM 20); tarefa original #21 e produtos preservados."
+    },
+    {
+      "file": "progresso_015.png",
+      "description": "Recuperação real #'25' em 15.8% (estado NodeODM 20); tarefa original #21 e produtos preservados."
+    },
+    {
+      "file": "progresso_041.png",
+      "description": "Recuperação real #'25' em 41.6% (estado NodeODM 20); tarefa original #21 e produtos preservados."
+    },
+    {
+      "file": "progresso_054.png",
+      "description": "Recuperação real #'25' em 54.0% (estado NodeODM 20); tarefa original #21 e produtos preservados."
+    },
+    {
+      "file": "retomada_058.png",
+      "description": "Continuação da recuperação real #25: 58.5% (status 20)."
+    },
+    {
+      "file": "retomada_073.png",
+      "description": "Continuação da recuperação real #25: 73.8% (status 20)."
+    },
+    {
+      "file": "retomada_088.png",
+      "description": "Continuação da recuperação real #25: 88.2% (status 20)."
+    },
+    {
+      "file": "retomada_100.png",
+      "description": "Continuação da recuperação real #25: 100.0% (status 40)."
+    },
+    {
+      "file": "recuperacao_concluida_produtos_importados.png",
+      "description": "A tarefa recuperada concluiu e seus seis produtos estão catalogados."
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "llm_calls": 0,
+  "token_persisted": false,
+  "finished_at": "2026-11-19T16:04:28.304199-03:00",
+  "acceptance_checks": {
+    "source_completed": true,
+    "six_source_products_preserved": true,
+    "77_source_photos_unchanged": true,
+    "lineage_preserved": true,
+    "replacement_completed": true,
+    "six_recovered_product_types": true,
+    "browser_clean": true,
+    "one_recovery_record_for_source": true,
+    "replacement_uuid_present_in_nodeodm": true
+  },
+  "result": "PASS_REAL_UC024_RECOVERY"
+}
