@@ -31,7 +31,6 @@
             <option value="hidrologia">Analise Hidrologica</option>
             <option value="deteccao_mudancas">Deteccao de Mudancas</option>
             <option value="calculo_volume">Calculo de Volume</option>
-            <option value="segmentacao">Segmentacao</option>
             <option value="ndvi_rgb">NDVI RGB Estimado</option>
           </select>
         </div>
@@ -60,17 +59,11 @@
             <label>Algoritmo</label>
             <select v-model="params.algorithm">
               <option value="kmeans">K-Means (nao-supervisionado)</option>
-              <option value="random_forest">Random Forest (supervisionado)</option>
-              <option value="svm">SVM - Support Vector Machine</option>
             </select>
           </div>
           <div class="form-group">
             <label>Numero de classes</label>
             <input type="number" v-model.number="params.n_classes" min="2" max="20" />
-          </div>
-          <div v-if="params.algorithm === 'random_forest' || params.algorithm === 'svm'" class="form-group">
-            <label>Amostras de treino (GeoJSON, opcional)</label>
-            <textarea v-model="params.training_geojson" rows="3" placeholder='{"type":"FeatureCollection",...}'></textarea>
           </div>
         </template>
 
@@ -145,8 +138,6 @@
             <label>Metodo</label>
             <select v-model="params.change_method">
               <option value="difference">Diferenca Simples</option>
-              <option value="ratio">Razao de Bandas</option>
-              <option value="ndvi_diff">Diferenca de NDVI</option>
             </select>
           </div>
           <div class="form-group">
@@ -161,27 +152,7 @@
             <label>Elevacao de referencia (m)</label>
             <input type="number" v-model.number="params.reference_elevation" step="0.1" />
           </div>
-          <div class="form-group">
-            <label>Tipo de calculo</label>
-            <select v-model="params.volume_type">
-              <option value="cut">Corte (acima da referencia)</option>
-              <option value="fill">Aterro (abaixo da referencia)</option>
-              <option value="both">Corte e aterro</option>
-            </select>
-          </div>
-        </template>
-
-        <!-- Parametros: Segmentacao -->
-        <template v-if="form.tipo_analise === 'segmentacao'">
-          <div class="form-group">
-            <label>Tamanho minimo do segmento (pixels)</label>
-            <input type="number" v-model.number="params.min_segment_size" min="10" step="10" />
-          </div>
-          <div class="form-group">
-            <label>Compacidade</label>
-            <input type="number" v-model.number="params.compactness" step="0.1" min="0" max="1" />
-            <span class="hint">0 = mais irregular, 1 = mais compacto</span>
-          </div>
+          <p class="hint">O resultado informa corte e aterro na mesma execução, como no cálculo de volume do painel espacial.</p>
         </template>
 
         <!-- Parametros: NDVI RGB -->
@@ -237,15 +208,17 @@ const mapStore = useMapStore()
 const ortomapas = computed(() => projectStore.ortomapas)
 const selectedSource = computed(() => ortomapas.value.find(item => String(item.id) === String(form.ortomapa_id)))
 const sourceType = computed(() => String(selectedSource.value?.tipo || '').toLowerCase())
-const queueOperationCandidate = computed(() => ['classificacao_solo', 'indice_vegetacao', 'terreno', 'hidrologia'].includes(form.tipo_analise))
+const queueOperationCandidate = computed(() => ['classificacao_solo', 'indice_vegetacao', 'terreno', 'hidrologia', 'deteccao_mudancas', 'calculo_volume'].includes(form.tipo_analise))
 const queueOperationSupported = computed(() =>
   (form.tipo_analise === 'classificacao_solo' && params.algorithm === 'kmeans') ||
   form.tipo_analise === 'indice_vegetacao' ||
   (form.tipo_analise === 'terreno' && ['slope', 'aspect', 'hillshade', 'contours'].includes(params.terrain_type)) ||
-  (form.tipo_analise === 'hidrologia' && ['flow_direction', 'flow_accumulation', 'twi', 'drainage', 'watershed'].includes(params.hydro_type))
+  (form.tipo_analise === 'hidrologia' && ['flow_direction', 'flow_accumulation', 'twi', 'drainage', 'watershed'].includes(params.hydro_type)) ||
+  (form.tipo_analise === 'deteccao_mudancas' && Boolean(params.reference_id) && params.change_method === 'difference') ||
+  form.tipo_analise === 'calculo_volume'
 )
 const sourceSupportsQueueOperation = computed(() => {
-  if (['terreno', 'hidrologia'].includes(form.tipo_analise)) return ['dsm', 'dtm'].includes(sourceType.value)
+  if (['terreno', 'hidrologia', 'calculo_volume'].includes(form.tipo_analise)) return ['dsm', 'dtm'].includes(sourceType.value)
   return ['ortomosaico', 'rgb', 'multispectral'].includes(sourceType.value)
 })
 const queueEligible = computed(() => queueOperationSupported.value && sourceSupportsQueueOperation.value)
@@ -262,7 +235,11 @@ const queueUnavailableHint = computed(() => {
     return 'A fila de terreno requer um DSM ou DTM; selecione um desses produtos acima.'
   if (form.tipo_analise === 'hidrologia' && !sourceSupportsQueueOperation.value)
     return 'A fila hidrológica requer um DSM ou DTM; selecione um desses produtos acima.'
-  if (form.tipo_analise !== 'terreno' && !sourceSupportsQueueOperation.value)
+  if (form.tipo_analise === 'calculo_volume' && !sourceSupportsQueueOperation.value)
+    return 'A fila de volume requer um DSM ou DTM; selecione um desses produtos acima.'
+  if (form.tipo_analise === 'deteccao_mudancas' && !params.reference_id)
+    return 'Selecione o ortomosaico de referência para habilitar a fila de mudanças.'
+  if (form.tipo_analise !== 'terreno' && form.tipo_analise !== 'hidrologia' && form.tipo_analise !== 'calculo_volume' && !sourceSupportsQueueOperation.value)
     return 'A fila RGB requer um ortomosaico ou raster multiespectral com pelo menos três bandas.'
   return ''
 })
@@ -272,9 +249,15 @@ const queueHelp = computed(() => {
   if (form.tipo_analise === 'terreno')
     return 'Enfileira declividade, orientacao, hillshade ou curvas (intervalo em metros) em DSM/DTM; o resultado aparece no mapa.'
   if (form.tipo_analise === 'hidrologia')
-    if (params.hydro_type === 'watershed') return 'Delimita a bacia D8 a montante do exutório. A grade é generalizada; confira a resolução informada no resultado.'
-    if (params.hydro_type === 'drainage') return 'Extrai a rede potencial D8 usando área contribuinte mínima; o resultado vetorial aparece no mapa.'
-    return 'Enfileira direção D8, acumulação de fluxo ou TWI sobre DSM/DTM. O produto será salvo e exibido no mapa.'
+    {
+      if (params.hydro_type === 'watershed') return 'Delimita a bacia D8 a montante do exutório. A grade é generalizada; confira a resolução informada no resultado.'
+      if (params.hydro_type === 'drainage') return 'Extrai a rede potencial D8 usando área contribuinte mínima; o resultado vetorial aparece no mapa.'
+      return 'Enfileira direção D8, acumulação de fluxo ou TWI sobre DSM/DTM. O produto será salvo e exibido no mapa.'
+    }
+  if (form.tipo_analise === 'deteccao_mudancas')
+    return 'Compara dois ortomosaicos RGB do projeto, alinha a grade e salva máscara de diferença e estatísticas em segundo plano. Não corrige diferenças sazonais ou de iluminação.'
+  if (form.tipo_analise === 'calculo_volume')
+    return 'Calcula corte/aterro em relação à cota informada sobre DSM/DTM, salva o raster derivado e publica as estatísticas. Unidades verticais são assumidas em metros.'
   return 'Enfileira a classificacao RGB K-Means (2 a 12 grupos) em raster com CRS projetado, para calcular areas e processar em segundo plano.'
 })
 const loading = ref(false)
@@ -294,7 +277,6 @@ const params = reactive({
   // Classificacao
   algorithm: 'kmeans',
   n_classes: 5,
-  training_geojson: '',
   // Terreno
   terrain_type: 'slope',
   interval: 5,
@@ -312,10 +294,6 @@ const params = reactive({
   change_threshold: 0.15,
   // Volume
   reference_elevation: 0,
-  volume_type: 'both',
-  // Segmentacao
-  min_segment_size: 50,
-  compactness: 0.5,
   // NDVI RGB
   ndvi_method: 'excess_green',
 })
@@ -366,9 +344,7 @@ function getRelevantParams() {
     case 'indice_vegetacao':
       return { index_name: params.index_name, threshold: params.threshold }
     case 'classificacao_solo': {
-      const cp = { algorithm: params.algorithm, n_classes: params.n_classes }
-      if (params.training_geojson) cp.training_geojson = params.training_geojson
-      return cp
+      return { algorithm: 'kmeans', n_classes: params.n_classes }
     }
     case 'terreno': {
       const tp = { terrain_type: params.terrain_type }
@@ -398,15 +374,7 @@ function getRelevantParams() {
         change_threshold: params.change_threshold,
       }
     case 'calculo_volume':
-      return {
-        reference_elevation: params.reference_elevation,
-        volume_type: params.volume_type,
-      }
-    case 'segmentacao':
-      return {
-        min_segment_size: params.min_segment_size,
-        compactness: params.compactness,
-      }
+      return { reference_elevation: params.reference_elevation }
     case 'ndvi_rgb':
       return { ndvi_method: params.ndvi_method }
     default:
@@ -421,6 +389,14 @@ async function submit() {
   }
   if (form.queue_task && form.tipo_analise === 'hidrologia' && params.hydro_type === 'watershed' && !params.outlet) {
     error.value = 'Escolha o exutório no mapa antes de enfileirar a delimitação da bacia.'
+    return
+  }
+  if (form.queue_task && form.tipo_analise === 'deteccao_mudancas' && (!params.reference_id || String(params.reference_id) === String(form.ortomapa_id))) {
+    error.value = 'Selecione dois ortomosaicos diferentes do projeto.'
+    return
+  }
+  if (form.queue_task && form.tipo_analise === 'calculo_volume' && !Number.isFinite(Number(params.reference_elevation))) {
+    error.value = 'Informe uma cota de referência válida.'
     return
   }
   loading.value = true

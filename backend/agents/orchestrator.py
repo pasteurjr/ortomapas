@@ -23,6 +23,7 @@ from backend.agents.classification_queue_agent import QueuedClassificationAgent
 from backend.agents.raster_queue_agent import QueuedRasterAnalysisAgent
 from backend.agents.terrain_queue_agent import QueuedTerrainAnalysisAgent
 from backend.agents.hydrology_queue_agent import QueuedHydrologyAnalysisAgent
+from backend.agents.change_volume_queue_agent import QueuedChangeVolumeAgent
 from psycopg2.extras import Json
 
 logging.basicConfig(
@@ -38,6 +39,7 @@ AGENTS = {
     "agente_analise_raster": QueuedRasterAnalysisAgent,
     "agente_analise_terreno": QueuedTerrainAnalysisAgent,
     "agente_analise_hidrologia": QueuedHydrologyAnalysisAgent,
+    "agente_mudanca_fila": QueuedChangeVolumeAgent,
     "agente_mudanca": ChangeAgent,
     "agente_relatorio": ReportAgent,
 }

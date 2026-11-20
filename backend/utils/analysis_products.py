@@ -337,7 +337,8 @@ def publish_elevation_change(before, after, output, statistics, parameters, aoi=
     return serialize_analysis(analysis),comparison_id
 
 
-def publish_rgb_change(before, after, output, statistics, parameters, raw_threshold):
+def publish_rgb_change(before, after, output, statistics, parameters, raw_threshold,
+                       analysis_id=None, elapsed_seconds=None):
     """Persist a binary RGB change mask and its temporal comparison record."""
     path=data_path(output)
     style={'kind':'change_mask','unit':'mudanca RGB','method':'nearest','min':0,'max':255,
@@ -359,9 +360,20 @@ def publish_rgb_change(before, after, output, statistics, parameters, raw_thresh
     after_date=after.get('data_processamento') or after.get('criado_em')
     with get_connection() as conn:
         cur=conn.cursor(dictionary=True)
-        cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
-            resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,'mudancas',%s,%s,%s,%s,'concluida',now()) RETURNING *''',
-            (after['id'],after['projeto_id'],'Mudanca RGB entre ortomosaicos',Json(parameters),str(path),Json(metadata)))
+        if analysis_id is None:
+            cur.execute('''INSERT INTO analises (ortomapa_id,projeto_id,tipo_analise,nome,parametros,
+                resultado_path,resultado_json,status,data_analise) VALUES (%s,%s,'mudancas',%s,%s,%s,%s,'concluida',now()) RETURNING *''',
+                (after['id'],after['projeto_id'],'Mudanca RGB entre ortomosaicos',Json(parameters),str(path),Json(metadata)))
+        else:
+            cur.execute('''UPDATE analises SET tipo_analise='mudancas',nome='Mudanca RGB entre ortomosaicos',
+                parametros=%s,resultado_path=%s,resultado_json=%s,status='concluida',observacoes=NULL,
+                tempo_processamento_seg=%s,data_analise=now(),atualizado_em=now()
+                WHERE id=%s AND ortomapa_id=%s AND projeto_id=%s RETURNING *''',
+                (Json(parameters),str(path),Json(metadata),elapsed_seconds,analysis_id,after['id'],after['projeto_id']))
+            if cur.fetchone() is None:
+                conn.rollback()
+                raise ValueError('Analise de mudanca enfileirada nao corresponde ao projeto/produto')
+            cur.execute('SELECT * FROM analises WHERE id=%s',(analysis_id,))
         analysis=dict(cur.fetchone())
         cur.execute('''INSERT INTO comparacoes_temporais (projeto_id,ortomapa_antes_id,ortomapa_depois_id,
             data_antes,data_depois,tipo_comparacao,resultado_path,estatisticas,observacoes)
@@ -408,11 +420,11 @@ def publish_terrain(source, operation, output, statistics, parameters, aoi=None,
                 (source['id'],source['projeto_id'],'volume' if operation=='volume' else 'terreno',NAMES[operation]+(' - area selecionada' if aoi else ''),Json(parameters),str(path),Json(metadata)))
             row=dict(cur.fetchone())
         else:
-            cur.execute('''UPDATE analises SET tipo_analise='terreno',nome=%s,descricao=%s,
+            cur.execute('''UPDATE analises SET tipo_analise=%s,nome=%s,descricao=%s,
                 parametros=%s,resultado_path=%s,resultado_json=%s,status='concluida',observacoes=NULL,
                 tempo_processamento_seg=%s,data_analise=now(),atualizado_em=now()
                 WHERE id=%s AND ortomapa_id=%s AND projeto_id=%s RETURNING *''',
-                (NAMES[operation],f'Produto de terreno {operation} calculado sobre o modelo de elevacao.',
+                ('volume' if operation=='volume' else 'terreno',NAMES[operation],f'Produto espacial {operation} calculado sobre o modelo de elevacao.',
                  Json(parameters),str(path),Json(metadata),elapsed_seconds,
                  analysis_id,source['id'],source['projeto_id']))
             saved=cur.fetchone()

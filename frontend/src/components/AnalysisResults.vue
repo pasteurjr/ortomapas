@@ -130,8 +130,20 @@ async function downloadResult(analysis) {
   } catch { resultError.value = 'Nao foi possivel baixar o resultado' }
 }
 
-function selectAnalise(analise) {
+async function selectAnalise(analise) {
   selectedId.value = analise.id
+  // A fila pode ter concluído depois da última listagem; recarregar o detalhe
+  // evita selecionar uma linha já concluída com resultado_path/JSON ainda antigo.
+  try {
+    const { data } = await api.get(`/analises/${analise.id}`)
+    analise = data
+    const index = projectStore.analises.findIndex((item) => item.id === analise.id)
+    if (index >= 0) projectStore.analises[index] = { ...projectStore.analises[index], ...analise }
+  } catch {
+    resultError.value = 'Nao foi possivel carregar os metadados do resultado'
+    return
+  }
+  resultError.value = ''
   emit('select-analysis', analise)
 
   const outlet = analise.resultado?.stats?.snapped_outlet || analise.resultado?.stats?.requested_outlet

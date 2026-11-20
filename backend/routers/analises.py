@@ -140,15 +140,39 @@ async def create_analise(data: dict,user: dict=Depends(current_user)):
                     else:
                         raise ValueError('A fila hidrologica aceita direcao/acumulacao D8, TWI, rede ou bacia')
                     agent_name='agente_analise_hidrologia'
+                elif analysis_type=='deteccao_mudancas':
+                    reference_id=int(parameters.get('reference_id') or 0)
+                    threshold=float(parameters.get('change_threshold',0.15))
+                    if not 0 <= threshold <= 1 or not __import__('math').isfinite(threshold):
+                        raise ValueError('O limiar de mudança RGB deve estar entre 0 e 1')
+                    cur.execute('SELECT * FROM ortomapas WHERE id=%s',(reference_id,))
+                    reference=cur.fetchone()
+                    if not reference or reference['projeto_id'] != source['projeto_id']:
+                        raise ValueError('Selecione um ortomosaico de referência do mesmo projeto')
+                    if reference['id']==source['id']:
+                        raise ValueError('Selecione dois ortomosaicos distintos')
+                    if str(reference.get('tipo','')).lower() not in {'ortomosaico','rgb','multispectral'} or str(source.get('tipo','')).lower() not in {'ortomosaico','rgb','multispectral'}:
+                        raise ValueError('Mudança RGB exige dois ortomosaicos compatíveis')
+                    parameters={'operation':'rgb_change','reference_id':reference_id,'change_threshold':threshold}
+                    agent_name='agente_mudanca_fila'
+                elif analysis_type=='calculo_volume':
+                    reference=float(parameters.get('reference_elevation',float('nan')))
+                    if not __import__('math').isfinite(reference):
+                        raise ValueError('Informe uma cota de referência finita')
+                    if str(source.get('tipo','')).lower() not in {'dsm','dtm'}:
+                        raise ValueError('Volume exige um DSM ou DTM')
+                    parameters={'operation':'volume','reference_elevation':reference,
+                                'volume_type':parameters.get('volume_type','both')}
+                    agent_name='agente_mudanca_fila'
                 else:
-                    raise ValueError('A fila aceita K-Means RGB, indices de vegetacao, derivadas de terreno, rede D8 ou bacia hidrologica')
+                    raise ValueError('A fila aceita K-Means RGB, indices RGB, terreno, hidrologia, mudança RGB e volume por cota')
             except (TypeError,ValueError) as exc:
                 raise HTTPException(status_code=422,detail=str(exc))
 
             from backend.utils.resource_access import data_path
             import rasterio
             source_type=str(source.get('tipo','')).lower()
-            is_terrain=analysis_type in {'terreno','hidrologia'}
+            is_terrain=analysis_type in {'terreno','hidrologia','calculo_volume'}
             if is_terrain and source_type not in {'dsm','dtm'}:
                 raise HTTPException(status_code=422,detail='Analises de terreno e hidrologia exigem um DSM ou DTM')
             if not is_terrain and source_type not in {'ortomosaico','rgb','multispectral'}:
@@ -173,6 +197,7 @@ async def create_analise(data: dict,user: dict=Depends(current_user)):
             default_name=('Classificacao de solo K-Means' if analysis_type=='classificacao_solo'
                           else f'Indice de vegetacao {parameters["index_name"]}' if analysis_type=='indice_vegetacao'
                     else f'Analise de terreno {parameters["terrain_type"]}' if analysis_type=='terreno'
+                          else f'Mudança/volume espacial' if analysis_type in {'deteccao_mudancas','calculo_volume'}
                           else {'drainage':'Rede de drenagem potencial D8','watershed':'Bacia contribuinte D8',
                                 'flow_direction':'Direcao de fluxo D8','flow_accumulation':'Acumulacao de fluxo D8',
                                 'twi':'Indice topografico de umidade (TWI)'}[parameters['hydro_type']])

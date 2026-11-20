@@ -664,4 +664,31 @@ O processo de acompanhamento no terminal foi encerrado pelo ambiente depois de a
 
 **UC-024 aprovado nos cenários exercitados:** além do cancelamento e da idempotência/conflito registrados na 9.7, a recuperação foi executada com a tarefa ausente no NodeODM real, e os produtos foram regenerados/importados sem perder a origem. Isto valida a recuperação operacional desse caso específico, com fotos preservadas. Não prova retomada a partir de checkpoint intermediário do ODM: o comportamento executado reenviou o conjunto completo e iniciou um processamento novo, como a própria UI informa.
 
-**Próxima etapa: 10.2 de 7 — cobertura da fila espacial (UC-020). Restam seis etapas propostas, 10.2–10.7.** A Fase 10 é um plano pós-Fase 9 e seu escopo continua sujeito à matriz de requisitos. O [plano MD/PDF](../../analise/plano_conclusao_ortomapas_web.md) já registra a sequência e o novo resultado.
+**Status atualizado após a etapa 10.2:** concluída. A próxima é **10.3 de 7 — comparação entre campanhas independentes (UC-009)**; restam cinco etapas propostas, 10.3–10.7. A Fase 10 é um plano pós-Fase 9 e seu escopo continua sujeito à matriz de requisitos. Veja o [relatório detalhado da 10.2](../etapa-10/uc020_queue_coverage/relatorio.md) e o [plano MD/PDF](../../analise/plano_conclusao_ortomapas_web.md).
+
+## Fase pós-9 — etapa proposta 10.2: cobertura da fila espacial (UC-020)
+
+**Execução:** 19/11/2026
+**Estado:** aprovada funcionalmente para o escopo v2 da fila.
+**Relatório detalhado:** [UC-020 — mudança RGB e volume](../etapa-10/uc020_queue_coverage/relatorio.md).
+
+A etapa integrou à fila duas operações já previstas em casos de uso próprios: mudança RGB (UC-009) e volume por cota (UC-012). Playwright iniciou ambas no projeto público Aukerman #88; a API devolveu HTTP 202, o worker `agente_mudanca_fila` processou e o PostgreSQL manteve tarefa e resultado concluídos. A interface foi percorrida, a camada selecionada no mapa, estatísticas conferidas e o serviço autenticado de tiles respondeu HTTP 200 para as duas saídas. Foram capturadas telas do formulário e do mapa.
+
+### Comparação do esperado com o obtido
+
+| Checagem | Esperado | Obtido |
+|---|---|---|
+| Mudança RGB | Análise assíncrona, máscara persistida, comparação registrada, camada e tile renderizados | Análise #168, tarefa #45; `concluida`/`concluido`; um registro temporal; tile 256×256 com 1.585 pixels opacos; camada e estatísticas visíveis |
+| Mudança medida | Contagem de pixels válidos e acima do limiar | 2.056.078 de 43.993.794 pixels válidos (4,674%) com limiar 0,15 |
+| Volume | DSM/cota válidos, raster persistido, corte e aterro e camada visíveis | Análise #169, tarefa #46; DSM #71 e cota 241 m; 35.481.781 pixels válidos (88.704,45 m²); corte 456.241,11 m³; aterro 109.387,50 m³; saldo 346.853,62 m³; tile com 27.586 pixels opacos |
+| UI/JavaScript | formulário descreve a operação selecionada e abre o resultado atualizado | dica específica exibida; camada e estatísticas confirmadas; nenhum erro de página |
+
+O dataset é público CC0 Aukerman. As duas ortofotos são resoluções diferentes da **mesma missão de 77 fotos**, não campanhas independentes. Portanto, a mudança demonstra que o fluxo e o algoritmo executam; não demonstra variação temporal real nem correção por luz/sazonalidade. O volume usa elevações do DSM e assume metros; o número não foi comparado a topografia de campo.
+
+A validação visual detectou uma lista com metadados desatualizados: a linha mostrava “OK”, mas a camada não era adicionada ao mapa. Corrigi `AnalysisResults.vue` para consultar o detalhe antes de criar a camada. A repetição final comprovou painel da camada, estatísticas e tiles autenticados para ambos os resultados. Também corrigi a dica de fila no formulário e retirei opções de mudança e classificação que não correspondiam aos algoritmos efetivamente aceitos. UC-010 v2 define K-Means RGB; segmentação e classificação supervisionada não são critérios aprovados de UC-020.
+
+O teste numérico determinístico controlado confirmou 4 pixels alterados e volumes de 12,00 m³/12,00 m³/saldo zero nos rasters sintéticos de controle. Isso valida os cálculos básicos, não qualidade de campo.
+
+**Decisão:** UC-020 está implementado com evidência funcional no escopo aprovado. A decisão não promove a qualidade científica de UC-009/010/011/012; as limitações próprias desses UCs permanecem. A fila assíncrona não é o Copiloto.
+
+**Próxima etapa: 10.3 de 7 — comparação entre campanhas independentes (UC-009). Restam cinco etapas propostas, 10.3–10.7.**

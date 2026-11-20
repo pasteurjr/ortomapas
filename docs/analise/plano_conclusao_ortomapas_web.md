@@ -2,7 +2,7 @@
 
 **Data:** 10/11/2026
 **Versão:** 1.0
-**Situação em 19/11/2026:** Fase 9 (9.1–9.9) encerrada; aceite operacional global retido. Na Fase 10 proposta, a 10.1 (recuperação real UC-024) foi validada; faltam seis etapas propostas, 10.2–10.7.
+**Situação em 19/11/2026:** Fase 9 (9.1–9.9) encerrada; aceite operacional global retido. Na Fase 10 proposta, 10.1 (recuperação real UC-024) e 10.2 (fila UC-020) foram validadas; faltam cinco etapas propostas, 10.3–10.7.
 **Escopo:** concluir, validar e documentar o produto web Ortomapas.
 
 ## 1. Objetivo e limites
@@ -19,7 +19,7 @@ O relatório [aceite integrado em projeto novo](../validacao/odm_operacao_2026-1
 
 Essa evidência demonstra operação fotogramétrica com um conjunto público, **não** um voo próprio, nem um levantamento de Guarajuba/Condomínio Paraíso. A nota automática de qualidade 100% é baseada em presença de produtos e não representa acurácia posicional ou vertical. A recuperação de histórico do NodeODM foi testada com POST contra servidor HTTP simulado; não se deve relatar esse reenvio como reprocessamento real.
 
-A matriz em [casos_de_uso_v2.md](casos_de_uso_v2.md) marca UC-001–019 como aderentes e UC-020 como parcial. Os relatórios anexos têm níveis de prova diferentes. O UC-020 tem cobertura comprovada para K-Means RGB, índices RGB, declividade/orientação, hillshade, curvas, rede D8 e bacia por exutório. Nas etapas 9.1–9.2, direção D8, acumulação e TWI foram conectadas à fila, executadas sobre DTM ODM real e percorridas pela interface autenticada com persistência, tiles e telas confirmados. Isso comprova fluxo funcional; não calibração hidrológica. A auditoria/aceite científico e cobertura das demais operações continuam limitados. Mudanças, volume, segmentação e classificadores supervisionados continuam fora da fila. UC-011 é análise opcional posterior, que consome DTM/DSM georreferenciado; não é etapa necessária para produzir ortomosaico.
+A matriz em [matriz_rastreabilidade_ortomapas_fase1.md](matriz_rastreabilidade_ortomapas_fase1.md) registra UC-020 com evidência funcional para K-Means RGB, índices RGB, terreno, hidrologia, mudança RGB e volume. A etapa 10.2 percorreu mudança e volume pela API autenticada, PostgreSQL, worker, catálogo e mapa. Isso comprova a integração da fila; não calibra a mudança temporal nem certifica o volume de campo. O UC-010 v2 define K-Means RGB; segmentação e classificação supervisionada não são critérios aprovados para UC-020 e não devem aparecer como executáveis na interface. UC-011 é uma análise opcional posterior que consome DTM/DSM; não é necessária para produzir ortomosaico.
 
 Há uma inconsistência documental a resolver antes de declarar aceite: UC-020 aparece denominado “Disparar Análise via Agente de IA”, mas parte dos critérios e relatórios mede fila de análises espaciais. Chat/copiloto e fila de processamento não são a mesma capacidade. A primeira fase fechará a definição e a rastreabilidade sem promover testes de fila a prova de chat ou vice-versa.
 
@@ -219,7 +219,7 @@ As etapas do envio, do parâmetro, da fila, do progresso, da correção de rótu
 | UC-009 — mudanças | Parcial operacional; comparação RGB controlada demonstrada em 9.6 | Duas campanhas reais e independentes, registro e critérios para variação de iluminação/estação |
 | UC-010 — classificação | K-Means RGB funcional nos dados testados; parcial para interpretação semântica | Ground truth rotulado, métricas de classe e validação de repetibilidade; RGB não equivale a classificação multiespectral |
 | UC-011 — hidrologia | Fluxos D8, drenagem e bacia funcionam como análise demonstrativa; não aceito para engenharia/hidrologia operacional | DEM e rede de referência co-localizados, critério quantitativo acordado e validação independente |
-| UC-020 — fila de análise | Fila/workers demonstrados para tipos listados na matriz; caso permanece parcial | Mudança e volume enfileirados, segmentação e classificadores supervisionados; distinguir explicitamente fila espacial do Copiloto |
+| UC-020 — fila de análise | **Implementada com evidência** para o escopo de análises espaciais assíncronas aprovado | Nenhuma lacuna funcional de fila identificada no conjunto aprovado. Qualidade científica continua rastreada separadamente em UC-009/010/011/012. Segmentação e classificadores supervisionados não pertencem ao critério v2 do UC-020. Fila permanece distinta do Copiloto. |
 | UC-024 — cancelar/repetir/recuperar | Cancelamento, idempotência e nova versão exercitados com NodeODM real | Rota dedicada `/recuperar` ainda não validada contra tarefa perdida no serviço real |
 | UC-026 — qualidade | Indicador corrigido para “completude de produtos”; não é score de acurácia | Checkpoints/GCP e tolerâncias posicionais/verticais adequadas ao uso |
 | UC-029 — reprocessar/comparar | **Aprovado funcionalmente**: #21/#24 concluídos, versão/linhagem, parâmetro aplicado, saídas comparadas, original preservado | Validação científica fica fora desta aprovação funcional e requer referência independente/tolerâncias |
@@ -233,14 +233,14 @@ Este bloco inicia o trabalho após o encerramento da numeração 9.1–9.9. A **
 | Etapa proposta | Caso(s) | Trabalho e critério de saída |
 |---|---|---|
 | **10.1 — Recuperação real NodeODM** | UC-024 | **Concluída:** tarefa #21 ausente confirmada no serviço real; as 77 fotos preservadas foram reenviadas uma vez. NodeODM concluiu #25 (code 40, 26 min 22 s); seis produtos importados; origem e seus seis produtos preservados. [Relatório e evidências](../validacao/ortomapas_conclusao/etapa-08/relatorio.md). |
-| **10.2 — Cobertura da fila espacial** | UC-020 | Próxima: delimitar com a matriz os tipos obrigatórios; integrar mudança/volume à fila se confirmados como requisito, e decidir se segmentação/classificadores supervisionados pertencem ao escopo. Validar cada tipo em API, banco, UI e resultado. Copiloto permanece separado. |
+| **10.2 — Cobertura da fila espacial** | UC-020 | **Concluída:** mudança RGB e volume por cota agora usam workers e persistem resultado/comparação. API, banco, fila, mapa, estatísticas e tiles autenticados foram exercitados com Playwright. O UC-010 v2 restringe classificação à K-Means RGB; segmentação e classificadores supervisionados não são requisitos de aceite e foram removidos do formulário de enfileiramento. [Relatório e evidências](../validacao/ortomapas_conclusao/etapa-10/uc020_queue_coverage/relatorio.md). |
 | **10.3 — Comparação entre campanhas** | UC-009 | Obter duas campanhas independentes da mesma área, verificar alinhamento/CRS/resolução e testar registro, máscara e diferença com critérios para iluminação/estação. |
 | **10.4 — Qualidade semântica de classificação** | UC-010 | Usar amostras de referência rotuladas; calcular métricas por classe e repetibilidade. Não chamar resultado RGB de análise multiespectral. |
 | **10.5 — Validação hidrológica** | UC-011 | Encontrar DTM e hidrografia oficial co-localizados; definir método e tolerâncias antes de comparar drenagem/bacias. Sem referência compatível, limitar a conclusão a demonstração funcional. |
 | **10.6 — Acurácia posicional/vertical** | UC-026 | Definir usos e tolerâncias; validar produtos contra checkpoints/GCP independentes, datum/CRS documentados e relatório reprodutível. |
 | **10.7 — Regressão e aceite** | Matriz completa | Reexecutar casos obrigatórios alterados, fechar rastreabilidade, documentar exclusões aceitas e decidir formalmente o aceite operacional global. |
 
-**Estado atualizado da Fase 10:** 10.1 concluída; 10.2–10.7 ainda não iniciadas. O teste da 10.1 usou o processo #21 no projeto público #88 porque o NodeODM confirmou que o UUID original estava ausente, enquanto o banco conservava as 77 fotos e seis produtos. A recuperação real preservou o processo original e gerou a nova tarefa #25. Próxima: 10.2 de 7; restam seis etapas propostas.
+**Estado atualizado da Fase 10:** 10.1 e 10.2 concluídas; 10.3–10.7 pendentes. A validação de UC-020 usou ortomosaicos e DSM reais do conjunto público Aukerman, processado pelo NodeODM no projeto #88. Isso prova o fluxo técnico integrado, mas a comparação entre duas resoluções da mesma missão não substitui duas campanhas independentes. Próxima: 10.3 de 7 — comparação entre campanhas; restam cinco etapas propostas.
 
 ## 8. Referências internas
 
