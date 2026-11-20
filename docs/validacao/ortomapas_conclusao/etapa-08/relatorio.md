@@ -692,3 +692,36 @@ O teste numérico determinístico controlado confirmou 4 pixels alterados e volu
 **Decisão:** UC-020 está implementado com evidência funcional no escopo aprovado. A decisão não promove a qualidade científica de UC-009/010/011/012; as limitações próprias desses UCs permanecem. A fila assíncrona não é o Copiloto.
 
 **Próxima etapa: 10.3 de 7 — comparação entre campanhas independentes (UC-009). Restam cinco etapas propostas, 10.3–10.7.**
+
+## Fase pós-9 — etapa proposta 10.3: campanhas independentes para UC-009
+
+**Execução:** 20/11/2026
+**Resultado:** fluxo funcional aprovado; qualidade da detecção física segue parcialmente aceita.
+**Relatório detalhado:** [UC-009 — Aklavik 2022/2024](../etapa-10/uc009_independent_campaigns/relatorio.md).
+
+A etapa anterior 10.2 usou ortofotos de resoluções diferentes da mesma missão. Para esta, baixei apenas os ortomosaicos do dataset público [Aklavik UAV 2022/2024](https://zenodo.org/records/14608566), duas campanhas DJI Mini 2 no mesmo local, separadas por cerca de 18 meses. A publicação informa alinhamento entre elas. O MD5 dos dois TIFFs (710.706.206 bytes cada) bate com o registro. Os originais seguem locais em `data/validacao/uc009_aklavik/`, fora do Git.
+
+### Esperado versus obtido
+
+| Checagem | Esperado | Obtido |
+|---|---|---|
+| Campanhas independentes | Datas/aquisições diferentes, não novos processamentos da mesma captura | 19–21/09/2022 e 22–24/03/2024 segundo o dataset; produtos #81/#82 no projeto #90 |
+| Compatibilidade | CRS/resolução compatíveis e área coincidente | EPSG:32608; grade 15.993×14.811; ~0,10 m; affine igual e 100% de sobreposição |
+| Fila e persistência | HTTP 202, worker concluído, máscara e registro temporal | Análise #171, tarefa #48; `concluida`/`concluido`; um registro temporal |
+| Apresentação | Resultado RGB visível com estatísticas e tiles autorizados | 24 tiles no mapa HTTP 200, tile independente 256×256 com 9.134 pixels opacos, painel de estatísticas presente, erros JS/console zero |
+| Interpretação | Não rotular pixels acima do limiar como verdade de campo | 77,96% (184.657.551/236.872.323 pixels) acima do limiar; UI agora nomeia a métrica assim e mostra aviso de iluminação/estação |
+
+As medianas RGB amostradas foram 153/142/136 (2022) e 81/86/91 (2024), confirmando forte diferença de distribuição entre épocas. Os 77,96% e 184,65 ha são resposta matemática do método de diferença RGB com limiar 0,15; sem polígonos rotulados, não medem construções, desmatamento ou outras mudanças físicas verdadeiras. A aplicação alinha grades por reprojeção, mas não estima registro por feições nem normaliza variação sazonal. Não acrescentei uma normalização não validada sem verdade independente que indique se ela remove falsos positivos ou mascara mudanças reais.
+
+A revisão das capturas também revelou rótulos genéricos e potencialmente enganadores para a máscara binária. Corrigi `AnalysisResults.vue`: as métricas de mudança agora dizem “pixels/área acima do limiar”, exibem apenas contagens/áreas relevantes e explicam a sensibilidade sazonal. Rebuild passou. O reteste visual confirmou aviso, sete métricas, 24 tiles HTTP 200 e overlay vermelho visível no mapa.
+
+### Evidência visual
+
+- [Formulário 2022/2024, limiar 0,15 e fila](../etapa-10/uc009_independent_campaigns/01_formulario_campanhas_antes_depois.png)
+- [Máscara sobre Aklavik, métricas e aviso](../etapa-10/uc009_independent_campaigns/02_resultado_mascara_mapa_estatisticas.png)
+- [Tile da máscara](../etapa-10/uc009_independent_campaigns/tile_uc009_mudancas.png)
+- [Manifesto sanitizado com checks, status e medidas](../etapa-10/uc009_independent_campaigns/manifest.json)
+
+**Decisão:** a etapa 10.3 está concluída no escopo funcional: o sistema compara duas campanhas independentes, persiste e exibe o resultado. UC-009 continua parcial para aceite científico/operacional, devido à falta de referência rotulada e à sensibilidade a estação/iluminação demonstrada nesta execução.
+
+**Próxima etapa: 10.4 de 7 — qualidade semântica de classificação (UC-010). Restam quatro etapas propostas, 10.4–10.7.**

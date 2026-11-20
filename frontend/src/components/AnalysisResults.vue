@@ -82,6 +82,9 @@
       </div>
       <small v-if="selectedAnalise.resultado.provenance">Modelo #{{ selectedAnalise.ortomapa_id }} · {{ selectedAnalise.resultado.provenance.operation }} · {{ selectedAnalise.resultado.crs }} · Z assumido em metros</small>
       <small v-if="selectedAnalise.resultado.source_crs">CRS do modelo: {{ selectedAnalise.resultado.source_crs }}</small>
+      <small v-if="selectedAnalise.resultado.style?.kind === 'change_mask'" class="analysis-result-caveat">
+        Máscara de diferença RGB acima do limiar. Variações de iluminação e estação podem gerar falsos positivos; confirme antes de interpretar como mudança física.
+      </small>
       <div v-if="selectedAnalise.resultado.aoi?.area_m2 != null" class="stat-row"><span>Area selecionada (m²)</span><strong>{{ selectedAnalise.resultado.aoi.area_m2.toFixed(2) }}</strong></div>
       <div v-if="selectedAnalise.resultado.aoi?.valid_area_m2 != null" class="stat-row"><span>Area valida (m²)</span><strong>{{ selectedAnalise.resultado.aoi.valid_area_m2.toFixed(2) }}</strong></div>
     </div>
@@ -109,15 +112,31 @@ const classColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec
 const selectedAnalise = computed(() =>
   projectStore.analises.find((a) => a.id === selectedId.value)
 )
-const scalarStats = computed(() => Object.fromEntries(Object.entries(selectedAnalise.value?.resultado?.stats || {}).filter(([,value]) => typeof value === 'number')))
+const changeMaskStatLabels = {
+  changed_pixels: 'Pixels acima do limiar',
+  unchanged_pixels: 'Pixels abaixo do limiar',
+  valid_pixels: 'Pixels válidos',
+  total_pixels: 'Pixels totais',
+  area_changed_m2: 'Área acima do limiar (m²)',
+  area_changed_ha: 'Área acima do limiar (ha)',
+  percent_changed: 'Pixels acima do limiar (%)',
+}
+const scalarStats = computed(() => {
+  const stats = selectedAnalise.value?.resultado?.stats || {}
+  const numeric = Object.entries(stats).filter(([, value]) => typeof value === 'number')
+  if (selectedAnalise.value?.resultado?.style?.kind === 'change_mask')
+    return Object.fromEntries(numeric.filter(([key]) => key in changeMaskStatLabels))
+  return Object.fromEntries(numeric)
+})
 
 const contourStatLabels = { feature_count: 'Curvas', vertex_count: 'Vertices', major_count: 'Curvas mestras', interval_m: 'Intervalo (m)', min_elevation_m: 'Cota minima (m)', max_elevation_m: 'Cota maxima (m)', volume_above_m3: 'Corte (m3)', volume_below_m3: 'Aterro (m3)', cut_volume_m3: 'Remocao (m3)', fill_volume_m3: 'Deposicao (m3)', net_volume_m3: 'Saldo volumetrico (m3)', reference_elevation_m: 'Cota de referencia (m)', pixel_area_m2: 'Area do pixel (m2)', valid_area_m2: 'Area valida (m2)', cut_area_m2: 'Area de remocao (m2)', fill_area_m2: 'Area de deposicao (m2)', stable_area_m2: 'Area estavel (m2)', valid_pixels: 'Pixels validos', changed_pixels: 'Pixels alterados', stable_pixels: 'Pixels estaveis', changed_percent: 'Area alterada (%)', change_threshold_m: 'Limiar estavel (m)', min_diff_m: 'Diferenca minima (m)', max_diff_m: 'Diferenca maxima (m)', mean_diff_m: 'Diferenca media (m)', std_diff_m: 'Desvio (m)' }
 function statLabel(key) {
   const volumeLabels={ min:'Diferenca minima (m)', max:'Diferenca maxima (m)', mean:'Diferenca media (m)', std:'Desvio (m)', median:'Mediana (m)', total_pixels:'Pixels da janela' }
+  if (selectedAnalise.value?.resultado?.style?.kind === 'change_mask') return changeMaskStatLabels[key] || key
   return (['volume','elevation_change'].includes(selectedAnalise.value?.resultado?.style?.kind) ? volumeLabels[key] : null) || contourStatLabels[key] || key
 }
 function formatStat(key, value) {
-  const digits=key.endsWith('_count') || key.endsWith('_pixels') ? 0 : key==='pixel_area_m2' ? 6 : key.endsWith('_m3') || key.endsWith('_m2') ? 2 : 3
+  const digits=key.endsWith('_count') || key.endsWith('_pixels') ? 0 : key==='pixel_area_m2' ? 6 : key.endsWith('_m3') || key.endsWith('_m2') || key.endsWith('_ha') || key==='percent_changed' ? 2 : 3
   return value.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 

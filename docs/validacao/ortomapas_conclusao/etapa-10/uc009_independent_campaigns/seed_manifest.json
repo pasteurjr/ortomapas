@@ -1,0 +1,99 @@
+{
+  "created_at": "2026-11-20T16:03:24.600516+00:00",
+  "project_id": 90,
+  "user_id": 60,
+  "project_name": "Validacao UC-009 Aklavik 2022-2024",
+  "source": "https://doi.org/10.5281/zenodo.14608566",
+  "dataset_title": "High-resolution UAV Orthomosaic and DSM Dataset — Aklavik, NWT, CA [2022, 2024]",
+  "campaigns": [
+    {
+      "flight_id": 35,
+      "product_id": 81,
+      "date": "2022-09-21",
+      "acquisition_window": "2022-09-19..2022-09-21",
+      "original_filename": "20220921_DJI_Mini2_UndercoverEisAgenten_Orthomosaic_Aklavik_Town_10cm.tif",
+      "local_path": "data/validacao/uc009_aklavik/2022_ortomosaico.tif",
+      "md5": "53bf718e84bc8335f54732b554222ed0",
+      "sha256": "ee31851a4fc448b6e02f0eaf074adaf452b111b87a11f477c765a93564060099",
+      "size_bytes": 710706206,
+      "width": 15993,
+      "height": 14811,
+      "bands": 3,
+      "crs": "EPSG:32608",
+      "transform": [
+        0.09999756768586278,
+        0.0,
+        498353.8972,
+        0.0,
+        -0.09999926406052587,
+        7568465.417
+      ],
+      "bounds_projected": [
+        498353.8972,
+        7566984.3279,
+        499953.1583,
+        7568465.417
+      ],
+      "bounds_wgs84": [
+        -135.03977036598968,
+        68.21633280066082,
+        -135.0011310545263,
+        68.22962156164643
+      ],
+      "resolution_m": [
+        0.09999756768586278,
+        0.09999926406052587
+      ],
+      "nodata": null,
+      "thumbnail": "/mnt/data1/progpython/ortomapas/data/thumbnails/uc009_aklavik_2022.png"
+    },
+    {
+      "flight_id": 36,
+      "product_id": 82,
+      "date": "2024-03-24",
+      "acquisition_window": "2024-03-22..2024-03-24",
+      "original_filename": "20240324_DJI_Mini2_UndercoverEisAgenten_Orthomosaic_Aklavik_Town_10cm.tif",
+      "local_path": "data/validacao/uc009_aklavik/2024_ortomosaico.tif",
+      "md5": "0429640ef35fd1475a54fa33ce8328bb",
+      "sha256": "bfa3dcc20b37777cf50828638bcbf9f9c279b190f772c877caeac93929fbbbc9",
+      "size_bytes": 710706206,
+      "width": 15993,
+      "height": 14811,
+      "bands": 3,
+      "crs": "EPSG:32608",
+      "transform": [
+        0.09999756768586278,
+        0.0,
+        498353.8972,
+        0.0,
+        -0.09999926406052587,
+        7568465.417
+      ],
+      "bounds_projected": [
+        498353.8972,
+        7566984.3279,
+        499953.1583,
+        7568465.417
+      ],
+      "bounds_wgs84": [
+        -135.03977036598968,
+        68.21633280066082,
+        -135.0011310545263,
+        68.22962156164643
+      ],
+      "resolution_m": [
+        0.09999756768586278,
+        0.09999926406052587
+      ],
+      "nodata": null,
+      "thumbnail": "/mnt/data1/progpython/ortomapas/data/thumbnails/uc009_aklavik_2024.png"
+    }
+  ],
+  "important_limitations": [
+    "Two acquisition campaigns are independent by collection date; orthomosaics are already reported aligned in the source dataset.",
+    "No GCP/checkpoint truth or manually labeled change polygons are included in this validation.",
+    "The source report states a horizontal/vertical alignment procedure; this app run does not independently estimate camera geometry.",
+    "Only the two RGB orthomosaics were downloaded. Raw photos and DSMs were not downloaded."
+  ],
+  "llm_calls": 0
+}

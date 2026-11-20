@@ -1,0 +1,182 @@
+{
+  "date": "2026-11-20T13:09:05.562964-03:00",
+  "case": "UC-009 — campanhas UAV independentes",
+  "scope": "enqueue real na aplicação, worker, PostgreSQL, tile autenticado e UI Playwright; sem LLM",
+  "project": {
+    "id": 90,
+    "name": "Validacao UC-009 Aklavik 2022-2024"
+  },
+  "input_checks": {
+    "crs": "EPSG:32608",
+    "before_grid": [
+      15993,
+      14811
+    ],
+    "after_grid": [
+      15993,
+      14811
+    ],
+    "before_resolution_m": [
+      0.09999756768586278,
+      0.09999926406052587
+    ],
+    "after_resolution_m": [
+      0.09999756768586278,
+      0.09999926406052587
+    ],
+    "overlap_ratio_smaller_footprint": 1.0,
+    "resolution_relative_difference": 0.0,
+    "transform_equal": true,
+    "alignment_note": "the source dataset reports the 2024 campaign aligned to 2022; application reprojects grids but does not estimate a new image registration.",
+    "before_rgb_preview_quantiles": {
+      "valid_preview_pixels": 262144,
+      "bands_rgb_p10_p50_p90": [
+        [
+          95.0,
+          153.0,
+          255.0
+        ],
+        [
+          83.0,
+          142.0,
+          255.0
+        ],
+        [
+          71.0,
+          136.0,
+          255.0
+        ]
+      ]
+    },
+    "after_rgb_preview_quantiles": {
+      "valid_preview_pixels": 262144,
+      "bands_rgb_p10_p50_p90": [
+        [
+          0.0,
+          81.0,
+          175.0
+        ],
+        [
+          0.0,
+          86.0,
+          181.0
+        ],
+        [
+          0.0,
+          91.0,
+          192.0
+        ]
+      ]
+    }
+  },
+  "source": "https://doi.org/10.5281/zenodo.14608566",
+  "products": [
+    {
+      "id": 81,
+      "nome": "Ortomosaico Aklavik — campanha 2022",
+      "tipo": "ortomosaico",
+      "voo_id": 35,
+      "caminho_arquivo": "validacao/uc009_aklavik/2022_ortomosaico.tif"
+    },
+    {
+      "id": 82,
+      "nome": "Ortomosaico Aklavik — campanha 2024",
+      "tipo": "ortomosaico",
+      "voo_id": 36,
+      "caminho_arquivo": "validacao/uc009_aklavik/2024_ortomosaico.tif"
+    }
+  ],
+  "expected": {
+    "post_status": 202,
+    "terminal_status": "concluida",
+    "change_threshold_normalized": 0.15,
+    "map_layer_visible": true,
+    "statistics_panel_visible": true
+  },
+  "screenshots": [
+    {
+      "file": "01_formulario_campanhas_antes_depois.png",
+      "meaning": "2024 como depois; 2022 como referência; limiar RGB 0,15; tarefa na fila."
+    },
+    {
+      "file": "02_resultado_mascara_mapa_estatisticas.png",
+      "meaning": "Máscara temporal carregada no mapa, camada ligada e estatísticas do worker exibidas."
+    }
+  ],
+  "browser_errors": [],
+  "console_errors": [],
+  "llm_calls": 0,
+  "analysis_id": 171,
+  "task_id": 48,
+  "analysis": {
+    "status": "concluida",
+    "result_path": "/mnt/data1/progpython/ortomapas/data/analises/projetos/90/queue_171_264c52d431.tif",
+    "statistics": {
+      "max": 255.0,
+      "min": 0.0,
+      "std": 105.70757013844356,
+      "mean": 198.78926718255724,
+      "median": 255.0,
+      "total_pixels": 236872323,
+      "valid_pixels": 236872323,
+      "changed_pixels": 184657551,
+      "area_changed_ha": 184.6517,
+      "area_changed_m2": 1846517.01,
+      "percent_changed": 77.96,
+      "unchanged_pixels": 52214772
+    },
+    "comparison_parameters": {
+      "method": "mean_absolute_rgb_difference",
+      "threshold": 0.15,
+      "reference_id": 81
+    }
+  },
+  "task": {
+    "status": "concluido",
+    "agent": "agente_mudanca_fila"
+  },
+  "comparison_record_ids": [
+    17
+  ],
+  "tile": {
+    "http_status": 200,
+    "zxy": [
+      12,
+      511,
+      973
+    ],
+    "size": [
+      256,
+      256
+    ],
+    "opaque_pixels": 9134,
+    "screenshot": "tile_uc009_mudancas.png"
+  },
+  "map_layer_visible": true,
+  "statistics_panel_visible": true,
+  "statistics_rows_visible": 12,
+  "browser_errors_free": true,
+  "result": "PASS_FUNCTIONAL_SCOPE",
+  "map_tile_check": {
+    "tile_access_http_status": 200,
+    "analysis_tile_responses": 24,
+    "analysis_tile_http_statuses": [
+      200
+    ],
+    "analysis_tile_images_loaded_in_leaflet": 24,
+    "visual_overlay_confirmed_in_screenshot": true,
+    "ticket_or_bearer_values_saved": false
+  },
+  "change_mask_warning_visible": true,
+  "statistics_rows": [
+    "Pixels totais: 236.872.323",
+    "Pixels válidos: 236.872.323",
+    "Pixels acima do limiar: 184.657.551",
+    "Área acima do limiar (ha): 184,65",
+    "Área acima do limiar (m²): 1.846.517,01",
+    "Pixels acima do limiar (%): 77,96",
+    "Pixels abaixo do limiar: 52.214.772"
+  ],
+  "quality_interpretation": "PASS_FUNCTIONAL_SCOPE. Os 77,96% indicam pixels que superam o limiar RGB simples; não são uma estimativa validada de mudança física. A diferença forte de distribuição RGB entre campanhas confirma sensibilidade à estação/iluminação.",
+  "ui_correction": "Rótulos do resultado foram ajustados para “acima do limiar” e a tela passou a avisar que iluminação/estação podem gerar falsos positivos."
+}

@@ -2,7 +2,7 @@
 
 **Data:** 10/11/2026
 **Versão:** 1.0
-**Situação em 19/11/2026:** Fase 9 (9.1–9.9) encerrada; aceite operacional global retido. Na Fase 10 proposta, 10.1 (recuperação real UC-024) e 10.2 (fila UC-020) foram validadas; faltam cinco etapas propostas, 10.3–10.7.
+**Situação em 20/11/2026:** Fase 9 (9.1–9.9) encerrada; aceite operacional global retido. Na Fase 10 proposta, 10.1 (recuperação real UC-024), 10.2 (fila UC-020) e 10.3 (comparação funcional de campanhas independentes UC-009) foram executadas; faltam quatro etapas propostas, 10.4–10.7. O UC-009 continua parcial em qualidade científica: o resultado RGB simples marcou 77,96% dos pixels acima do limiar numa série com contraste sazonal e sem verdade de campo.
 **Escopo:** concluir, validar e documentar o produto web Ortomapas.
 
 ## 1. Objetivo e limites
@@ -234,13 +234,13 @@ Este bloco inicia o trabalho após o encerramento da numeração 9.1–9.9. A **
 |---|---|---|
 | **10.1 — Recuperação real NodeODM** | UC-024 | **Concluída:** tarefa #21 ausente confirmada no serviço real; as 77 fotos preservadas foram reenviadas uma vez. NodeODM concluiu #25 (code 40, 26 min 22 s); seis produtos importados; origem e seus seis produtos preservados. [Relatório e evidências](../validacao/ortomapas_conclusao/etapa-08/relatorio.md). |
 | **10.2 — Cobertura da fila espacial** | UC-020 | **Concluída:** mudança RGB e volume por cota agora usam workers e persistem resultado/comparação. API, banco, fila, mapa, estatísticas e tiles autenticados foram exercitados com Playwright. O UC-010 v2 restringe classificação à K-Means RGB; segmentação e classificadores supervisionados não são requisitos de aceite e foram removidos do formulário de enfileiramento. [Relatório e evidências](../validacao/ortomapas_conclusao/etapa-10/uc020_queue_coverage/relatorio.md). |
-| **10.3 — Comparação entre campanhas** | UC-009 | Obter duas campanhas independentes da mesma área, verificar alinhamento/CRS/resolução e testar registro, máscara e diferença com critérios para iluminação/estação. |
+| **10.3 — Comparação entre campanhas** | UC-009 | **Concluída funcionalmente:** duas campanhas independentes Aklavik 2022/2024 cadastradas e processadas via fila/API/Playwright. Mesmo CRS EPSG:32608, grade/resolução idênticas, sobreposição 100%, tarefa e comparação persistidas, tiles/resultados visíveis. O limiar RGB simples marcou 77,96% dos pixels (1.846.517,01 m²) acima do limiar. Isso não é área validada de mudança física: a amostra radiométrica difere entre estações, não há polígonos de referência, e o app não estima registro por feições nem corrige iluminação sazonal. [Relatório e evidências](../validacao/ortomapas_conclusao/etapa-10/uc009_independent_campaigns/relatorio.md). UC-009 segue parcialmente aceito cientificamente. |
 | **10.4 — Qualidade semântica de classificação** | UC-010 | Usar amostras de referência rotuladas; calcular métricas por classe e repetibilidade. Não chamar resultado RGB de análise multiespectral. |
 | **10.5 — Validação hidrológica** | UC-011 | Encontrar DTM e hidrografia oficial co-localizados; definir método e tolerâncias antes de comparar drenagem/bacias. Sem referência compatível, limitar a conclusão a demonstração funcional. |
 | **10.6 — Acurácia posicional/vertical** | UC-026 | Definir usos e tolerâncias; validar produtos contra checkpoints/GCP independentes, datum/CRS documentados e relatório reprodutível. |
 | **10.7 — Regressão e aceite** | Matriz completa | Reexecutar casos obrigatórios alterados, fechar rastreabilidade, documentar exclusões aceitas e decidir formalmente o aceite operacional global. |
 
-**Estado atualizado da Fase 10:** 10.1 e 10.2 concluídas; 10.3–10.7 pendentes. A validação de UC-020 usou ortomosaicos e DSM reais do conjunto público Aukerman, processado pelo NodeODM no projeto #88. Isso prova o fluxo técnico integrado, mas a comparação entre duas resoluções da mesma missão não substitui duas campanhas independentes. Próxima: 10.3 de 7 — comparação entre campanhas; restam cinco etapas propostas.
+**Estado atualizado da Fase 10:** 10.1, 10.2 e 10.3 concluídas no escopo funcional; 10.4–10.7 pendentes. A validação UC-009 usou duas campanhas UAV reais publicadas para o mesmo local em 2022/2024, ao contrário da comparação 10.2, que usou duas resoluções de uma só missão. O aplicativo produziu e exibiu a máscara, mas o dado não inclui verdade de campo e a grande proporção acima do limiar não pode ser interpretada como mudança física confirmada. Próxima: **10.4 de 7 — qualidade semântica de classificação (UC-010)**; restam quatro etapas propostas.
 
 ## 8. Referências internas
 
