@@ -1,0 +1,765 @@
+{
+  "date": "2026-11-24T20:30:42.240105-03:00",
+  "case": "UC-010 — agrupamento K-Means RGB pela UI",
+  "scope": "projeto real, ortomosaico UAV real, AOI desenhada na tela, API de produção e persistência PostgreSQL",
+  "project": {
+    "id": 90,
+    "name": "Validacao UC-009 Aklavik 2022-2024"
+  },
+  "source": {
+    "id": 81,
+    "name": "Ortomosaico Aklavik — campanha 2022",
+    "type": "ortomosaico"
+  },
+  "expected": {
+    "api_status": 200,
+    "groups": 5,
+    "aoi_required": true,
+    "raster_persisted": true,
+    "semantic_names": false
+  },
+  "screenshots": [
+    {
+      "file": "03_ui_projeto_mapa_e_configuracao_uc010.png",
+      "meaning": "Projeto real, ortomosaico Aklavik visível e formulário K-Means RGB com cinco grupos."
+    },
+    {
+      "file": "04_ui_aoi_em_desenho.png",
+      "meaning": "Quatro vértices da AOI desenhados sobre o ortomosaico real."
+    },
+    {
+      "file": "05_ui_aoi_selecionada_no_ortomosaico.png",
+      "meaning": "Polígono de análise desenhado sobre a imagem e uso da AOI habilitado."
+    },
+    {
+      "file": "06_ui_resultado_kmeans_grupos_e_mapa.png",
+      "meaning": "Raster de grupos exibido no mapa, cinco estatísticas e aviso semântico visíveis."
+    }
+  ],
+  "browser_errors": [],
+  "console_errors": [],
+  "tile_responses": [
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2047/3892.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2046/3892.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2045/3892.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2048/3892.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2045/3895.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2048/3894.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2045/3894.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2048/3893.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2046/3891.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2045/3891.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2047/3891.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2047/3895.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2048/3895.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2045/3893.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2046/3894.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2047/3894.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2046/3895.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2048/3891.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2046/3893.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/14/2047/3893.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16376/31148.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16376/31147.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16375/31148.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16377/31148.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16375/31147.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16376/31149.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16377/31147.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16377/31150.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16378/31148.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16376/31150.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16374/31149.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16374/31150.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16374/31148.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16378/31150.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16376/31146.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16374/31146.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16375/31149.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16378/31147.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16375/31150.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16377/31146.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16378/31146.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16377/31149.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16378/31149.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16375/31146.png"
+    },
+    {
+      "status": 200,
+      "path": "http://127.0.0.1:5176/api/ortomapas/81/tile/17/16374/31147.png"
+    }
+  ],
+  "source_tile_images": 20,
+  "analysis": {
+    "id": 173,
+    "output_path": "/mnt/data1/progpython/ortomapas/data/analises/projetos/90/457e5c292ddf49848d48e800b51fa71b_classificacao_kmeans_1795563049359.tif",
+    "cluster_count": 5,
+    "total_valid_pixels": 4540423,
+    "sample_pixels": 100000,
+    "pixel_area_m2": 0.009999683176428895,
+    "valid_area_m2": 45402.79148697081,
+    "clusters": [
+      {
+        "cluster": 1,
+        "pixel_count": 1276419,
+        "area_m2": 12763.79,
+        "area_ha": 1.2764,
+        "center_rgb": [
+          146,
+          132,
+          126
+        ],
+        "display_rgb": [
+          146,
+          132,
+          126
+        ],
+        "percent": 28.1123
+      },
+      {
+        "cluster": 2,
+        "pixel_count": 429266,
+        "area_m2": 4292.52,
+        "area_ha": 0.4293,
+        "center_rgb": [
+          192,
+          158,
+          126
+        ],
+        "display_rgb": [
+          192,
+          158,
+          126
+        ],
+        "percent": 9.4543
+      },
+      {
+        "cluster": 3,
+        "pixel_count": 335885,
+        "area_m2": 3358.74,
+        "area_ha": 0.3359,
+        "center_rgb": [
+          197,
+          185,
+          181
+        ],
+        "display_rgb": [
+          197,
+          185,
+          181
+        ],
+        "percent": 7.3977
+      },
+      {
+        "cluster": 4,
+        "pixel_count": 1866665,
+        "area_m2": 18666.06,
+        "area_ha": 1.8666,
+        "center_rgb": [
+          151,
+          152,
+          153
+        ],
+        "display_rgb": [
+          151,
+          152,
+          153
+        ],
+        "percent": 41.1121
+      },
+      {
+        "cluster": 5,
+        "pixel_count": 632188,
+        "area_m2": 6321.68,
+        "area_ha": 0.6322,
+        "center_rgb": [
+          124,
+          110,
+          100
+        ],
+        "display_rgb": [
+          124,
+          110,
+          100
+        ],
+        "percent": 13.9235
+      }
+    ],
+    "aoi_pixel_count": 4540423
+  },
+  "request": {
+    "ortomapa_id": 81,
+    "projeto_id": 90,
+    "algorithm": "kmeans",
+    "n_clusters": 5,
+    "aoi_type": "Polygon",
+    "aoi_vertices": 5
+  },
+  "analysis_tile_responses": [
+    {
+      "status": 200,
+      "zxy": "17/16374/31147.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16376/31148.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16378/31150.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16377/31146.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16378/31146.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16375/31150.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16378/31147.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16374/31146.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16377/31149.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16378/31149.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16374/31150.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16374/31149.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16375/31147.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16375/31146.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16376/31150.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16375/31148.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16376/31147.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16378/31148.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16377/31148.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16376/31146.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16377/31147.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16374/31148.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16375/31149.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16377/31150.png"
+    },
+    {
+      "status": 200,
+      "zxy": "17/16376/31149.png"
+    }
+  ],
+  "output_map_tiles_loaded": 25,
+  "sample_tile": {
+    "zxy": [
+      17,
+      16376,
+      31148
+    ],
+    "http_status": 200,
+    "size": [
+      256,
+      256
+    ],
+    "opaque_pixels": 65536
+  },
+  "output_tile_samples": [
+    {
+      "zxy": [
+        17,
+        16376,
+        31148
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 65536
+    },
+    {
+      "zxy": [
+        17,
+        16376,
+        31147
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16375,
+        31148
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 16384
+    },
+    {
+      "zxy": [
+        17,
+        16377,
+        31148
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 40960
+    },
+    {
+      "zxy": [
+        17,
+        16376,
+        31149
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 57344
+    },
+    {
+      "zxy": [
+        17,
+        16375,
+        31147
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16377,
+        31147
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16375,
+        31149
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 14336
+    },
+    {
+      "zxy": [
+        17,
+        16377,
+        31149
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 35840
+    },
+    {
+      "zxy": [
+        17,
+        16376,
+        31146
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16374,
+        31148
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16378,
+        31148
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16376,
+        31150
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16375,
+        31146
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16377,
+        31146
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16374,
+        31147
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16378,
+        31147
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16374,
+        31149
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16378,
+        31149
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16375,
+        31150
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16377,
+        31150
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16374,
+        31146
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16378,
+        31146
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    },
+    {
+      "zxy": [
+        17,
+        16374,
+        31150
+      ],
+      "http_status": 200,
+      "size": [
+        256,
+        256
+      ],
+      "opaque_pixels": 0
+    }
+  ],
+  "persistence": {
+    "status": "concluida",
+    "result_file_bytes": 649326
+  },
+  "browser_errors_free": true,
+  "result": "PASS_FUNCTIONAL_UI_AND_REAL_DATA"
+}

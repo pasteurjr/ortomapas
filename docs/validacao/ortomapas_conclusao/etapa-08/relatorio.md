@@ -732,7 +732,7 @@ A revisão das capturas também revelou rótulos genéricos e potencialmente eng
 **Resultado:** repetibilidade funcional aprovada nos dados reais exercitados; aceite semântico parcial.
 **Relatório detalhado:** [UC-010 — K-Means RGB e qualidade semântica](../etapa-10/uc010_semantic_quality/relatorio.md).
 
-O script de auditoria chamou a mesma função K-Means de produção em janelas de 768×768 dos ortomosaicos UAV Aklavik 2022 e 2024. Cada fonte produziu cinco grupos ocupados a partir de 100.000 amostras. A repetição do processamento deu concordância exata de 100% em cada campanha e preservou EPSG:32608, transformação, contagem, áreas e percentuais.
+O script de auditoria chamou a mesma função K-Means de produção em janelas de 768×768 dos ortomosaicos UAV Aklavik 2022 e 2024. Cada fonte produziu cinco grupos ocupados a partir de 100.000 amostras. A repetição do processamento deu concordância exata de 100% em cada campanha e preservou EPSG:32608, transformação, contagem, áreas e percentuais. Depois, o fluxo Playwright foi percorrido no projeto #90: ativou o ortomosaico #81, desenhou uma AOI, gerou e persistiu a análise #173 e exibiu o resultado classificado no mapa. O teste confirmou 25 tiles carregados, com tile de resultado de 256×256/65.536 pixels opacos e zero erros de browser/console.
 
 ### Esperado versus obtido
 
@@ -743,6 +743,10 @@ O script de auditoria chamou a mesma função K-Means de produção em janelas d
 | Repetibilidade | Mesma entrada e parâmetros produzem o mesmo raster | Concordância pixel a pixel de 100% nas duas campanhas |
 | Sistema de coordenadas | Preservar referência e grade | EPSG:32608 e affine preservados |
 | Acurácia semântica | Comparar a máscaras independentes e medir IoU/F1 etc. | Sem máscara local correspondente; tentativa de baixar LandCover.ai falhou por DNS. Nenhuma acurácia foi inventada |
+
+As capturas [formulário](../etapa-10/uc010_semantic_quality/03_ui_projeto_mapa_e_configuracao_uc010.png), [desenho da AOI](../etapa-10/uc010_semantic_quality/04_ui_aoi_em_desenho.png), [AOI finalizada](../etapa-10/uc010_semantic_quality/05_ui_aoi_selecionada_no_ortomosaico.png) e [resultado colorido e estatísticas](../etapa-10/uc010_semantic_quality/06_ui_resultado_kmeans_grupos_e_mapa.png) mostram quatro estados distintos. O [tile rasterizado](../etapa-10/uc010_semantic_quality/07_tile_kmeans_classificacao.png) e o [manifesto Playwright](../etapa-10/uc010_semantic_quality/playwright_manifest.json) complementam a conferência visual.
+
+Na primeira execução da UI, o processamento #172 terminou; o roteiro marcou erro porque examinou uma margem transparente como se fosse o tile de dados. Ajustei a asserção para percorrer vários XYZ e confirmar um tile com conteúdo. A execução final #173 passou. Ambos os produtos foram preservados como dados de validação no projeto.
 
 A inspeção detectou que uma janela 2024 totalmente preta podia ser aceita pelo scikit-learn com cinco grupos solicitados, embora somente um estivesse ocupado. O backend agora rejeita diversidade insuficiente antes de gravar saída; o teste de regressão comprova o erro claro e a ausência do GeoTIFF parcial. Pixels pretos continuam válidos como entrada RGB, conforme o requisito.
 

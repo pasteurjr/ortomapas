@@ -8,7 +8,7 @@
 
 UC-010 na especificação v2 oferece agrupamento não supervisionado de pixels RGB em 2–12 grupos. O produto é um raster de IDs de grupo, com centro RGB e estatísticas de área. O sistema não atribui automaticamente nomes como vegetação, água ou construções. Para avaliar tais significados são necessárias máscaras de referência independentes e compatíveis com as imagens.
 
-Esta execução verificou a implementação de produção em dados UAV reais, a repetibilidade determinística, a grade geográfica e o comportamento quando a imagem não tem diversidade espectral suficiente para preencher a quantidade solicitada. Na inspeção de arquivos de validação e documentação locais não encontrei rótulos independentes correspondentes às cenas Aklavik.
+Esta execução verificou a implementação de produção em dados UAV reais, a repetibilidade determinística, a grade geográfica, o fluxo visual real até o mapa de resultado e o comportamento quando a imagem não tem diversidade espectral suficiente para preencher a quantidade solicitada. Na inspeção de arquivos de validação e documentação locais não encontrei rótulos independentes correspondentes às cenas Aklavik.
 
 ## Procedimento reproduzível
 
@@ -34,7 +34,43 @@ Referências de conjuntos rotulados: [LandCover.ai — página de download](http
 
 Um recorte totalmente preto da ortofoto 2024 não continha diversidade espectral, mas o scikit-learn mantinha a solicitação de cinco centros, embora só um grupo estivesse ocupado. O endpoint poderia responder sucesso e listar grupos vazios. O backend agora compara o número de grupos ocupados com o solicitado e falha com mensagem de diversidade insuficiente antes de criar a saída. A rota já converte esse `ValueError` em HTTP 422. Foi adicionada regressão em `tests/test_vegetation_classification.py` para garantir que imagem uniforme seja rejeitada sem arquivo de saída. O teste anterior confirma que pixels pretos válidos continuam sendo tratados como pixels; a nova checagem não converte preto em NoData.
 
-## Evidência visual
+## Execução visual com Playwright
+
+O roteiro [`validate_uc010_semantic_quality_phase10.py`](../../../../../tests/e2e/playwright/validate_uc010_semantic_quality_phase10.py) percorreu a interface real usando o projeto #90 e o ortomosaico UAV #81. O operador escolheu K-Means RGB, manteve cinco grupos, marcou “Limitar a área”, desenhou e concluiu um polígono no mapa, acionou “Gerar Grupos” e abriu o raster resultante. O resultado foi a análise #173 no PostgreSQL, com estado `concluida` e GeoTIFF de 649.326 bytes.
+
+| Verificação na UI/API/banco | Esperado | Obtido |
+|---|---|---|
+| Entrada | Orto #81 do projeto #90 | Confirmada; tiles do ortomosaico responderam HTTP 200 |
+| Solicitação | `algorithm=kmeans`, 5 grupos, AOI Polygon | Corpo real da chamada UI conferido, 5 vértices incluindo fechamento |
+| Raster | IDs 1–5, nenhum grupo vazio | 4.540.423 pixels válidos; cinco grupos ocupados |
+| Área | Contagens, percentuais e área por grupo | 45.402,79 m²; áreas/percentuais listados no manifesto |
+| Persistência | Análise concluída e arquivo acessível | Análise #173 `concluida`; arquivo no caminho persistido |
+| Mapa | Tiles de classificação renderizados | 25 tiles do mapa carregados; amostra XYZ `[17,16376,31148]` respondeu HTTP 200, 256×256, 65.536 pixels opacos; 6 de 24 tiles amostrados tinham conteúdo, os demais eram margens transparentes |
+| Erros de navegador | Nenhum erro de página/console | Zero page errors e zero console errors |
+
+As quatro capturas Playwright mostram estados diferentes do fluxo e foram inspecionadas individualmente:
+
+### 1. Projeto, ortomosaico e formulário K-Means
+
+![Projeto Aklavik, ortomosaico visível e formulário de classificação](03_ui_projeto_mapa_e_configuracao_uc010.png)
+
+### 2. Desenho da AOI no mapa
+
+![Quatro vértices da AOI desenhados sobre o ortomosaico](04_ui_aoi_em_desenho.png)
+
+### 3. AOI concluída e selecionada
+
+![Polígono finalizado, área delimitada no ortomosaico e análise habilitada](05_ui_aoi_selecionada_no_ortomosaico.png)
+
+### 4. Resultado no mapa e estatísticas dos grupos
+
+![Raster K-Means RGB exibido com cinco grupos e estatísticas na interface](06_ui_resultado_kmeans_grupos_e_mapa.png)
+
+O tile XYZ real que o mapa usa está disponível como [PNG de classificação](07_tile_kmeans_classificacao.png). O [manifesto Playwright](playwright_manifest.json) registra chamada, parâmetros, IDs, métricas, status HTTP, amostras de tiles e capturas. O roteiro testa a tela e a integração; ele não avalia a correção semântica dos cinco IDs.
+
+Na primeira execução visual, a análise #172 terminou corretamente, mas a asserção do roteiro escolheu o primeiro tile da extensão do mapa, que era uma margem transparente fora do raster. Corrigi o roteiro para amostrar vários tiles e exigir conteúdo opaco em pelo menos um; a repetição final passou como #173. O raster #172 também ficou concluído e foi preservado no projeto, então a lista da tela contém dois resultados de execução de validação.
+
+## Evidência técnica dos dois ortomosaicos UAV
 
 ![Ortomosaicos UAV reais e grupos K-Means RGB](01_ortos_reais_e_grupos_kmeans.png)
 
@@ -44,6 +80,7 @@ A imagem acima é uma visualização técnica dos rasters de entrada e das saíd
 
 - `PYTHONPATH=. /home/pasteurjr/miniforge3/bin/pytest -q tests/test_vegetation_classification.py` — **10 passed**.
 - `PYTHONPATH=. MPLCONFIGDIR=/tmp/ortomapas-mpl /home/pasteurjr/miniforge3/bin/python scripts/validar_uc010_kmeans_real.py` — duas campanhas, cinco grupos ocupados, 100% de repetibilidade em ambas.
+- `PYTHONPATH=. /home/pasteurjr/miniforge3/bin/python tests/e2e/playwright/validate_uc010_semantic_quality_phase10.py` — **PASS_FUNCTIONAL_UI_AND_REAL_DATA**, análise #173, 25 tiles carregados, 6/24 tiles de classificação com pixels opacos, sem erros do navegador.
 - Validação de qualidade semântica independente — **não executada**, por ausência de máscaras locais e falha de DNS no download público nesta sessão.
 
 ## Conclusão e estado do requisito
