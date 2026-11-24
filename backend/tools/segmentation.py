@@ -47,16 +47,34 @@ def segment_ortomapa(input_path: str, output_path: str, n_clusters: int = 7, min
         maximum = float(np.nanmax(values[:, valid_2d]))
         scale = 1.0 if maximum <= 1 else maximum
     sample_norm = pixels[sample_indexes].astype(np.float32) / scale
+    distinct_sample_colors = np.unique(sample_norm, axis=0).shape[0]
+    if distinct_sample_colors < n_clusters:
+        raise ValueError(
+            f"A imagem contém diversidade espectral insuficiente para formar "
+            f"{n_clusters} grupos; somente {distinct_sample_colors} cores distintas foram amostradas"
+        )
 
     # KMeans clustering
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10, max_iter=300)
     kmeans.fit(sample_norm)
+    populated_clusters = np.unique(kmeans.labels_).size
+    if populated_clusters != n_clusters:
+        raise ValueError(
+            f"A imagem contém diversidade espectral insuficiente para formar "
+            f"{n_clusters} grupos; somente {populated_clusters} grupos ficaram preenchidos"
+        )
 
     labels = np.zeros(height * width, dtype=np.uint8)
     chunk = 250000
     for start in range(0, valid_indexes.size, chunk):
         indexes = valid_indexes[start:start + chunk]
         labels[indexes] = kmeans.predict(pixels[indexes].astype(np.float32) / scale) + 1
+    populated_output_clusters = np.unique(labels[valid_indexes]).size
+    if populated_output_clusters != n_clusters:
+        raise ValueError(
+            f"A imagem não preencheu todos os {n_clusters} grupos solicitados; "
+            f"somente {populated_output_clusters} grupos receberam pixels"
+        )
     labels_2d = labels.reshape(height, width)
 
     for option in ('blockxsize', 'blockysize', 'tiled'):

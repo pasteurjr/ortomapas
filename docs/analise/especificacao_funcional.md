@@ -493,7 +493,7 @@
 | **Saida** | `{status: "success", output_path, n_clusters, total_valid_pixels, sample_pixels, clusters, analise}` |
 | **Endpoint** | `POST /api/tools/classify` |
 | **Componente** | `ToolsPanel.vue` (aba Classificacao) |
-| **Regras** | A interface operacional expoe somente KMeans RGB, com amostra deterministica de ate 100 mil pixels, `n_init=10`, predicao em blocos e nodata=0. Pixels RGB pretos validos nao sao confundidos com nodata. Cada grupo retorna centro RGB, pixels, area m2/ha e percentual; o raster e publicado e reabre pelo catalogo. Os grupos nao recebem rotulos semanticos automaticos. RF/SVM permanecem apenas como API legada e exigem amostras rotuladas reais; nao sao anunciados na interface ate existir fluxo de treino e avaliacao completo. |
+| **Regras** | A interface operacional expoe somente KMeans RGB, com amostra deterministica de ate 100 mil pixels, `n_init=10`, predicao em blocos e nodata=0. Pixels RGB pretos validos nao sao confundidos com nodata. Cada grupo retorna centro RGB, pixels, area m2/ha e percentual; o raster e publicado e reabre pelo catalogo. Se a fonte nao tiver diversidade suficiente para preencher todos os grupos pedidos, a operacao e rejeitada com erro claro, sem publicar raster com grupos vazios. Os grupos nao recebem rotulos semanticos automaticos. RF/SVM permanecem apenas como API legada e exigem amostras rotuladas reais; nao sao anunciados na interface ate existir fluxo de treino e avaliacao completo. |
 
 ---
 

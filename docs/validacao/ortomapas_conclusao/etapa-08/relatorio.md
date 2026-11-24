@@ -664,7 +664,7 @@ O processo de acompanhamento no terminal foi encerrado pelo ambiente depois de a
 
 **UC-024 aprovado nos cenários exercitados:** além do cancelamento e da idempotência/conflito registrados na 9.7, a recuperação foi executada com a tarefa ausente no NodeODM real, e os produtos foram regenerados/importados sem perder a origem. Isto valida a recuperação operacional desse caso específico, com fotos preservadas. Não prova retomada a partir de checkpoint intermediário do ODM: o comportamento executado reenviou o conjunto completo e iniciou um processamento novo, como a própria UI informa.
 
-**Status atualizado após a etapa 10.2:** concluída. A próxima é **10.3 de 7 — comparação entre campanhas independentes (UC-009)**; restam cinco etapas propostas, 10.3–10.7. A Fase 10 é um plano pós-Fase 9 e seu escopo continua sujeito à matriz de requisitos. Veja o [relatório detalhado da 10.2](../etapa-10/uc020_queue_coverage/relatorio.md) e o [plano MD/PDF](../../analise/plano_conclusao_ortomapas_web.md).
+**Status atualizado após a etapa 10.2:** concluída. A etapa seguinte 10.3 e seu encerramento estão documentados abaixo. A Fase 10 é um plano pós-Fase 9 e seu escopo continua sujeito à matriz de requisitos. Veja o [relatório detalhado da 10.2](../etapa-10/uc020_queue_coverage/relatorio.md) e o [plano MD/PDF](../../analise/plano_conclusao_ortomapas_web.md).
 
 ## Fase pós-9 — etapa proposta 10.2: cobertura da fila espacial (UC-020)
 
@@ -724,4 +724,32 @@ A revisão das capturas também revelou rótulos genéricos e potencialmente eng
 
 **Decisão:** a etapa 10.3 está concluída no escopo funcional: o sistema compara duas campanhas independentes, persiste e exibe o resultado. UC-009 continua parcial para aceite científico/operacional, devido à falta de referência rotulada e à sensibilidade a estação/iluminação demonstrada nesta execução.
 
-**Próxima etapa: 10.4 de 7 — qualidade semântica de classificação (UC-010). Restam quatro etapas propostas, 10.4–10.7.**
+**Próxima etapa: 10.4 de 7 — qualidade semântica de classificação (UC-010). Restavam quatro etapas propostas, 10.4–10.7.**
+
+## Fase pós-9 — etapa proposta 10.4: auditoria K-Means RGB (UC-010)
+
+**Execução:** 24/11/2026
+**Resultado:** repetibilidade funcional aprovada nos dados reais exercitados; aceite semântico parcial.
+**Relatório detalhado:** [UC-010 — K-Means RGB e qualidade semântica](../etapa-10/uc010_semantic_quality/relatorio.md).
+
+O script de auditoria chamou a mesma função K-Means de produção em janelas de 768×768 dos ortomosaicos UAV Aklavik 2022 e 2024. Cada fonte produziu cinco grupos ocupados a partir de 100.000 amostras. A repetição do processamento deu concordância exata de 100% em cada campanha e preservou EPSG:32608, transformação, contagem, áreas e percentuais.
+
+### Esperado versus obtido
+
+| Verificação | Esperado | Obtido |
+|---|---|---|
+| Processar imagens UAV reais | Cinco grupos solicitados e ocupados | Cinco grupos ocupados em cada janela de 589.824 pixels |
+| Amostragem | No máximo 100.000 amostras válidas | 100.000 por campanha |
+| Repetibilidade | Mesma entrada e parâmetros produzem o mesmo raster | Concordância pixel a pixel de 100% nas duas campanhas |
+| Sistema de coordenadas | Preservar referência e grade | EPSG:32608 e affine preservados |
+| Acurácia semântica | Comparar a máscaras independentes e medir IoU/F1 etc. | Sem máscara local correspondente; tentativa de baixar LandCover.ai falhou por DNS. Nenhuma acurácia foi inventada |
+
+A inspeção detectou que uma janela 2024 totalmente preta podia ser aceita pelo scikit-learn com cinco grupos solicitados, embora somente um estivesse ocupado. O backend agora rejeita diversidade insuficiente antes de gravar saída; o teste de regressão comprova o erro claro e a ausência do GeoTIFF parcial. Pixels pretos continuam válidos como entrada RGB, conforme o requisito.
+
+![Recortes UAV reais e saídas K-Means](../etapa-10/uc010_semantic_quality/01_ortos_reais_e_grupos_kmeans.png)
+
+A figura é uma composição técnica dos rasters reais, não uma captura da interface. As cores/IDs expressam apenas agrupamento por similaridade RGB; não representam classes como vegetação, água ou solo. O conjunto rotulado [LandCover.ai](https://landcover.ai/download/landcover.ai.v1.zip) foi localizado na web, mas não pôde ser transferido por falha DNS. O [ISPRS Potsdam](https://www.isprs.org/resources/datasets/benchmarks/UrbanSemLab/2d-sem-label-potsdam.aspx) é uma alternativa oficial de referência, mas seu pacote indicado no portal é de 13,3 GB e não foi baixado. O [UAVid](https://uavid.nl/) também oferece imagens UAV e rótulos semânticos.
+
+**Decisão:** a etapa 10.4 encerra a auditoria funcional/robustez; UC-010 ainda é parcial para interpretação semântica. Não há evidência para alegar acurácia de classificação de cobertura do solo. 10 testes de `test_vegetation_classification.py` passaram. O relatório individual e o manifesto registram dados, métricas e limitação.
+
+**Próxima etapa: 10.5 de 7 — validação hidrológica (UC-011). Restam três etapas propostas, 10.5–10.7.**

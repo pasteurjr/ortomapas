@@ -88,6 +88,15 @@ def test_kmeans_aoi_excludes_outside_colors(tmp_path):
     assert result['total_valid_pixels']==64
 
 
+def test_kmeans_rejects_empty_clusters_on_spectrally_uniform_image(tmp_path):
+    source=tmp_path/'uniform.tif';output=tmp_path/'groups.tif'
+    image=np.full((3,8,8),120,dtype='uint8')
+    write_rgb(source,image)
+    with pytest.raises(ValueError,match='diversidade espectral insuficiente'):
+        segment_ortomapa(str(source),str(output),3)
+    assert not output.exists()
+
+
 def test_classification_limits_and_insufficient_pixels(tmp_path):
     with pytest.raises(ValidationError):
         ClassifyRequest(ortomapa_path='x.tif',n_clusters=1)

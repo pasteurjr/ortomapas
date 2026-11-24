@@ -1263,7 +1263,7 @@ Agrupar pixels de um ortomapa RGB por similaridade espectral com KMeans, definin
 - **Contexto visual anterior:** Formulario completo
 - **Elemento de UI utilizado:** Button "Gerar Grupos" com icon `pi pi-play`
 - **Resposta imediata do sistema:** Botao em loading
-- **Processamento funcional:** (1) Valida fonte RGB, projeto, quantidade e AOI. (2) POST `/api/tools/classify` com paths e IDs vinculados. (3) Treina KMeans deterministico em ate 100 mil pixels validos e prediz em blocos. (4) Gera GeoTIFF de rotulos 1..N, nodata=0. (5) Publica centros RGB, contagens, areas, percentuais, estilo e proveniencia.
+- **Processamento funcional:** (1) Valida fonte RGB, projeto, quantidade e AOI. (2) POST `/api/tools/classify` com paths e IDs vinculados. (3) Treina KMeans deterministico em ate 100 mil pixels validos e prediz em blocos. (4) Se nao houver N grupos ocupados por diversidade insuficiente, responde erro de validacao sem publicar saida. (5) Gera GeoTIFF de rotulos 1..N, nodata=0. (6) Publica centros RGB, contagens, areas, percentuais, estilo e proveniencia.
 - **Efeito observavel na UI:** Spinner no botao
 - **Evidencia esperada:** Screenshot loading
 - **Criterio de aceitacao:** Requisicao com parametros corretos

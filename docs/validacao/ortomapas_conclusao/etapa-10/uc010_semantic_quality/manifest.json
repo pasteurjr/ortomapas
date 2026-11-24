@@ -1,0 +1,242 @@
+{
+  "validation": "UC-010 K-Means RGB functional/repeatability audit",
+  "generated_utc": "2026-11-24",
+  "method": "production segment_ortomapa on 768x768 windows at 65% image width and vertical center from two real UAV orthomosaics; two identical runs each",
+  "results": {
+    "2022": {
+      "crop": {
+        "width": 768,
+        "height": 768,
+        "crs": "EPSG:32608",
+        "window": [
+          10395,
+          7021,
+          768,
+          768
+        ],
+        "bounds": [
+          499393.37191609456,
+          7567686.522732233,
+          499470.1700480773,
+          7567763.3221670315
+        ],
+        "source_bytes": 710706206,
+        "source_sha256": "ee31851a4fc448b6e02f0eaf074adaf452b111b87a11f477c765a93564060099"
+      },
+      "n_clusters": 5,
+      "total_valid_pixels": 589824,
+      "sample_pixels": 100000,
+      "clusters": [
+        {
+          "cluster": 1,
+          "pixel_count": 198788,
+          "area_m2": 1987.82,
+          "area_ha": 0.1988,
+          "center_rgb": [
+            121,
+            104,
+            88
+          ],
+          "display_rgb": [
+            121,
+            104,
+            88
+          ],
+          "percent": 33.7029
+        },
+        {
+          "cluster": 2,
+          "pixel_count": 126386,
+          "area_m2": 1263.82,
+          "area_ha": 0.1264,
+          "center_rgb": [
+            139,
+            125,
+            116
+          ],
+          "display_rgb": [
+            139,
+            125,
+            116
+          ],
+          "percent": 21.4277
+        },
+        {
+          "cluster": 3,
+          "pixel_count": 111223,
+          "area_m2": 1112.19,
+          "area_ha": 0.1112,
+          "center_rgb": [
+            88,
+            81,
+            70
+          ],
+          "display_rgb": [
+            88,
+            81,
+            70
+          ],
+          "percent": 18.857
+        },
+        {
+          "cluster": 4,
+          "pixel_count": 53101,
+          "area_m2": 530.99,
+          "area_ha": 0.0531,
+          "center_rgb": [
+            186,
+            163,
+            145
+          ],
+          "display_rgb": [
+            186,
+            163,
+            145
+          ],
+          "percent": 9.0029
+        },
+        {
+          "cluster": 5,
+          "pixel_count": 100326,
+          "area_m2": 1003.23,
+          "area_ha": 0.1003,
+          "center_rgb": [
+            169,
+            128,
+            96
+          ],
+          "display_rgb": [
+            169,
+            128,
+            96
+          ],
+          "percent": 17.0095
+        }
+      ],
+      "repeat_run_pixel_agreement_percent": 100.0,
+      "crs_preserved": true,
+      "exactly_five_labels_1_to_5": true,
+      "semantic_accuracy": null,
+      "semantic_accuracy_reason": "não existe máscara independente rotulada disponível para esta cena"
+    },
+    "2024": {
+      "crop": {
+        "width": 768,
+        "height": 768,
+        "crs": "EPSG:32608",
+        "window": [
+          10395,
+          7021,
+          768,
+          768
+        ],
+        "bounds": [
+          499393.37191609456,
+          7567686.522732233,
+          499470.1700480773,
+          7567763.3221670315
+        ],
+        "source_bytes": 710706206,
+        "source_sha256": "bfa3dcc20b37777cf50828638bcbf9f9c279b190f772c877caeac93929fbbbc9"
+      },
+      "n_clusters": 5,
+      "total_valid_pixels": 589824,
+      "sample_pixels": 100000,
+      "clusters": [
+        {
+          "cluster": 1,
+          "pixel_count": 116885,
+          "area_m2": 1168.81,
+          "area_ha": 0.1169,
+          "center_rgb": [
+            91,
+            95,
+            100
+          ],
+          "display_rgb": [
+            91,
+            95,
+            100
+          ],
+          "percent": 19.8169
+        },
+        {
+          "cluster": 2,
+          "pixel_count": 92339,
+          "area_m2": 923.36,
+          "area_ha": 0.0923,
+          "center_rgb": [
+            222,
+            220,
+            221
+          ],
+          "display_rgb": [
+            222,
+            220,
+            221
+          ],
+          "percent": 15.6553
+        },
+        {
+          "cluster": 3,
+          "pixel_count": 104374,
+          "area_m2": 1043.71,
+          "area_ha": 0.1044,
+          "center_rgb": [
+            45,
+            50,
+            56
+          ],
+          "display_rgb": [
+            45,
+            50,
+            56
+          ],
+          "percent": 17.6958
+        },
+        {
+          "cluster": 4,
+          "pixel_count": 147995,
+          "area_m2": 1479.9,
+          "area_ha": 0.148,
+          "center_rgb": [
+            177,
+            178,
+            181
+          ],
+          "display_rgb": [
+            177,
+            178,
+            181
+          ],
+          "percent": 25.0914
+        },
+        {
+          "cluster": 5,
+          "pixel_count": 128231,
+          "area_m2": 1282.27,
+          "area_ha": 0.1282,
+          "center_rgb": [
+            136,
+            138,
+            142
+          ],
+          "display_rgb": [
+            136,
+            138,
+            142
+          ],
+          "percent": 21.7406
+        }
+      ],
+      "repeat_run_pixel_agreement_percent": 100.0,
+      "crs_preserved": true,
+      "exactly_five_labels_1_to_5": true,
+      "semantic_accuracy": null,
+      "semantic_accuracy_reason": "não existe máscara independente rotulada disponível para esta cena"
+    }
+  },
+  "visual_evidence": "docs/validacao/ortomapas_conclusao/etapa-10/uc010_semantic_quality/01_ortos_reais_e_grupos_kmeans.png",
+  "semantic_acceptance": "PARTIAL — no independently labelled reference mask was available; RGB clusters are not semantic classes",
+  "external_reference_attempt": "LandCover.ai direct HTTPS download failed because DNS resolution was unavailable in the session"
+}
