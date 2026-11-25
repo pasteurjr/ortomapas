@@ -1,0 +1,62 @@
+{
+  "executed_at": "2026-11-24T22:01:00-03:00",
+  "phase": "10.7 - regressão e decisão de aceite",
+  "python_environment": ".conda-env (Python 3.11)",
+  "llm_calls": 0,
+  "pytest": {
+    "command": "PYTHONPATH=. .conda-env/bin/python -m pytest -q tests/test_hydrology_products.py tests/test_hydrology_queue_agent.py tests/test_terrain_tools.py tests/test_terrain_aoi.py tests/test_elevation_analysis.py tests/test_metric_analysis.py tests/test_raster_tiles.py tests/test_change_detection.py tests/test_elevation_change.py tests/test_volume_aoi.py tests/test_vegetation_classification.py tests/test_analysis_products.py tests/test_project_membership_auth.py",
+    "modules": [
+      "tests/test_hydrology_products.py",
+      "tests/test_hydrology_queue_agent.py",
+      "tests/test_terrain_tools.py",
+      "tests/test_terrain_aoi.py",
+      "tests/test_elevation_analysis.py",
+      "tests/test_metric_analysis.py",
+      "tests/test_raster_tiles.py",
+      "tests/test_change_detection.py",
+      "tests/test_elevation_change.py",
+      "tests/test_volume_aoi.py",
+      "tests/test_vegetation_classification.py",
+      "tests/test_analysis_products.py",
+      "tests/test_project_membership_auth.py"
+    ],
+    "passed": 101,
+    "failed": 0,
+    "warnings": 230,
+    "duration_seconds": 2.0
+  },
+  "visual_regression": {
+    "uc011": {
+      "source_manifest": "../uc011_hydrology/manifest.json",
+      "project_id": 88,
+      "source_dtm_id": 72,
+      "analysis_ids": [174, 175],
+      "statuses": ["concluida", "concluida"],
+      "exports": ["GeoJSON", "KML"],
+      "successful_tiles": 25,
+      "browser_page_errors": [],
+      "screenshots": [
+        "../uc011_hydrology/04_drenagem_formulario.png",
+        "../uc011_hydrology/04_drenagem_resultado_mapa.png",
+        "../uc011_hydrology/05_bacia_sem_exutorio_validacao.png",
+        "../uc011_hydrology/05_bacia_escolha_exutorio.png",
+        "../uc011_hydrology/05_bacia_formulario_exutorio.png",
+        "../uc011_hydrology/05_bacia_resultado_mapa.png"
+      ]
+    },
+    "uc026": {
+      "source_manifest": "../uc026_accuracy/manifest.json",
+      "project_id": 88,
+      "processing_id": 21,
+      "api_http_status": 200,
+      "score_type": "completude_de_catalogo_e_volume_de_nuvem",
+      "score_percent": 100,
+      "independent_gcp_validation": false,
+      "page_errors": [],
+      "console_errors": [],
+      "screenshots": ["../uc026_accuracy/01_uc026_completude_e_limites.png"]
+    }
+  },
+  "acceptance_decision": "Fase 10 de auditoria encerrada. Aceite operacional global retido: UC-009, UC-010, UC-011 e UC-026 continuam parciais para suas alegações científicas por falta de referência independente e critérios quantitativos completos.",
+  "secrets_written": false
+}

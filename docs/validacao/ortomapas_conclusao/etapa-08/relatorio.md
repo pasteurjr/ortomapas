@@ -756,4 +756,20 @@ A figura é uma composição técnica dos rasters reais, não uma captura da int
 
 **Decisão:** a etapa 10.4 encerra a auditoria funcional/robustez; UC-010 ainda é parcial para interpretação semântica. Não há evidência para alegar acurácia de classificação de cobertura do solo. 10 testes de `test_vegetation_classification.py` passaram. O relatório individual e o manifesto registram dados, métricas e limitação.
 
-**Próxima etapa: 10.5 de 7 — validação hidrológica (UC-011). Restam três etapas propostas, 10.5–10.7.**
+## Fechamento da Fase 10 — etapas 10.5–10.7 (24/11/2026)
+
+As três etapas restantes do plano foram executadas, validadas e documentadas com capturas próprias da interface.
+
+### 10.5 — Hidrologia/UC-011
+
+Playwright percorreu rede D8, exportação GeoJSON/KML, bloqueio de submissão sem exutório e delimitação de bacia com o DTM real #72 do projeto #88. As análises #174/#175 foram persistidas como concluídas; a rede apresentou 21 feições, e os 25 tiles da bacia responderam HTTP 200. O exutório foi ajustado em 86,0 m dentro do raio de 100 m. Esse valor é um alerta de localização, não prova de precisão. O benchmark independente no recorte USGS 3DEP/3DHP concordou com GRASS (IoU 98,66%), mas o D8 não condicionado obteve IoU 0,256% contra o catchment oficial; o condicionamento elevou a IoU a 71,34%. A rede pareada teve F1 71,61% para uma ordem/tolerância em uma bacia. **Fluxo funcional aprovado; UC-011 segue parcial e não aceito para hidrologia operacional ampla.** Ver [relatório, telas e manifesto](../etapa-10/uc011_hydrology/relatorio.md).
+
+### 10.6 — Acurácia/UC-026
+
+A API/tela do processamento real #21 foi repetida e comparada com leitura independente de GeoTIFF, LAZ e PDF ODM. A completude 100% corresponde a três verificações de catálogo/volume da nuvem; o LAZ contém 15.889.672 pontos, e os rasters estão em EPSG:32617 com pixels próximos de 0,05 m. O relatório ODM informa GSD de 2,8 cm, GPS de 0,85 m, CE90 de 0,717 m e LE90 de 1,220 m, mas não foram localizados checkpoints independentes nem tolerâncias estabelecidas. **A auditoria de completude/metadados passou; acurácia externa segue não comprovada.** Ver [relatório, captura e manifesto](../etapa-10/uc026_accuracy/relatorio.md).
+
+### 10.7 — Regressão e decisão
+
+O conjunto direcionado de 13 módulos geoespaciais/autorização passou com **101 testes, 0 falhas e 230 avisos** (principalmente depreciação de Rasterio/Affine e Shapely). Os manifests das repetições visuais registraram zero erros de browser/console na tela de qualidade e zero page errors na hidrologia. A rastreabilidade final foi atualizada na [matriz de casos de uso](../../analise/matriz_rastreabilidade_ortomapas_fase1.md). **Decisão formal: a Fase 10 de auditoria está encerrada; o aceite operacional global permanece retido.** UC-009, UC-010, UC-011 e UC-026 continuam parciais pelas referências científicas independentes que faltam. Os 101 testes não substituem essas referências. Ver [relatório de regressão/aceite](../etapa-10/uc027_regression_acceptance/relatorio.md) e [manifesto](../etapa-10/uc027_regression_acceptance/regression_manifest.json).
+
+Não resta etapa numerada na Fase 10 deste plano. A mudança da decisão global depende de dados independentes e tolerâncias adequadas ao uso, não de rebatizar uma etapa. Android, controlador do drone e simulador permanecem em trilhas separadas.
