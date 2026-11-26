@@ -2,7 +2,7 @@
 
 - **Data:** 25/11/2026
 - **Base:** inventário visual e navegação Playwright de 24/11/2026, projeto #88.
-- **Status em 26/11/2026:** Etapas 1–5 de 6 revisadas com evidências e ressalvas registradas; etapa 6 pendente de regressão integrada com os serviços ativos.
+- **Status em 26/11/2026:** Etapas 1–5 revisadas; etapa 6 parcialmente validada (build e 81 testes unitários aprovados), ainda pendente de regressão integrada com os serviços ativos.
 **Escopo:** interface web do Ortomapas. Android e simulador de drone ficam fora.
 
 ## 1. Objetivo
@@ -120,6 +120,8 @@ Capturas e dados: [relatório ilustrado](../validacao/inventario_interface_2026-
 
 **Evidências:** relatório final com tabela de defeitos, capturas antes/depois referenciadas, execução Playwright, erros de console/rede, respostas esperadas/observadas e pendências científicas mantidas.
 
+**Execução em 26/11/2026 — parcial, não fecha o aceite:** o build Vite passou (427 módulos); 81 testes unitários direcionados passaram, incluindo as ferramentas das etapas 4–5. O aviso de chunk acima de 500 kB e o aviso de API CJS depreciada permanecem. A regressão integrada não pôde rodar: `.env` aponta PostgreSQL para `127.0.0.1:5433`, sem resposta; `5432` também sem resposta, nenhum cluster PostgreSQL listado e nenhuma API/UI escutando. `docker compose ps` não encontrou contêineres ativos. Não subi o Compose, pois ele traz WebODM/NodeODM/GeoServer e não configura um banco PostgreSQL local para este fluxo. Sem backend/DB, não há login, persistência ou captura Playwright atual que possa ser alegada. [Relatório da etapa 6](../validacao/inventario_interface_2026-11-24/etapa-06/relatorio.md), [resultado estruturado](../validacao/inventario_interface_2026-11-24/etapa-06/resultado.json).
+
 ## 5. Ordem, dependências e estimativa de validação
 
 ```text
@@ -132,17 +134,17 @@ Etapa 5 — Copiloto ──────────────┘
 
 As etapas 1–3 são correções de comportamento e podem ser implementadas em sequência; etapas 4–5 dependem de escolher dados/contas de validação sem alterar produção. A etapa 6 só começa depois de as correções e execuções estarem estáveis. O número total é **6 etapas**; uma etapa só conta como concluída quando houver comparação e evidência, não ao terminar o código.
 
-## 6. Estado inicial da matriz
+## 6. Estado atual da matriz
 
 | ID | Estado no início | Etapa de fechamento |
 |---|---|---|
-| I-01 | **Corrigido e validado**: subitens levam aos destinos da interface | 6 (regressão) |
-| I-02 | **Corrigido e validado**: sino abre análises ativas; engrenagem sem função removida | 6 (regressão) |
-| I-03 | **Corrigido e validado para UI e proteção contra cascata**; autorização real e dependências em DB real pendem para regressão | 6 |
-| I-04 | **Corrigido e validado** com 6 cenários visuais; teste contra API/banco real permanece para regressão integrada | 6 |
+| I-01 | **Corrigido e validado** em Playwright anterior; build atual passou; regressão integrada do checkout pendente | 6 (pendente) |
+| I-02 | **Corrigido e validado** em Playwright anterior; build atual passou; regressão integrada do checkout pendente | 6 (pendente) |
+| I-03 | **Corrigido e validado para UI/guardas** com fixture e unidade; autorização real e dependências em DB real pendem | 6 (pendente) |
+| I-04 | **Corrigido e validado** com 6 cenários visuais anteriores; build atual passou; regressão integrada do checkout pendente | 6 (pendente) |
 | I-05 | **Etapa 4 revisada:** resultados reais de execuções anteriores e 55 testes unitários aprovados; reexecução HTTP/DB e regressão visual integrada pendentes. Hidrologia sem aceite operacional amplo | 6 |
 | I-06 | **Etapa 5 revisada:** provas reais anteriores de contexto, histórico e isolamento entre duas contas; 24 testes unitários atuais aprovados. Reexecução integrada no checkout atual pendente por serviços inativos; aceite pleno do Copiloto continua negado pelas pendências registradas | 6 |
-| I-07 | Parcialmente validado: teclado, nomes acessíveis, recolhimento e viewport 900×850 passaram; regressão completa segue pendente | 6 |
-| I-08 | **Corrigido e validado**: selecionar Missões não cobre mais a navegação; subitem abre o Planejador | 6 (regressão) |
+| I-07 | Parcialmente validado: teclado, nomes acessíveis, recolhimento e viewport 900×850 passaram em Playwright anterior; regressão completa do checkout pendente | 6 (pendente) |
+| I-08 | **Corrigido e validado** em Playwright anterior; regressão integrada do checkout pendente | 6 (pendente) |
 
-**Próxima etapa:** **Etapa 6 de 6 — regressão integrada e fechamento do inventário**, repetindo a jornada com backend e PostgreSQL ativos, conferindo alterações das etapas 1–5, capturas atuais, erros de console/rede e os critérios de aceite. A etapa 5 confirmou os requisitos com evidências anteriores e testes unitários atuais, mas a regressão precisa repetir o fluxo integrado no checkout atual.
+**Próxima ação (Etapa 6 de 6 ainda aberta):** disponibilizar PostgreSQL/PostGIS na porta `5433` conforme `.env`, iniciar backend e frontend e repetir a regressão integrada com uma conta/projeto descartável. Capturar telas novas e verificar rede/console, persistência e autorização. Não há etapa 7 neste plano; o inventário permanece incompleto até essa execução.

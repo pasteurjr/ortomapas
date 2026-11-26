@@ -1,0 +1,28 @@
+{
+  "etapa": "6/6",
+  "resultado": "parcial_integrada_pendente_por_servicos_indisponiveis",
+  "servicos": {
+    "postgresql_local": "sem resposta em 127.0.0.1:5433 (porta do .env) nem 127.0.0.1:5432; nenhum cluster listado",
+    "docker_compose": "nenhum container ativo listado",
+    "backend_frontend_http": "nenhuma porta escutando"
+  },
+  "validacoes_locais": {
+    "frontend_build": "passou; aviso de chunk >500kB e API CJS depreciada",
+    "testes_direcionados": {
+      "passaram": 81,
+      "falharam": 0,
+      "avisos_de_depreciacao": 137
+    }
+  },
+  "playwright_integrado_checkout_atual": {
+    "executado": false,
+    "capturas_novas": false,
+    "motivo": "API e PostgreSQL não estavam ativos"
+  },
+  "resultado_operacional": "não declarar inventário totalmente fechado; repetir fluxo após disponibilizar banco, backend e frontend",
+  "acoes_de_dados_nesta_sessao": {
+    "chamadas_llm": 0,
+    "gravacoes_banco": 0,
+    "containers_iniciados": 0
+  }
+}
