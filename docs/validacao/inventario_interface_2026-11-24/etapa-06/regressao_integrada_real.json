@@ -1,0 +1,190 @@
+{
+  "started_at": "2026-11-26T13:26:32.562740-03:00",
+  "frontend": "http://127.0.0.1:5176",
+  "project_expected": "Guarajuba - Condomínio Paraíso (Demonstração)",
+  "mode": "live local backend/PostgreSQL; read-only; no LLM call",
+  "steps": [
+    {
+      "id": "REG-01",
+      "status": "PASS",
+      "action": "login autenticado pela UI real"
+    },
+    {
+      "id": "REG-02",
+      "status": "PASS",
+      "action": "projeto real selecionado; mapa e catálogo carregados"
+    },
+    {
+      "id": "REG-03",
+      "status": "PASS",
+      "action": "workspace Voos e ODM montado com dados da API"
+    },
+    {
+      "id": "REG-04",
+      "status": "PASS",
+      "action": "workspace Análises montado com dados da API"
+    },
+    {
+      "id": "REG-05",
+      "status": "PASS",
+      "action": "Planejador real aberto a partir do projeto"
+    },
+    {
+      "id": "REG-06",
+      "status": "PASS",
+      "action": "Conversa temporária criada pela UI e vinculada ao projeto ativo"
+    },
+    {
+      "id": "REG-07",
+      "status": "PASS",
+      "action": "Conversa persistiu após recarga e foi recuperada pela API autenticada"
+    },
+    {
+      "id": "REG-08",
+      "status": "PASS",
+      "action": "navegação recolhida, foco de teclado e viewport compacto"
+    }
+  ],
+  "api_responses": [
+    {
+      "path": "/src/api/client.js",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "path": "/api/projetos",
+      "status": 200
+    },
+    {
+      "path": "/api/projetos/51",
+      "status": 200
+    },
+    {
+      "path": "/api/anotacoes",
+      "status": 200
+    },
+    {
+      "path": "/api/analises",
+      "status": 200
+    },
+    {
+      "path": "/api/ortomapas",
+      "status": 200
+    },
+    {
+      "path": "/api/odm/processamentos",
+      "status": 200
+    },
+    {
+      "path": "/api/geoserver/publicacoes",
+      "status": 200
+    },
+    {
+      "path": "/api/odm/produtos",
+      "status": 200
+    },
+    {
+      "path": "/api/voos",
+      "status": 200
+    },
+    {
+      "path": "/api/missoes-captura",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/threads",
+      "status": 200
+    },
+    {
+      "path": "/api/odm/produtos",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/threads/113",
+      "status": 200
+    },
+    {
+      "path": "/api/agents/layers",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/memories",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/threads",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/threads/161",
+      "status": 200
+    },
+    {
+      "path": "/src/api/client.js",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "path": "/api/projetos",
+      "status": 200
+    },
+    {
+      "path": "/api/projetos/51",
+      "status": 200
+    },
+    {
+      "path": "/api/anotacoes",
+      "status": 200
+    },
+    {
+      "path": "/api/analises",
+      "status": 200
+    },
+    {
+      "path": "/api/ortomapas",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/threads",
+      "status": 200
+    },
+    {
+      "path": "/api/odm/produtos",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/threads/161",
+      "status": 200
+    },
+    {
+      "path": "/api/agents/layers",
+      "status": 200
+    },
+    {
+      "path": "/api/copilot/threads/161",
+      "status": 200
+    }
+  ],
+  "page_errors": [],
+  "failed_requests": [],
+  "project_id": 51,
+  "selected_project": "Guarajuba - Condomínio Paraíso (Demonstração)",
+  "flight_empty_state": false,
+  "odm_task_count": 0,
+  "copilot_thread_option_count": 1,
+  "temporary_thread_id": 161,
+  "temporary_thread_project_id": 51,
+  "temporary_thread_title": "Conversa 26/11/2026, 13:26:38",
+  "temporary_thread_message_count": 0,
+  "keyboard_focus_class": "workspace-nav-item active",
+  "http_5xx": [],
+  "status": "passed",
+  "temporary_thread_cleanup": "deleted=1",
+  "finished_at": "2026-11-26T13:26:40.884746-03:00"
+}

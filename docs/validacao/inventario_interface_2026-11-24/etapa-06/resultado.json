@@ -1,28 +1,90 @@
 {
   "etapa": "6/6",
-  "resultado": "parcial_integrada_pendente_por_servicos_indisponiveis",
+  "data": "2026-11-26",
+  "resultado": "regressao_integrada_aprovada_com_pendencias_operacionais_explicitadas",
   "servicos": {
-    "postgresql_local": "sem resposta em 127.0.0.1:5433 (porta do .env) nem 127.0.0.1:5432; nenhum cluster listado",
-    "docker_compose": "nenhum container ativo listado",
-    "backend_frontend_http": "nenhuma porta escutando"
+    "postgresql": {
+      "host": "127.0.0.1",
+      "port": 5433,
+      "status": "accepting_during_regression; later_final_probe_no_response",
+      "version": "16.15"
+    },
+    "backend_health": {
+      "url": "http://127.0.0.1:8888/health",
+      "http_status": 200,
+      "status": "healthy"
+    },
+    "frontend": "http://127.0.0.1:5176",
+    "postgres_intermediate_probe": "one pg_isready probe timed out; process inspection found live container Postgres and docker-proxy; subsequent host and container-address probes accepted connections; no restart performed"
   },
-  "validacoes_locais": {
-    "frontend_build": "passou; aviso de chunk >500kB e API CJS depreciada",
+  "validacoes": {
+    "frontend_build": {
+      "status": "passed",
+      "modules_transformed": 427,
+      "avisos": ["chunk JavaScript acima de 500 kB", "API CJS do Vite depreciada"]
+    },
     "testes_direcionados": {
+      "status": "passed",
       "passaram": 81,
       "falharam": 0,
-      "avisos_de_depreciacao": 137
+      "avisos_depreciacao": 137
+    },
+    "playwright_navegacao": {
+      "status": "passed",
+      "checks_passed": 9,
+      "checks_total": 9,
+      "main_map_tiles_loaded": 25,
+      "main_map_tiles_total": 25,
+      "planner_tiles_loaded": 30,
+      "planner_tiles_total": 30,
+      "page_errors": 0,
+      "failed_requests": 0
+    },
+    "playwright_integrado": {
+      "status": "passed",
+      "steps_passed": 8,
+      "steps_total": 8,
+      "project_id": 51,
+      "temporary_thread_id": 161,
+      "temporary_thread_persisted_after_reload": true,
+      "temporary_thread_cleanup": "deleted=1",
+      "http_5xx": 0,
+      "page_errors": 0,
+      "failed_requests": 0,
+      "llm_calls": 0
+    },
+    "privacidade_duas_contas": {
+      "status": "passed",
+      "owner_http": 200,
+      "other_user_http": 404,
+      "temporary_user_deleted": true,
+      "llm_calls": 0
     }
   },
-  "playwright_integrado_checkout_atual": {
-    "executado": false,
-    "capturas_novas": false,
-    "motivo": "API e PostgreSQL não estavam ativos"
+  "dados_projeto_observados_sem_alteracao": {
+    "project_id": 51,
+    "nome": "Guarajuba - Condomínio Paraíso (Demonstração)",
+    "voos": 1,
+    "fotos_no_voo": 24,
+    "processamentos_odm": [
+      {"id": 9, "status": "concluido"},
+      {"id": 10, "status": "erro", "detalhe": "Tarefa ausente no NodeODM"},
+      {"id": 11, "status": "erro"}
+    ],
+    "ortomapas": 4,
+    "analises_sinteticas_concluidas": 4,
+    "temporary_privacy_users_remaining": 0
   },
-  "resultado_operacional": "não declarar inventário totalmente fechado; repetir fluxo após disponibilizar banco, backend e frontend",
-  "acoes_de_dados_nesta_sessao": {
-    "chamadas_llm": 0,
-    "gravacoes_banco": 0,
-    "containers_iniciados": 0
+  "limitacoes": [
+    "Os registros de análise do projeto são explicitamente sintéticos e não provam cálculo a partir de fotos reais.",
+    "Dois registros ODM estão em erro; nenhum processamento ODM novo foi iniciado nesta regressão.",
+    "Não foi feita chamada nova ao LLM. Uma consulta que enviaria geometria do projeto a Anthropic foi bloqueada pela revisão automática e não foi enviada.",
+    "A regressão não valida missão física de drone nem aceite científico/operacional amplo dos algoritmos."
+  ],
+  "evidencias": {
+    "relatorio": "relatorio.md",
+    "navegacao": "validar_regressao_navegacao.py",
+    "jornada_integrada": "regressao_integrada_real.json",
+    "privacidade": "privacidade_reteste/privacy_two_users_result.json"
   }
 }

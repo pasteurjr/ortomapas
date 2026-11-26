@@ -1,0 +1,21 @@
+{
+  "started_at": "2026-11-26T13:29:25.022126-03:00",
+  "llm_calls": 0,
+  "thread_id": 113,
+  "steps": [
+    {
+      "id": "F8-PRIV-01",
+      "status": "passed",
+      "owner_read_status": 200
+    },
+    {
+      "id": "F8-PRIV-02",
+      "status": "passed",
+      "outsider_read_status": 404,
+      "action": "Conta autenticada diferente recebeu 404 para thread privada"
+    }
+  ],
+  "status": "passed",
+  "temporary_user_deleted": true,
+  "finished_at": "2026-11-26T13:29:25.887221-03:00"
+}
