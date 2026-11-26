@@ -28,7 +28,7 @@
 
     <div class="planner-body">
       <main class="planner-map-wrap">
-        <div ref="mapElement" class="planner-map"></div>
+        <div ref="mapElement" class="planner-map" data-testid="mission-map" :data-view-context="mapContext" :data-view-bounds="mapBoundsAttribute"></div>
         <div class="map-toolbar" role="toolbar" aria-label="Ferramentas do mapa">
           <button class="tool-button" :class="{ active: activeTool === 'aoi' }" type="button" title="Desenhar area de interesse" aria-label="Desenhar area de interesse" @click="activate('aoi')">
             <i class="pi pi-stop"></i><span>AOI</span>
@@ -85,7 +85,7 @@
           <div class="section-heading"><span>Identificacao</span><span class="step">1/3</span></div>
           <label for="mission-name">Nome da missao</label>
           <input id="mission-name" v-model.trim="missionName" class="text-input" placeholder="Ex.: Fazenda Norte - Grid 50m" />
-          <p class="project-context"><i class="pi pi-folder"></i>{{ projectStore.activeProject?.nome || 'Selecione um projeto' }}</p>
+          <p class="project-context"><i class="pi pi-folder"></i><span>{{ projectStore.activeProject?.nome || 'Selecione um projeto' }}<small v-if="mapContextLabel" data-testid="mission-map-context">{{ mapContextLabel }}</small></span></p>
         </div>
 
         <div class="panel-section">
@@ -177,7 +177,7 @@ import L from 'leaflet'
 import 'leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import { useProjectStore } from '../stores/projectStore'
-import { createCaptureMission, exportCaptureMission, generateCaptureGrid, getCaptureMission, getCaptureMissions, updateCaptureMission, updateCaptureWaypoints, validateCaptureMission } from '../api/client'
+import { createCaptureMission, exportCaptureMission, generateCaptureGrid, getCaptureMission, getCaptureMissions, getOrtomapas, updateCaptureMission, updateCaptureWaypoints, validateCaptureMission } from '../api/client'
 
 defineEmits(['close'])
 const projectStore = useProjectStore()
@@ -210,6 +210,9 @@ const validationReport = ref(null)
 const existingMissions = ref([])
 const loadingMission = ref(false)
 const coverageStale = ref(false)
+const mapContext = ref('loading')
+const initialProjectMapContext = ref('world')
+const displayedMapBounds = ref(null)
 let waypointLine = null
 let simulationMarker = null
 let simulationTimer = null
@@ -235,11 +238,101 @@ const expectedSpacing = computed(() => {
   const height = 2 * capture.altitude * Math.tan(halfFov) / diagonalRatio
   return { lines: (width * (1 - capture.sideOverlap / 100)).toFixed(1), photos: (height * (1 - capture.frontOverlap / 100)).toFixed(1) }
 })
+const mapContextLabel = computed(() => ({
+  loading: 'Localizando a área do projeto…',
+  'project-bounds': 'Enquadrado pelos limites cadastrados do projeto',
+  'project-ortomapa': 'Enquadrado pelo ortomosaico mais recente do projeto',
+  'project-center': 'Projeto sem limites; centralizado pelo ponto cadastrado',
+  world: 'Projeto sem extensão espacial; desenhe ou importe uma AOI',
+  'mission-aoi': 'Enquadramento da AOI salva na missão',
+  'manual-aoi': 'AOI atual no mapa',
+})[mapContext.value] || '')
+const mapBoundsAttribute = computed(() => displayedMapBounds.value ? JSON.stringify(displayedMapBounds.value) : '')
 
 function showNotice(message, type = 'info') {
   notice.value = message; noticeType.value = type
   window.clearTimeout(showNotice.timer)
   showNotice.timer = window.setTimeout(() => { notice.value = '' }, 3500)
+}
+
+function readBounds(source) {
+  if (!source || ['bbox_sul', 'bbox_oeste', 'bbox_norte', 'bbox_leste'].some((key) => source[key] == null || source[key] === '')) return null
+  const bounds = {
+    south: Number(source.bbox_sul),
+    west: Number(source.bbox_oeste),
+    north: Number(source.bbox_norte),
+    east: Number(source.bbox_leste),
+  }
+  if (!Object.values(bounds).every(Number.isFinite) || bounds.south < -90 || bounds.south > 90 || bounds.north < -90 || bounds.north > 90 || bounds.west < -180 || bounds.west > 180 || bounds.east < -180 || bounds.east > 180 || bounds.south >= bounds.north || bounds.west >= bounds.east) return null
+  return bounds
+}
+
+function updateDisplayedBounds() {
+  if (!map.value) return
+  const bounds = map.value.getBounds()
+  displayedMapBounds.value = [bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast()].map((value) => Number(value.toFixed(8)))
+}
+
+function setMapContext(context) {
+  mapContext.value = context
+  updateDisplayedBounds()
+}
+
+function fitMapToBounds(bounds, context, padding = [70, 70]) {
+  setMapContext(context)
+  map.value.fitBounds([[bounds.south, bounds.west], [bounds.north, bounds.east]], { padding, maxZoom: 17 })
+}
+
+function readProjectCenter(project) {
+  if (project?.centro_lat == null || project?.centro_lon == null || project.centro_lat === '' || project.centro_lon === '') return null
+  const lat = Number(project.centro_lat), lon = Number(project.centro_lon)
+  return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 ? [lat, lon] : null
+}
+
+async function initializeProjectMapView() {
+  const project = projectStore.activeProject
+  if (!project) {
+    map.value.setView([0, 0], 2)
+    initialProjectMapContext.value = 'world'
+    setMapContext('world')
+    return
+  }
+
+  const projectBounds = readBounds(project)
+  if (projectBounds) {
+    fitMapToBounds(projectBounds, 'project-bounds')
+    initialProjectMapContext.value = 'project-bounds'
+    return
+  }
+
+  let ortomapas = projectStore.ortomapas || []
+  if (!ortomapas.length) {
+    try {
+      const response = await getOrtomapas(project.id)
+      if (projectStore.activeProject?.id !== project.id) return
+      ortomapas = response.data.ortomapas || response.data || []
+    } catch {
+      ortomapas = []
+    }
+  }
+  const ortomapaBounds = ortomapas.map(readBounds).find(Boolean)
+  if (ortomapaBounds) {
+    fitMapToBounds(ortomapaBounds, 'project-ortomapa')
+    initialProjectMapContext.value = 'project-ortomapa'
+    return
+  }
+
+  const center = readProjectCenter(project)
+  if (center) {
+    map.value.setView(center, 15)
+    setMapContext('project-center')
+    initialProjectMapContext.value = 'project-center'
+    return
+  }
+
+  map.value.setView([0, 0], 2)
+  setMapContext('world')
+  initialProjectMapContext.value = 'world'
 }
 
 function styleFor(type) {
@@ -362,6 +455,7 @@ function finishPolygon() {
     if (drawn.value.aoi) map.value.removeLayer(drawn.value.aoi)
     drawn.value.aoi = layer
     aoi.value = layer.toGeoJSON().geometry
+    setMapContext('manual-aoi')
   } else {
     drawn.value.exclusions.push(layer)
     exclusions.value.push(layer.toGeoJSON().geometry)
@@ -393,6 +487,7 @@ function clearMap() {
   if (waypointLine) map.value.removeLayer(waypointLine)
   stopSimulation(); aoi.value = null; exclusions.value = []; takeoff.value = null; waypoints.value = []; waypointLine = null; selectedWaypointId.value = null; gridStats.value = null; coverageStale.value = false; validationReport.value = null
   drawn.value = { waypoints: {}, exclusions: [] }; activeTool.value = null; saved.value = false; missionId.value = null
+  setMapContext(initialProjectMapContext.value)
 }
 
 function normalizeGeoJson(input) {
@@ -415,6 +510,7 @@ function importGeoJson(event) {
       aoi.value = geometry
       markDirty()
       map.value.fitBounds(drawn.value.aoi.getBounds(), { padding: [28, 28] })
+      setMapContext('manual-aoi')
       showNotice('AOI importada do GeoJSON')
     } catch (error) { showNotice(error.message || 'Nao foi possivel importar o GeoJSON', 'error') }
     event.target.value = ''
@@ -587,6 +683,7 @@ async function openMission(id) {
       drawn.value.aoi = L.geoJSON(aoiArea.geometria, { style: styleFor('aoi') }).addTo(map.value)
       drawn.value.aoi.eachLayer(makeOverlayPassive)
       map.value.fitBounds(drawn.value.aoi.getBounds(), { padding: [28, 28] })
+      setMapContext('mission-aoi')
     } else aoi.value = null
     exclusions.value = []
     for (const area of areas.filter((item) => item.tipo === 'exclusao')) {
@@ -620,20 +717,16 @@ watch([() => missionName.value, () => ({ ...capture }), () => ({ ...gridOptions 
   if (!loadingMission.value) markDirty()
 }, { deep: true })
 
-onMounted(() => {
-  const project = projectStore.activeProject
-  map.value = L.map(mapElement.value, { zoomControl: true }).setView(
-    [Number(project?.centro_lat) || -15.78, Number(project?.centro_lon) || -47.93],
-    13,
-  )
+onMounted(async () => {
+  map.value = L.map(mapElement.value, { zoomControl: true }).setView([0, 0], 2)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }).addTo(map.value)
-  if (project?.bbox_sul != null && project?.bbox_oeste != null && project?.bbox_norte != null && project?.bbox_leste != null) {
-    map.value.fitBounds([[Number(project.bbox_sul), Number(project.bbox_oeste)], [Number(project.bbox_norte), Number(project.bbox_leste)]], { padding: [70, 70], maxZoom: 17 })
-  }
+  map.value.on('moveend', updateDisplayedBounds)
+  updateDisplayedBounds()
   drawn.value = { waypoints: {}, exclusions: [] }
-  refreshExistingMissions()
   map.value.on('click', onMapClick)
   map.value.on(L.Draw.Event.CREATED, onDrawCreated)
+  await initializeProjectMapView()
+  await refreshExistingMissions()
   window.setTimeout(() => map.value?.invalidateSize(), 100)
 })
 
@@ -652,6 +745,7 @@ onBeforeUnmount(() => { stopSimulation(); if (map.value) map.value.remove() })
 .map-legend { position: absolute; z-index: 700; left: 16px; bottom: 20px; display: flex; gap: 10px; padding: 7px 9px; border-radius: 6px; background: rgba(15, 23, 42, .9); color: #cbd5e1; font-size: .72rem; }.map-legend span { display: flex; align-items: center; gap: 4px; }.legend-swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }.legend-swatch.aoi { background: #22d3ee; }.legend-swatch.exclusion { background: #fb7185; }.legend-swatch.route { background: #4ade80; }.map-notice { position: absolute; z-index: 800; top: 76px; left: 50%; transform: translateX(-50%); padding: 9px 13px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #bae6fd; font-size: .78rem; box-shadow: 0 8px 20px rgba(0,0,0,.25); }.map-notice.error { border-color: #fb7185; color: #fecdd3; }
 .panel-section { padding: 16px; border-bottom: 1px solid #1f2937; }.section-heading { justify-content: space-between; margin-bottom: 12px; color: #f8fafc; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }.step { color: #64748b; font-size: .68rem; }label { display: flex; flex-direction: column; gap: 5px; color: #94a3b8; font-size: .72rem; }.text-input, select, input[type=number] { width: 100%; min-height: 34px; border: 1px solid #334155; border-radius: 5px; padding: 7px 8px; background: #0f172a; color: #e2e8f0; font-size: .78rem; }.text-input:focus, select:focus, input:focus { outline: 2px solid #22d3ee; outline-offset: 1px; }.project-context { gap: 6px; margin-top: 9px; color: #67e8f9; font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }.capture-note { gap: 7px; margin-top: 12px; color: #94a3b8; font-size: .7rem; line-height: 1.35; }.capture-note i { color: #fbbf24; }
 .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }.metric-grid div { padding: 8px 4px; border: 1px solid #263449; border-radius: 5px; text-align: center; }.metric-grid strong { display: block; color: #67e8f9; font-size: .95rem; }.metric-grid span { display: block; margin-top: 2px; color: #94a3b8; font-size: .62rem; }.coordinate-card { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding: 9px; border-radius: 5px; background: #0f172a; color: #94a3b8; font-size: .7rem; }.coordinate-card code, .waypoint-row code { color: #bae6fd; font-size: .7rem; }.coordinate-card.empty { flex-direction: row; align-items: center; color: #64748b; }.coordinate-card.empty i { color: #fbbf24; }.waypoint-list { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; max-height: 150px; overflow: auto; }.waypoint-row { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 4px; background: #0f172a; }.waypoint-number { display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: #22c55e; color: #052e16; font-size: .65rem; font-weight: 700; }.waypoint-row code { flex: 1; }.waypoint-row button:hover { color: #fb7185; }.panel-footer { padding: 14px 16px 18px; }.validation-line { gap: 7px; font-size: .73rem; line-height: 1.35; }.validation-line.ok { color: #86efac; }.validation-line.warn { color: #fbbf24; }.crs-label { display: block; margin-top: 9px; color: #64748b; font-size: .68rem; }.visually-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.project-context { align-items: flex-start; white-space: normal; overflow: visible; text-overflow: clip; }.project-context > span { min-width: 0; flex: 1; overflow-wrap: anywhere; }.project-context small { display: block; margin-top: 3px; color: #94a3b8; white-space: normal; line-height: 1.3; }
 .tool-button:disabled { opacity: .4; cursor: not-allowed; }.grid-options { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 10px; margin-top: 12px; }.check-field { flex-direction: row; align-items: center; min-height: 34px; color: #cbd5e1; }.check-field input { accent-color: #22c55e; }.grid-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; color: #94a3b8; font-size: .65rem; text-align: center; }.grid-summary span { padding: 6px 3px; border: 1px solid #263449; border-radius: 4px; }.grid-summary strong { display: block; color: #86efac; font-size: .78rem; }.waypoint-editor { margin-top: 12px; padding: 10px; border: 1px solid #155e75; border-radius: 6px; background: #0b2233; }.selected-heading { display: flex; justify-content: space-between; align-items: center; color: #e0f2fe; font-size: .75rem; font-weight: 700; }.selected-badge { color: #67e8f9; font-size: .62rem; text-transform: uppercase; }.compact-grid { margin-top: 9px; gap: 7px; }.waypoint-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 9px; }.waypoint-actions button { border: 1px solid #334155; border-radius: 4px; padding: 6px 4px; background: #111827; color: #cbd5e1; font-size: .66rem; cursor: pointer; }.waypoint-actions button:hover { border-color: #22d3ee; color: #67e8f9; }.waypoint-actions .danger-action:hover { border-color: #fb7185; color: #fda4af; }.simulation-status { margin-top: 9px; color: #fde68a; font-size: .7rem; }
 .validation-report { margin-top: 12px; padding-top: 10px; border-top: 1px solid #263449; }.validation-summary { display: flex; align-items: center; gap: 6px; font-size: .72rem; }.validation-summary span { margin-left: auto; color: #94a3b8; font-size: .62rem; }.status-aprovado { color: #86efac; }.status-aviso { color: #fbbf24; }.status-bloqueado { color: #fb7185; }.validation-rule { display: flex; gap: 6px; margin-top: 6px; color: #cbd5e1; font-size: .64rem; line-height: 1.25; }.validation-rule i { margin-top: 1px; }.validation-rule span { display: flex; flex-direction: column; gap: 2px; }.validation-rule strong { color: #94a3b8; font-size: .61rem; text-transform: uppercase; }.rule-aprovado { color: #86efac; }.rule-aviso { color: #fbbf24; }.rule-bloqueado { color: #fb7185; }.coverage-summary { margin-top: 8px; color: #94a3b8; font-size: .65rem; line-height: 1.4; }.coverage-stale { position: absolute; z-index: 800; top: 110px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 9px 12px; border: 1px solid #f59e0b; border-radius: 5px; background: #422006; color: #fde68a; font-size: .76rem; text-align: center; }
 .block-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; padding: 8px; border: 1px solid #263449; border-radius: 4px; color: #cbd5e1; font-size: .65rem; }.block-list strong { color: #86efac; }.block-list small { color: #94a3b8; line-height: 1.35; }

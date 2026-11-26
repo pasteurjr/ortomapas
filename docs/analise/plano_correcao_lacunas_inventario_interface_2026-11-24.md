@@ -2,7 +2,7 @@
 
 - **Data:** 25/11/2026
 - **Base:** inventário visual e navegação Playwright de 24/11/2026, projeto #88.
-- **Status em 26/11/2026:** Etapas 1 e 2 de 6 concluídas com evidências de interface e testes unitários isolados; etapas 3–6 pendentes.
+- **Status em 26/11/2026:** Etapas 1–3 de 6 concluídas com evidências visuais; etapas 4–6 pendentes.
 **Escopo:** interface web do Ortomapas. Android e simulador de drone ficam fora.
 
 ## 1. Objetivo
@@ -71,6 +71,21 @@ O inventário foi uma navegação sem gravações. Portanto, “não demonstrado
 
 **Evidências:** capturas para Aukerman, missão reaberta e projeto sem extent; teste numérico de bounds/centro comparado com AOI/GeoJSON persistido.
 
+**Execução em 26/11/2026 — concluída e revisada visualmente:** removido o enquadramento inicial fixo em Brasília. A prioridade agora é (1) bounds válidos do projeto, (2) bounds do ortomapa mais recente, (3) centro cadastrado e (4) visão global com mensagem explícita, sem inventar localização. Ao abrir uma missão, a AOI salva volta a enquadrar o mapa; ao importar ou desenhar AOI, o estado do contexto também é atualizado. Os quatro limites geográficos são validados quanto a presença, faixa e degeneração. O rótulo do contexto fica visível no painel, em uma linha própria.
+
+**Validação:** seis cenários Playwright passaram (0 reprovações), usando Chrome e tiles OSM carregados. O caso Aukerman usou os limites do arquivo local `data/ortomapas/aukerman_dsm_campanha_posterior_1845e1ad.tif` (GeoTIFF, 7.448 × 5.907 px, EPSG:32617); os quatro lados do retângulo UTM foram amostrados em 101 posições com `gdaltransform` para obter o envelope WGS84 usado como referência. O retorno de API foi fixture somente de leitura no navegador, preenchida com a extensão derivada desse arquivo. O cenário de missão também usou fixture, com AOI baseada no recorte controlado local. Um caso adicional com bbox inválido verificou o fallback para centro cadastrado. Não houve gravação ou alteração no banco.
+
+| Caso | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| Aukerman sem bbox cadastrado | enquadrar extensão do ortomapa/DSM | `project-ortomapa`; bounds visíveis `[41.30042713, -81.75881624, 41.30797098, -81.74551249]`, contendo a extensão do DSM | Aprovado |
+| Projeto com bbox | dar precedência ao bbox do projeto | `project-bounds`; extensão Aukerman contida | Aprovado |
+| Projeto sem extensão nem centro | não assumir Brasília; mostrar estado explicativo | `world`; centro global e mensagem “Projeto sem extensão espacial; desenhe ou importe uma AOI” | Aprovado |
+| Projeto só com centro | centralizar no centro do extent do DSM Aukerman | `project-center`; centro observado (41.30419580, -81.75216248) | Aprovado |
+| Bbox inválido | rejeitar e continuar para centro válido | latitude norte 95° rejeitada; contexto `project-center` | Aprovado |
+| Reabrir missão | enquadrar AOI salva | `mission-aoi`; AOI salva contida nos bounds exibidos | Aprovado |
+
+Capturas e dados: [relatório ilustrado](../validacao/inventario_interface_2026-11-24/etapa-03/relatorio.md), [resultado JSON](../validacao/inventario_interface_2026-11-24/etapa-03/resultado.json), [script Playwright](../validacao/inventario_interface_2026-11-24/etapa-03/validar_etapa3.cjs). O build de produção passou; permanece um aviso preexistente do Vite sobre o tamanho do bundle (>500 kB), sem falha de compilação.
+
 ### Etapa 4 de 6 — Validar as ferramentas de análise da interface
 
 **Inclui:** I-05.
@@ -120,10 +135,10 @@ As etapas 1–3 são correções de comportamento e podem ser implementadas em s
 | I-01 | **Corrigido e validado**: subitens levam aos destinos da interface | 6 (regressão) |
 | I-02 | **Corrigido e validado**: sino abre análises ativas; engrenagem sem função removida | 6 (regressão) |
 | I-03 | **Corrigido e validado para UI e proteção contra cascata**; autorização real e dependências em DB real pendem para regressão | 6 |
-| I-04 | Divergência visual observada; causa ainda a reproduzir | 3 e 6 |
+| I-04 | **Corrigido e validado** com 6 cenários visuais; teste contra API/banco real permanece para regressão integrada | 6 |
 | I-05 | Não demonstrado no inventário; status funcional deve ser medido | 4 e 6 |
 | I-06 | Não demonstrado por decisão de não persistir conversa durante inventário | 5 e 6 |
 | I-07 | Parcialmente validado: teclado, nomes acessíveis, recolhimento e viewport 900×850 passaram; regressão completa segue pendente | 6 |
 | I-08 | **Corrigido e validado**: selecionar Missões não cobre mais a navegação; subitem abre o Planejador | 6 (regressão) |
 
-**Próxima etapa:** **Etapa 3 de 6 — corrigir o enquadramento geográfico do Planejador de Missão.**
+**Próxima etapa:** **Etapa 4 de 6 — validar as ferramentas de análise da interface**, começando por compatibilidade de entrada, formulário e resultado exibido com dados raster locais reproduzíveis.
