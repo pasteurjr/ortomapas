@@ -2,7 +2,7 @@
 
 - **Data:** 25/11/2026
 - **Base:** inventário visual e navegação Playwright de 24/11/2026, projeto #88.
-- **Status em 26/11/2026:** Etapas 1–4 de 6 concluídas com evidências e ressalvas registradas; etapas 5–6 pendentes.
+- **Status em 26/11/2026:** Etapas 1–5 de 6 revisadas com evidências e ressalvas registradas; etapa 6 pendente de regressão integrada com os serviços ativos.
 **Escopo:** interface web do Ortomapas. Android e simulador de drone ficam fora.
 
 ## 1. Objetivo
@@ -108,6 +108,8 @@ Capturas e dados: [relatório ilustrado](../validacao/inventario_interface_2026-
 
 **Evidências:** capturas da conversa, resposta completa, ferramenta/resultado relacionado, recarga/retomada e teste de isolamento; log sanitizado sem segredos.
 
+**Execução em 26/11/2026 — revisão concluída com reteste integrado pendente:** evidências Playwright/PostgreSQL reais anteriores comprovam contexto entre mensagens, quatro mensagens e ferramenta persistidas e isolamento entre duas contas (proprietário HTTP 200; outro usuário HTTP 404). O Playwright do chat de 16/10 havia marcado a verificação de segunda conta como `skipped`; a prova separada de 21/10 passou e removeu a conta temporária. Nesta sessão, 24 testes unitários de conversa, resumo, memórias, contexto e cliente LLM passaram (0 falhas). PostgreSQL e API não estavam ativos, então não repeti o fluxo contra serviços nem fiz chamadas de modelo. Isso não concede aceite operacional pleno: as ressalvas do aceite de 29/10 permanecem. [Relatório e capturas](../validacao/inventario_interface_2026-11-24/etapa-05/relatorio.md), [resultado JSON](../validacao/inventario_interface_2026-11-24/etapa-05/resultado.json).
+
 ### Etapa 6 de 6 — Regressão integrada e fechamento do inventário
 
 **Inclui:** I-07 e regressão de I-01–I-06.
@@ -139,8 +141,8 @@ As etapas 1–3 são correções de comportamento e podem ser implementadas em s
 | I-03 | **Corrigido e validado para UI e proteção contra cascata**; autorização real e dependências em DB real pendem para regressão | 6 |
 | I-04 | **Corrigido e validado** com 6 cenários visuais; teste contra API/banco real permanece para regressão integrada | 6 |
 | I-05 | **Etapa 4 revisada:** resultados reais de execuções anteriores e 55 testes unitários aprovados; reexecução HTTP/DB e regressão visual integrada pendentes. Hidrologia sem aceite operacional amplo | 6 |
-| I-06 | Não demonstrado por decisão de não persistir conversa durante inventário | 5 e 6 |
+| I-06 | **Etapa 5 revisada:** provas reais anteriores de contexto, histórico e isolamento entre duas contas; 24 testes unitários atuais aprovados. Reexecução integrada no checkout atual pendente por serviços inativos; aceite pleno do Copiloto continua negado pelas pendências registradas | 6 |
 | I-07 | Parcialmente validado: teclado, nomes acessíveis, recolhimento e viewport 900×850 passaram; regressão completa segue pendente | 6 |
 | I-08 | **Corrigido e validado**: selecionar Missões não cobre mais a navegação; subitem abre o Planejador | 6 (regressão) |
 
-**Próxima etapa:** **Etapa 5 de 6 — demonstrar o Copiloto com contexto e persistência**, verificando conversa vinculada ao usuário/projeto, ferramentas realmente executadas, retomada após recarga e isolamento entre usuários. A execução dependerá de backend e PostgreSQL ativos; não será marcada como aprovada somente com fixtures de interface.
+**Próxima etapa:** **Etapa 6 de 6 — regressão integrada e fechamento do inventário**, repetindo a jornada com backend e PostgreSQL ativos, conferindo alterações das etapas 1–5, capturas atuais, erros de console/rede e os critérios de aceite. A etapa 5 confirmou os requisitos com evidências anteriores e testes unitários atuais, mas a regressão precisa repetir o fluxo integrado no checkout atual.
