@@ -1,0 +1,48 @@
+{
+  "etapa": "4/6",
+  "resultado": "concluida_com_ressalvas_operacionais_documentadas",
+  "grupo_ferramentas_revisados": 8,
+  "testes_unitarios": {
+    "comando": "./.conda-env/bin/python -m pytest -q tests/test_vegetation_classification.py tests/test_terrain_tools.py tests/test_hydrology_products.py tests/test_change_detection.py tests/test_elevation_change.py tests/test_volume_aoi.py tests/test_clip_export.py",
+    "passaram": 55,
+    "falharam": 0,
+    "avisos_de_depreciacao": 131
+  },
+  "evidencia_integrada": {
+    "origem": "relatorios_playwright_e_execucoes_reais_previas_citados_em_etapa-04/relatorio.md",
+    "reexecutada_nesta_sessao": false,
+    "motivo": "backend e PostgreSQL não estavam ativos; não houve nova execução HTTP/DB",
+    "screenshots_de_entrada_inventario_24_11": "mostram formulários antes da execução, não resultados vazios",
+    "screenshots_de_resultado": "capturas de execuções reais anteriores; inspecionadas visualmente nesta revisão"
+  },
+  "status": {
+    "vegetacao_rgb_vari": "funcional_no_escopo_rgb; nao_equivale_a_ndvi",
+    "terreno": "funcional; datum_vertical_do_dsm_nao_certificado",
+    "classificacao": "kmeans_rgb_nao_supervisionado; nao_semantica",
+    "hidrologia": "executa_e_mostra_resultados; reprovada_para_aceite_operacional_amplo",
+    "mudancas_rgb": "fluxo_funcional; mascara_acima_do_limiar_nao_prova_mudanca_fisica",
+    "mudancas_elevacao": "funcional; requer interpretacao_de_dsm_e_convencao_de_sinal",
+    "volume": "funcional_com_cota_de_referencia; datum_vertical_nao_certificado",
+    "recorte_exportacao": "funcional_para_formatos_testados"
+  },
+  "evidencias": {
+    "relatorio": "relatorio.md",
+    "capturas": [
+      "../../vegetacao_classificacao_fase3_2026-10-13/02_vari_resultado_mapa.png",
+      "../../derivadas_terreno_fase2_2026-10-11/aspect.png",
+      "../../derivadas_terreno_fase2_2026-10-11/hillshade.png",
+      "../../curvas_nivel_fase3_2026-10-11/curvas_2m.png",
+      "../../vegetacao_classificacao_fase3_2026-10-13/04_kmeans_resultado_mapa_grupos.png",
+      "../../hidrologia_fase5_2026-10-15/02_bacia_resultado.png",
+      "../../hidrologia_fase5_2026-10-15/04_drenagem_resultado.png",
+      "../../hidrologia_fase5_2026-10-15/05_twi_resultado.png",
+      "../../mudanca_elevacao_fase3_2026-10-13/03_mapa_remocao_deposicao.png",
+      "../../ortomapas_conclusao/etapa-10/uc009_independent_campaigns/02_resultado_mascara_mapa_estatisticas.png",
+      "../../volume_aoi_fase3_2026-10-12/04_opacidade_35.png",
+      "../../recorte_exportacao_fase5_2026-10-15/03_recorte_resultado.png",
+      "../../recorte_exportacao_fase5_2026-10-15/05_exportacao_concluida.png"
+    ]
+  },
+  "persistencia_alterada_nesta_sessao": false,
+  "proxima_etapa": "5/6 — copiloto: contexto, conversa persistida e isolamento por usuário"
+}

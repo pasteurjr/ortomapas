@@ -2,7 +2,7 @@
 
 - **Data:** 25/11/2026
 - **Base:** inventário visual e navegação Playwright de 24/11/2026, projeto #88.
-- **Status em 26/11/2026:** Etapas 1–3 de 6 concluídas com evidências visuais; etapas 4–6 pendentes.
+- **Status em 26/11/2026:** Etapas 1–4 de 6 concluídas com evidências e ressalvas registradas; etapas 5–6 pendentes.
 **Escopo:** interface web do Ortomapas. Android e simulador de drone ficam fora.
 
 ## 1. Objetivo
@@ -96,6 +96,8 @@ Capturas e dados: [relatório ilustrado](../validacao/inventario_interface_2026-
 
 **Evidências:** uma sequência de capturas própria por análise (formulário preenchido, processamento/estado final, resultado no mapa e painel de valores), manifesto com dados/CRS/parâmetros e comparação esperado × obtido. Se o custo impedir rodar todas em uma sessão, manter a etapa aberta e registrar exatamente quais ferramentas passaram, falharam ou não puderam ser executadas.
 
+**Execução em 26/11/2026 — concluída como revisão funcional e de evidências:** os oito grupos foram revisados contra os resultados reais registrados anteriormente. As capturas do inventário de 24/11 eram formulários antes da execução, não resultados vazios; o relatório desta etapa associa cada grupo a capturas de saída reais já existentes. A inspeção dos produtos é acompanhada por 55 testes unitários aprovados (0 falhas), cobrindo vegetação RGB/VARI, terreno, classificação, hidrologia, mudanças, volume, recorte e exportação. Backend e PostgreSQL não estavam ativos, portanto não houve nova execução integrada HTTP/DB ou captura Playwright nesta etapa. A hidrologia continua reprovada para aceite operacional amplo; a máscara RGB não é prova de mudança física; K-Means não fornece classes semânticas; volumes e cotas dependem das limitações verticais indicadas. [Relatório ilustrado da etapa 4](../validacao/inventario_interface_2026-11-24/etapa-04/relatorio.md), [resultado estruturado](../validacao/inventario_interface_2026-11-24/etapa-04/resultado.json).
+
 ### Etapa 5 de 6 — Demonstrar o Copiloto com contexto e persistência
 
 **Inclui:** I-06.
@@ -136,9 +138,9 @@ As etapas 1–3 são correções de comportamento e podem ser implementadas em s
 | I-02 | **Corrigido e validado**: sino abre análises ativas; engrenagem sem função removida | 6 (regressão) |
 | I-03 | **Corrigido e validado para UI e proteção contra cascata**; autorização real e dependências em DB real pendem para regressão | 6 |
 | I-04 | **Corrigido e validado** com 6 cenários visuais; teste contra API/banco real permanece para regressão integrada | 6 |
-| I-05 | Não demonstrado no inventário; status funcional deve ser medido | 4 e 6 |
+| I-05 | **Etapa 4 revisada:** resultados reais de execuções anteriores e 55 testes unitários aprovados; reexecução HTTP/DB e regressão visual integrada pendentes. Hidrologia sem aceite operacional amplo | 6 |
 | I-06 | Não demonstrado por decisão de não persistir conversa durante inventário | 5 e 6 |
 | I-07 | Parcialmente validado: teclado, nomes acessíveis, recolhimento e viewport 900×850 passaram; regressão completa segue pendente | 6 |
 | I-08 | **Corrigido e validado**: selecionar Missões não cobre mais a navegação; subitem abre o Planejador | 6 (regressão) |
 
-**Próxima etapa:** **Etapa 4 de 6 — validar as ferramentas de análise da interface**, começando por compatibilidade de entrada, formulário e resultado exibido com dados raster locais reproduzíveis.
+**Próxima etapa:** **Etapa 5 de 6 — demonstrar o Copiloto com contexto e persistência**, verificando conversa vinculada ao usuário/projeto, ferramentas realmente executadas, retomada após recarga e isolamento entre usuários. A execução dependerá de backend e PostgreSQL ativos; não será marcada como aprovada somente com fixtures de interface.
