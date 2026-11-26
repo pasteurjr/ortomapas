@@ -1,0 +1,75 @@
+{
+  "base_url": "http://127.0.0.1:5176",
+  "api_mode": "browser fixtures only; no database writes",
+  "checks": [
+    {
+      "name": "login fixture e projeto ativo",
+      "result": "PASS"
+    },
+    {
+      "name": "sino abre análise e navega aos resultados",
+      "result": "PASS"
+    },
+    {
+      "name": "subitens de Dados abrem seus destinos",
+      "result": "PASS"
+    },
+    {
+      "name": "subitens de Voos e ODM navegam aos painéis",
+      "result": "PASS"
+    },
+    {
+      "name": "subitens de Análises navegam às ferramentas e resultados",
+      "result": "PASS"
+    },
+    {
+      "name": "submenu Missões abre o planejador",
+      "result": "PASS"
+    },
+    {
+      "name": "subitens do Copiloto levam a conversas e histórico",
+      "result": "PASS"
+    },
+    {
+      "name": "controle de configurações sem funcionalidade não é exibido",
+      "result": "PASS"
+    },
+    {
+      "name": "barra recolhida acessível por teclado e viewport compacto",
+      "result": "PASS"
+    }
+  ],
+  "screenshots": [
+    "01_notificacoes_abertas.png",
+    "02_perfil_aberto_pelo_submenu.png",
+    "03_importacao_aberta_pelo_submenu.png",
+    "04_ferramentas_analise_pelo_submenu.png",
+    "05_planejador_aberto_pelo_submenu.png",
+    "06_copiloto_historico_pelo_submenu.png",
+    "07_navegacao_recolhida.png",
+    "08_viewport_compacto.png"
+  ],
+  "page_errors": [],
+  "failed_requests": [],
+  "follow_up_capture": {
+    "date": "2026-11-26",
+    "harness": "Playwright Chromium (Node package installed on the machine)",
+    "screenshots_recaptured": [
+      {
+        "file": "02_perfil_aberto_pelo_submenu.png",
+        "result": "PASS",
+        "observed": "A fixture now answers /api/odm/produtos with an empty product list; UI shows the expected no DSM/DTM state, not an API failure."
+      },
+      {
+        "file": "05_planejador_aberto_pelo_submenu.png",
+        "result": "PASS",
+        "tiles_total": 30,
+        "tiles_loaded": 30,
+        "tiles_failed": 0,
+        "observed": "Full OSM base map visible after waiting for asynchronous Leaflet tile loading."
+      }
+    ],
+    "scope": "These two screens were rerun; the full Python navigation suite was not rerun because Python Playwright is unavailable in the active interpreter."
+  },
+  "result": "PASS"
+}

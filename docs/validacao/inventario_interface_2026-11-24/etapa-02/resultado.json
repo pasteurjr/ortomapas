@@ -1,0 +1,31 @@
+{
+  "result": "PASS",
+  "api_mode": "browser fixtures only; no backend or database writes",
+  "delete_calls": 2,
+  "checks": [
+    {
+      "check": "Confirmação identifica o produto e explica que o raster fica preservado",
+      "result": "PASS"
+    },
+    {
+      "check": "Cancelar mantém o item e não chama a API",
+      "result": "PASS"
+    },
+    {
+      "check": "Erro de API mostra mensagem e conserva o produto",
+      "result": "PASS"
+    },
+    {
+      "check": "Sucesso remove card/camada da interface e informa retenção do raster",
+      "result": "PASS"
+    },
+    {
+      "check": "Após recarga, o registro removido não volta ao catálogo",
+      "result": "PASS"
+    },
+    {
+      "check": "Usuário sem permissão de edição não vê controle de remoção",
+      "result": "PASS"
+    }
+  ]
+}

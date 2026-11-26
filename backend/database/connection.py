@@ -217,6 +217,8 @@ class _SQLiteCursorWrapper:
         q = query.replace("%s", "?")
         # Remove MySQL-specific syntax
         q = q.replace("FOR UPDATE SKIP LOCKED", "")
+        # SQLite does not implement row-level locking; keep portable queries valid.
+        q = q.replace("FOR UPDATE", "")
         if params:
             self._cursor.execute(q, params)
         else:

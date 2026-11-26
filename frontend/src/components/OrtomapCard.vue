@@ -35,7 +35,7 @@
       <button class="action-btn" @click.stop="$emit('export', ortomapa)" title="Exportar">
         <i class="pi pi-download"></i>
       </button>
-      <button class="action-btn danger" @click.stop="$emit('delete', ortomapa)" title="Excluir">
+      <button v-if="canDelete" class="action-btn danger" @click.stop="$emit('delete', ortomapa)" title="Excluir" :aria-label="`Remover ${ortomapa.nome} do catálogo`">
         <i class="pi pi-trash"></i>
       </button>
     </div>
@@ -50,6 +50,7 @@ import Badge from 'primevue/badge'
 
 const props = defineProps({
   ortomapa: { type: Object, required: true },
+  canDelete: { type: Boolean, default: false },
 })
 
 defineEmits(['select', 'export', 'delete'])

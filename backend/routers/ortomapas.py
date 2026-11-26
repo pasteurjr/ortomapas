@@ -361,12 +361,44 @@ async def delete_ortomapa(ortomapa_id: int, user: dict = Depends(current_user)):
             cursor = conn.cursor(dictionary=True)
 
             cursor.execute(
-                "SELECT * FROM ortomapas WHERE id = %s", (ortomapa_id,)
+                "SELECT * FROM ortomapas WHERE id = %s FOR UPDATE", (ortomapa_id,)
             )
             ortomapa = cursor.fetchone()
             if not ortomapa:
                 raise HTTPException(status_code=404, detail="Ortomapa nao encontrado")
             require_project_role(ortomapa["projeto_id"], user, {"proprietario", "editor"})
+
+            # The schema has ON DELETE CASCADE relationships from ortomapas to
+            # analyses, annotations, temporal comparisons, and agent tasks.
+            # Never let a catalog delete silently erase those records.
+            dependencies = {}
+            dependency_queries = {
+                "analises": "SELECT COUNT(*) AS total FROM analises WHERE ortomapa_id = %s",
+                "anotacoes": "SELECT COUNT(*) AS total FROM anotacoes WHERE ortomapa_id = %s",
+                "comparacoes_temporais": "SELECT COUNT(*) AS total FROM comparacoes_temporais WHERE ortomapa_antes_id = %s OR ortomapa_depois_id = %s",
+                "tarefas_agentes": "SELECT COUNT(*) AS total FROM tarefas_agentes WHERE ortomapa_id = %s",
+            }
+            for table, query in dependency_queries.items():
+                params = (ortomapa_id, ortomapa_id) if table == "comparacoes_temporais" else (ortomapa_id,)
+                cursor.execute(query, params)
+                dependencies[table] = int(cursor.fetchone()["total"])
+
+            linked = {table: count for table, count in dependencies.items() if count}
+            if linked:
+                labels = {
+                    "analises": ("análise", "análises"),
+                    "anotacoes": ("anotação", "anotações"),
+                    "comparacoes_temporais": ("comparação temporal", "comparações temporais"),
+                    "tarefas_agentes": ("tarefa de agente", "tarefas de agente"),
+                }
+                summary = ", ".join(
+                    f"{count} {labels[table][0 if count == 1 else 1]}"
+                    for table, count in linked.items()
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Remoção bloqueada: este ortomapa possui registros relacionados ({summary}). Remova os vínculos pelas funções próprias antes de tentar novamente.",
+                )
 
             cursor.execute("DELETE FROM ortomapas WHERE id = %s", (ortomapa_id,))
             conn.commit()

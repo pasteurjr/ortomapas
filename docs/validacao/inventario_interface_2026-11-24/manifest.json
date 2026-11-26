@@ -1,0 +1,73 @@
+{
+  "captured_at": "2026-11-24T23:44:02.263292-03:00",
+  "project_id": 88,
+  "user_id": 60,
+  "screenshots": [
+    {
+      "file": "01_dados_mapa.png",
+      "description": "Área Dados e mapa: projeto ativo, projetos, camadas, ortomapas e painel de anotações.",
+      "bytes": 247473
+    },
+    {
+      "file": "02_voos_odm.png",
+      "description": "Área Voos e ODM: voos, fotos e lista de tarefas/produtos ODM do projeto.",
+      "bytes": 254932
+    },
+    {
+      "file": "03_analises_vegetacao.png",
+      "description": "Área Análises, aba inicial Vegetação.",
+      "bytes": 243548
+    },
+    {
+      "file": "04_aba_vegetacao.png",
+      "description": "Painel Ferramentas espaciais: aba Veg.",
+      "bytes": 243548
+    },
+    {
+      "file": "05_aba_terreno.png",
+      "description": "Painel Ferramentas espaciais: aba Ter.",
+      "bytes": 243769
+    },
+    {
+      "file": "06_aba_classificacao.png",
+      "description": "Painel Ferramentas espaciais: aba Cls.",
+      "bytes": 238793
+    },
+    {
+      "file": "07_aba_hidrologia.png",
+      "description": "Painel Ferramentas espaciais: aba Hid.",
+      "bytes": 254779
+    },
+    {
+      "file": "08_aba_mudancas.png",
+      "description": "Painel Ferramentas espaciais: aba Mud.",
+      "bytes": 246144
+    },
+    {
+      "file": "09_aba_volume.png",
+      "description": "Painel Ferramentas espaciais: aba Vol.",
+      "bytes": 241678
+    },
+    {
+      "file": "10_aba_recorte.png",
+      "description": "Painel Ferramentas espaciais: aba Rec.",
+      "bytes": 241001
+    },
+    {
+      "file": "11_aba_exportacao.png",
+      "description": "Painel Ferramentas espaciais: aba Exp.",
+      "bytes": 239893
+    },
+    {
+      "file": "12_missoes_planejador.png",
+      "description": "Planejador de missão aberto: mapa, ferramentas de desenho, parâmetros, waypoints, validação e exportação.",
+      "bytes": 1315288
+    },
+    {
+      "file": "13_copiloto_sem_projeto.png",
+      "description": "Copiloto capturado no estado vazio sem projeto ativo; intencionalmente não criado thread persistente.",
+      "bytes": 1313223
+    }
+  ],
+  "note": "Capturas de navegação sem executar operações de gravação. O Copiloto foi capturado sem projeto ativo para evitar criar conversa persistente."
+}
